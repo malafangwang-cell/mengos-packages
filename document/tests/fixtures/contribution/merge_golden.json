@@ -1,5 +1,5 @@
 {
-  "_说明": "合并代数金样：逐条照抄自 mengosv2 tests/projection/contribution-merge.test.ts @4f708d686cd41e635b4c16d59236dc1b2284a966 里 U1/U2/U3、触及键 K、空槽清单各 it 的输入与期望（引擎主干上没有 merge-*.json 夹具，用例是写在该测试文件里的字面值）。schema 缺省为同目录 card.json 的 args_schema；\"named\" 为 U3 的内联 schema。不改期望去迁就包侧实现。",
+  "_说明": "合并代数金样：逐条照抄自 mengosv2 tests/projection/contribution-merge.test.ts @4f708d686cd41e635b4c16d59236dc1b2284a966 里 U1/U2/U3、触及键 K、空槽清单各 it 的输入与期望（引擎主干上没有 merge-*.json 夹具，用例是写在该测试文件里的字面值）。schema 缺省为同目录 card.json 的 args_schema；\"named\" 为 U3 的内联 schema。不改期望去迁就包侧实现。 每条的 origin_describe / origin_it 是该用例在引擎测试文件里的 describe 名与 it 名（同一 it 里的多个断言拆成多条时共用 it 名）。过渡用：引擎侧补交 merge-*.json 夹具后，包改为引用引擎夹具、删本文件。",
   "named_schema": {
     "type": "object",
     "properties": {
@@ -68,7 +68,9 @@
             }
           ]
         }
-      }
+      },
+      "origin_it": "命中 id 只改 Δ 给的键; 新 id 追加末尾; P 顺序不变",
+      "origin_describe": "U1 by-id 递归合并"
     },
     {
       "id": "U1-missing-id",
@@ -102,7 +104,9 @@
       "expect_error": {
         "instancePath": "/doc/sections",
         "message": "by-id 元素缺 id"
-      }
+      },
+      "origin_it": "缺 id (或 id 非字符串) ⟹ 合并错误, 带 instancePath",
+      "origin_describe": "U1 by-id 递归合并"
     },
     {
       "id": "U1-id-not-string",
@@ -137,7 +141,9 @@
       "expect_error": {
         "instancePath": "/doc/sections",
         "message": "by-id 元素缺 id"
-      }
+      },
+      "origin_it": "缺 id (或 id 非字符串) ⟹ 合并错误, 带 instancePath",
+      "origin_describe": "U1 by-id 递归合并"
     },
     {
       "id": "U1-P-absent-as-empty-array",
@@ -169,7 +175,9 @@
             }
           ]
         }
-      }
+      },
+      "origin_it": "P 缺席视为 []: 第一次往还没有的 by-id 字段里写不撞类型不符",
+      "origin_describe": "U1 by-id 递归合并"
     },
     {
       "id": "U1-parent-absent-missing-id",
@@ -189,7 +197,9 @@
       "expect_error": {
         "instancePath": "/doc/sections",
         "message": "by-id 元素缺 id"
-      }
+      },
+      "origin_it": "P 的父节点缺席按 {} 递归: 带标注子节点的检查不取决于父节点在不在 (缺 id 照报), 显式 null 在缺席父节点下无害",
+      "origin_describe": "U1 by-id 递归合并"
     },
     {
       "id": "U1-parent-absent-null-harmless",
@@ -218,7 +228,9 @@
             }
           ]
         }
-      }
+      },
+      "origin_it": "P 的父节点缺席按 {} 递归: 带标注子节点的检查不取决于父节点在不在 (缺 id 照报), 显式 null 在缺席父节点下无害",
+      "origin_describe": "U1 by-id 递归合并"
     },
     {
       "id": "U1-nested-rows-append-plan-lines",
@@ -278,7 +290,9 @@
             }
           ]
         }
-      }
+      },
+      "origin_it": "元素内嵌套带标注字段递归 (rows append / plan named-lines)",
+      "origin_describe": "U1 by-id 递归合并"
     },
     {
       "id": "U2-null-deletes-unannotated-overwrites-absent-keeps",
@@ -321,7 +335,9 @@
             }
           ]
         }
-      }
+      },
+      "origin_describe": "U2 append + 外层递归",
+      "origin_it": "缺席保留, 显式 null 删键, 无标注节点类型不符照旧覆盖"
     },
     {
       "id": "U2-append-no-dedup",
@@ -400,7 +416,9 @@
             }
           ]
         }
-      }
+      },
+      "origin_describe": "U2 append + 外层递归",
+      "origin_it": "append 不去重, 追加末尾; P 缺席视为 []"
     },
     {
       "id": "U2-append-P-absent",
@@ -445,7 +463,9 @@
             }
           ]
         }
-      }
+      },
+      "origin_describe": "U2 append + 外层递归",
+      "origin_it": "append 不去重, 追加末尾; P 缺席视为 []"
     },
     {
       "id": "U2-annotated-type-mismatch-delta",
@@ -474,7 +494,9 @@
       },
       "expect_error": {
         "instancePath": "/doc/tables"
-      }
+      },
+      "origin_describe": "U2 append + 外层递归",
+      "origin_it": "带标注节点类型不符 ⟹ 合并错误 (增量不是数组 / best 里不是数组)"
     },
     {
       "id": "U2-annotated-type-mismatch-P",
@@ -496,7 +518,9 @@
       },
       "expect_error": {
         "instancePath": "/doc/tables"
-      }
+      },
+      "origin_describe": "U2 append + 外层递归",
+      "origin_it": "带标注节点类型不符 ⟹ 合并错误 (增量不是数组 / best 里不是数组)"
     },
     {
       "id": "U3-named-lines-replace-append",
@@ -510,7 +534,9 @@
       },
       "expect": {
         "plan": "h1: 1\nh2: 22\nh3: 3\n# 注"
-      }
+      },
+      "origin_describe": "U3 named-lines 与标注非法",
+      "origin_it": "同名替换, 新名追加, 不匹配行追加, P 行序保持; P 缺席视为空串"
     },
     {
       "id": "U3-named-lines-P-absent",
@@ -522,7 +548,9 @@
       },
       "expect": {
         "plan": "h1: 1"
-      }
+      },
+      "origin_describe": "U3 named-lines 与标注非法",
+      "origin_it": "同名替换, 新名追加, 不匹配行追加, P 行序保持; P 缺席视为空串"
     },
     {
       "id": "U3-named-lines-delta-not-string",
@@ -538,7 +566,9 @@
       },
       "expect_error": {
         "instancePath": "/plan"
-      }
+      },
+      "origin_describe": "U3 named-lines 与标注非法",
+      "origin_it": "Δ 不是字符串 ⟹ 合并错误"
     },
     {
       "id": "K-unannotated-leaf-paths",
@@ -552,7 +582,9 @@
       "expect": [
         "doc.title",
         "name"
-      ]
+      ],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "无标注叶子=点路径; by-id 元素作前缀, id 键不进 K, label 是普通叶子"
     },
     {
       "id": "K-by-id-prefix-id-excluded",
@@ -569,7 +601,9 @@
       },
       "expect": [
         "doc.sections#s2.body"
-      ]
+      ],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "无标注叶子=点路径; by-id 元素作前缀, id 键不进 K, label 是普通叶子"
     },
     {
       "id": "K-label-is-leaf",
@@ -588,7 +622,9 @@
       "expect": [
         "doc.sections#s2.body",
         "doc.sections#s2.heading"
-      ]
+      ],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "无标注叶子=点路径; by-id 元素作前缀, id 键不进 K, label 是普通叶子"
     },
     {
       "id": "K-id-only-element",
@@ -604,7 +640,9 @@
       },
       "expect": [
         "doc.sections#s2."
-      ]
+      ],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "只含 id 的元素产生 路径#id.; 缺 id 的元素不产生键"
     },
     {
       "id": "K-missing-id-no-key",
@@ -618,7 +656,9 @@
           ]
         }
       },
-      "expect": []
+      "expect": [],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "只含 id 的元素产生 路径#id.; 缺 id 的元素不产生键"
     },
     {
       "id": "K-append-one-key",
@@ -642,7 +682,9 @@
       },
       "expect": [
         "doc.tables#t1.rows+"
-      ]
+      ],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "append 整字段一个键 (即使为空); 嵌套带前缀; named-lines 按行名与 @+"
     },
     {
       "id": "K-append-empty-still-key",
@@ -659,7 +701,9 @@
       },
       "expect": [
         "doc.tables#t1.rows+"
-      ]
+      ],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "append 整字段一个键 (即使为空); 嵌套带前缀; named-lines 按行名与 @+"
     },
     {
       "id": "K-named-lines-names-and-plus",
@@ -678,7 +722,9 @@
         "doc.tables#t1.plan@+",
         "doc.tables#t1.plan@h1",
         "doc.tables#t1.plan@h2"
-      ]
+      ],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "append 整字段一个键 (即使为空); 嵌套带前缀; named-lines 按行名与 @+"
     },
     {
       "id": "K-named-lines-blank-line-is-plus",
@@ -696,7 +742,9 @@
       "expect": [
         "doc.tables#t1.plan@+",
         "doc.tables#t1.plan@h1"
-      ]
+      ],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "named-lines: 任何不匹配的追加行 (含空白行) 都出 @+"
     },
     {
       "id": "K-named-lines-empty-string-no-lines",
@@ -711,7 +759,9 @@
           ]
         }
       },
-      "expect": []
+      "expect": [],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "named-lines: 任何不匹配的追加行 (含空白行) 都出 @+"
     },
     {
       "id": "E-empty-slots",
@@ -749,7 +799,9 @@
         "doc.sections#s3",
         "doc.tables#t1.plan@h1",
         "doc.tables#t1.plan@h3"
-      ]
+      ],
+      "origin_describe": "空槽清单 (残差)",
+      "origin_it": "by-id fill=字段名: 缺席或空串算空槽; 嵌套 named-lines 空行名 doc.tables#t1.plan@h1; 未声明 fill 的字段不入"
     },
     {
       "id": "E-filled-one-fewer",
@@ -796,7 +848,9 @@
         "doc.sections#s3",
         "doc.tables#t1.plan@h1",
         "doc.tables#t1.plan@h3"
-      ]
+      ],
+      "origin_describe": "空槽清单 (残差)",
+      "origin_it": "by-id fill=字段名: 缺席或空串算空槽; 嵌套 named-lines 空行名 doc.tables#t1.plan@h1; 未声明 fill 的字段不入"
     },
     {
       "id": "E-no-fill-declared-not-listed",
@@ -811,7 +865,9 @@
           ]
         }
       },
-      "expect": []
+      "expect": [],
+      "origin_describe": "空槽清单 (残差)",
+      "origin_it": "by-id fill=字段名: 缺席或空串算空槽; 嵌套 named-lines 空行名 doc.tables#t1.plan@h1; 未声明 fill 的字段不入"
     }
   ]
 }

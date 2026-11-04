@@ -14,10 +14,11 @@
       "sha256": "b2b2de287e170bac84347650b9eccab01839686a8387ac1037a86f19e4af51ae"
     },
     "merge_golden.json": {
-      "origin": "tests/projection/contribution-merge.test.ts (U1/U2/U3、触及键 K、空槽清单 各 it 的字面输入与期望)",
+      "origin": "tests/projection/contribution-merge.test.ts (U1/U2/U3、触及键 K、空槽清单 各 it 的字面输入与期望；每条用例的 describe 名与 it 名见 merge_golden.json 的 origin_describe / origin_it)",
       "origin_sha256": "84804ca40cdda078ee8fa54b86a0acb8e726475e98f54af81f3ad5da8143d260",
       "copy": "transcribed",
-      "sha256": "b648905c14bf4ba192ad7ae5dcbdd44dff4cf37220225a0e29efb029205367f4"
+      "note": "过渡用：引擎侧补交 merge-*.json 夹具后，包改为引用引擎夹具（逐字节一致、sha256 相同），删本文件",
+      "sha256": "8f4a15f3e7cb1e611f9c521b75abd51f493dcabc1834056dc1d90c09a30830fb"
     }
   },
   "engine_reference": {

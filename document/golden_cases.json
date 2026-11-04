@@ -10,32 +10,38 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      },
      {
       "heading": "B",
       "level": 2,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s2"
      },
      {
       "heading": "C",
       "level": 2,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s3"
      },
      {
       "heading": "D",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s4"
      },
      {
       "heading": "E",
       "level": 2,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s5"
      },
      {
       "heading": "F",
       "level": 3,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s6"
      }
     ]
    }
@@ -62,17 +68,20 @@
      {
       "heading": "总则",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      },
      {
       "heading": "范围",
       "level": 2,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s2"
      },
      {
       "heading": "方案",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s3"
      }
     ],
     "meta": {
@@ -102,32 +111,38 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      },
      {
       "heading": "B",
       "level": 2,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s2"
      },
      {
       "heading": "C",
       "level": 3,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s3"
      },
      {
       "heading": "D",
       "level": 4,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s4"
      },
      {
       "heading": "E",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s5"
      },
      {
       "heading": "F",
       "level": 2,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s6"
      }
     ],
     "meta": {
@@ -159,12 +174,14 @@
      {
       "heading": "背景",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      },
      {
       "heading": "预算",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s2"
      }
     ],
     "meta": {
@@ -191,62 +208,74 @@
      {
       "heading": "S1",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      },
      {
       "heading": "S2",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s2"
      },
      {
       "heading": "S3",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s3"
      },
      {
       "heading": "S4",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s4"
      },
      {
       "heading": "S5",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s5"
      },
      {
       "heading": "S6",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s6"
      },
      {
       "heading": "S7",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s7"
      },
      {
       "heading": "S8",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s8"
      },
      {
       "heading": "S9",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s9"
      },
      {
       "heading": "S10",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s10"
      },
      {
       "heading": "S11",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s11"
      },
      {
       "heading": "S12",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s12"
      }
     ],
     "meta": {
@@ -262,7 +291,7 @@
  },
  {
   "id": "compat_old",
-  "note": "旧契约 {title, sections:[{heading, body}]}：缺省 level 1、id s1…，标题前加编号",
+  "note": "无 level 的简写 {title, sections:[{id, heading, body}]}：缺省 level 1，标题前加编号",
   "tool": "doc.build",
   "payload": {
    "doc": {
@@ -270,11 +299,13 @@
     "sections": [
      {
       "heading": "背景",
-      "body": "社区需要。"
+      "body": "社区需要。",
+      "id": "s1"
      },
      {
       "heading": "预算",
-      "body": "五千元。"
+      "body": "五千元。",
+      "id": "s2"
      }
     ]
    }
@@ -335,7 +366,8 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "[[fig:f1]]\n\n见[[fig:f2]]与[[fig:f1]]。\n\n[[fig:f2]]"
+      "body": "[[fig:f1]]\n\n见[[fig:f2]]与[[fig:f1]]。\n\n[[fig:f2]]",
+      "id": "s1"
      }
     ],
     "figures": [
@@ -376,12 +408,14 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      },
      {
       "heading": "B",
       "level": 1,
-      "body": "[[fig:f1]]"
+      "body": "[[fig:f1]]",
+      "id": "s2"
      }
     ],
     "figures": [
@@ -415,7 +449,8 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "行内 `[[sec:zz]]`。\n\n```\n[[fig:f1]]\n[[sec:zz]]\n```\n\n[[fig:f1]]"
+      "body": "行内 `[[sec:zz]]`。\n\n```\n[[fig:f1]]\n[[sec:zz]]\n```\n\n[[fig:f1]]",
+      "id": "s1"
      }
     ],
     "figures": [
@@ -546,7 +581,8 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "五千元。"
+      "body": "五千元。",
+      "id": "s1"
      }
     ]
    }
@@ -567,7 +603,8 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "共 186 台"
+      "body": "共 186 台",
+      "id": "s1"
      }
     ]
    }
@@ -588,7 +625,8 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "Hello world 2026"
+      "body": "Hello world 2026",
+      "id": "s1"
      }
     ],
     "meta": {
@@ -612,17 +650,20 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "一二三四"
+      "body": "一二三四",
+      "id": "s1"
      },
      {
       "heading": "B",
       "level": 2,
-      "body": "五六"
+      "body": "五六",
+      "id": "s2"
      },
      {
       "heading": "C",
       "level": 1,
-      "body": "七"
+      "body": "七",
+      "id": "s3"
      }
     ]
    }
@@ -911,7 +952,8 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "[[tab:t]]"
+      "body": "[[tab:t]]",
+      "id": "s1"
      }
     ],
     "tables": [
@@ -958,7 +1000,8 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "See [[sec:b]] and [[fig:f1]].\n\n[[fig:f1]]"
+      "body": "See [[sec:b]] and [[fig:f1]].\n\n[[fig:f1]]",
+      "id": "s1"
      },
      {
       "heading": "B",
@@ -1002,7 +1045,8 @@
       "body": "有",
       "responds_to": [
        "r1"
-      ]
+      ],
+      "id": "s1"
      }
     ],
     "requirements": [
@@ -1035,12 +1079,14 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      },
      {
       "heading": "B",
       "level": 3,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s2"
      }
     ]
    }
@@ -1061,7 +1107,8 @@
      {
       "heading": "A",
       "level": 2,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      }
     ]
    }
@@ -1101,7 +1148,7 @@
  },
  {
   "id": "err_default_id_clash",
-  "note": "缺省 id 与显式 id 冲突拒收",
+  "note": "两节 id 相同拒收（缺省 id 与显式 id 冲突的行为见 tests/test_legacy_default_ids.py）",
   "tool": "doc.build",
   "payload": {
    "doc": {
@@ -1116,7 +1163,8 @@
      {
       "heading": "B",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s2"
      }
     ]
    }
@@ -1137,7 +1185,8 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      }
     ],
     "tables": [
@@ -1173,7 +1222,8 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      }
     ],
     "figures": [
@@ -1203,7 +1253,8 @@
      {
       "heading": "A",
       "level": 1,
-      "body": "正文。"
+      "body": "正文。",
+      "id": "s1"
      }
     ],
     "meta": {
@@ -1226,7 +1277,8 @@
     "sections": [
      {
       "heading": "a",
-      "body": "b"
+      "body": "b",
+      "id": "s1"
      }
     ]
    }
@@ -1246,7 +1298,8 @@
     "sections": [
      {
       "heading": "",
-      "body": "b"
+      "body": "b",
+      "id": "s1"
      }
     ]
    }

@@ -1,7 +1,7 @@
-"""贡献型接入预检（17 TL-30a；设计 产出不受模型输出长度限制 r8 §五 第 5 条）。
+"""贡献型接入预检（17 TL-30a；设计 产出不受模型输出长度限制 r8 §五 第 5 条）。2.0.0。
 
 三项预检：① 标注合法　② base 槽唯一　③ 引擎合并金样（tests/fixtures/contribution，来源与 sha256 见 SOURCE.json）。
-另有包侧自己的核对：doc.build 在贡献型判别下成立；整体写法（不带 base）的 schema 与 1.2.5 逐键等价；
+另有包侧自己的核对：doc.build 在贡献型判别下成立；整体写法（不带 base）的 schema 与 1.2.5 相比只多节 id 必填一处（另有 doc 说明文字两处随之改写）；
 带 base 的增量能被 schema 接受；空槽的中间版本能被工具接受；分次合并出的文档与一次写成的文档交出同一份产物。
 """
 import copy
@@ -24,7 +24,7 @@ BUILD = UNITS["doc.build"]["signature"]["input_schema"]
 CARD = json.loads((FIX / "card.json").read_text(encoding="utf-8"))["args_schema"]
 GOLD = json.loads((FIX / "merge_golden.json").read_text(encoding="utf-8"))
 SOURCE = json.loads((FIX / "SOURCE.json").read_text(encoding="utf-8"))
-BASE_DESC = "上一版产物的回执节点 id（取 SLICE 里标 $best:true 的那条）；给出时只写改动的部分，引擎按标注合并"
+BASE_DESC = "上一版产物的回执节点 id（取输入材料中标 $best:true 的那条）；给出时只写改动的部分，引擎按标注合并"
 # 1.2.5 的 doc.build input_schema 的规范 JSON（键升序、无空白）的 sha256，取自 1.2.5 的 registration.json
 V125_BUILD_INPUT_SCHEMA_SHA256 = "3c73a32f03b290a1e255638f675ff8fd1a51b255646429176dda62c522287a1c"
 
@@ -149,7 +149,7 @@ def _overlay(base, extra):
     """把 else 分支的约束叠回主体：required 取 else 的，properties / items 逐层叠。"""
     for k, v in extra.items():
         if k == "required":
-            base["required"] = list(v)
+            base["required"] = list(base.get("required", [])) + [x for x in v if x not in base.get("required", [])]
         else:   # properties / items：逐层叠
             if k == "properties":
                 for pk, pv in v.items():
@@ -168,10 +168,28 @@ def _fold_whole_mode(schema):
     return s
 
 
-def test_whole_mode_schema_equals_1_2_5_schema():
-    """不带 base 时走 else 分支：去掉标注与 base 槽、把 else 叠回主体，应与 1.2.5 的 doc.build input_schema 逐键相同
-    （含 by-id 元素内嵌套的必填）。整体写法的校验口径因此没有变。"""
-    assert sha(canonical_json(_fold_whole_mode(BUILD)).encode()) == V125_BUILD_INPUT_SCHEMA_SHA256
+def test_whole_mode_schema_equals_1_2_5_schema_plus_section_id():
+    """不带 base 时走 else 分支：去掉标注与 base 槽、把 else 叠回主体，再去掉节 id 必填这唯一一处新增，
+    应与 1.2.5 的 doc.build input_schema 逐键相同（含 by-id 元素内嵌套的必填）。"""
+    folded = _fold_whole_mode(BUILD)
+    sec = folded["properties"]["doc"]["properties"]["sections"]["items"]
+    assert sec["required"] == ["id", "heading"]
+    sec["required"].remove("id")
+    # doc 的说明文字有两处有意的改动：节 id 由"可选"改"必填"；不再宣称接受不带 id 的简写。还原这两处再比。
+    doc = folded["properties"]["doc"]
+    assert "id（必填，供引用和后续修改时定位）" in doc["description"] and "简单写法" not in doc["description"]
+    doc["description"] = (doc["description"].replace("id（必填，供引用和后续修改时定位）", "id（可选，供引用和后续修改时定位）")
+                          + "也接受只有 {title, sections:[{heading, body}]} 的简单写法。")
+    assert sha(canonical_json(folded).encode()) == V125_BUILD_INPUT_SCHEMA_SHA256
+
+
+def test_element_id_is_required_always_outside_the_branches():
+    """四个 by-id 容器的元素 id 恒必填：写在 if/then/else 之外，整体写法与增量都生效。"""
+    props = BUILD["properties"]["doc"]["properties"]
+    for field in ("sections", "tables", "figures", "requirements"):
+        assert "id" in props[field]["items"]["required"], field
+    assert "id" not in json.dumps(BUILD["then"]) and BUILD["then"] == {"required": ["base"]}
+    assert BUILD["properties"]["doc"].get("required") is None and "required" not in BUILD
 
 
 def test_doc_check_and_export_input_schemas_have_no_contribution_vocabulary():
@@ -179,24 +197,25 @@ def test_doc_check_and_export_input_schemas_have_no_contribution_vocabulary():
         assert "x-mengos" not in json.dumps(UNITS[tid]["signature"]["input_schema"])
 
 
-def test_whole_mode_still_accepts_id_less_sections_and_requires_original_fields():
+def test_whole_mode_requires_section_id_and_the_original_fields():
     V = jsonschema.Draft202012Validator(BUILD)
-    assert V.is_valid({"doc": {"title": "T", "sections": [{"heading": "A", "body": "x"}]}})          # 旧写法：节可无 id
-    assert not V.is_valid({"doc": {"sections": [{"heading": "A"}]}})                                   # 缺 title
-    assert not V.is_valid({"doc": {"title": "T", "sections": [{"body": "x"}]}})                        # 节缺 heading
-    assert not V.is_valid({"name": "x"})                                                               # 缺 doc
-    assert not V.is_valid({"doc": {"title": "T", "sections": [{"heading": "A"}],
-                                   "tables": [{"id": "t1", "caption": "c"}]}})                         # 表缺 columns / rows
+    assert V.is_valid({"doc": {"title": "T", "sections": [{"id": "a", "heading": "A", "body": "x"}]}})
+    assert not V.is_valid({"doc": {"title": "T", "sections": [{"heading": "A", "body": "x"}]}})          # 2.0.0：节缺 id 拒收
+    assert not V.is_valid({"doc": {"sections": [{"id": "a", "heading": "A"}]}})                          # 缺 title
+    assert not V.is_valid({"doc": {"title": "T", "sections": [{"id": "a", "body": "x"}]}})               # 节缺 heading
+    assert not V.is_valid({"name": "x"})                                                                 # 缺 doc
+    assert not V.is_valid({"doc": {"title": "T", "sections": [{"id": "a", "heading": "A"}],
+                                   "tables": [{"id": "t1", "caption": "c"}]}})                           # 表缺 columns / rows
 
 
 # ───────────────────────── 带 base 的增量 ─────────────────────────
-def test_delta_with_base_is_accepted_and_needs_ids():
+def test_delta_with_base_is_accepted_and_elements_need_ids():
     V = jsonschema.Draft202012Validator(BUILD)
     assert V.is_valid({"base": "v-0007", "doc": {"sections": [{"id": "s2", "body": "新写的正文"}]}})
     assert V.is_valid({"base": "v-0007", "doc": {"tables": [{"id": "t1", "rows": [["周三", "李四"]]}]}})
     assert V.is_valid({"base": "v-0007", "doc": {"title": "改个标题"}})
     assert V.is_valid({"base": "v-0007"})
-    assert not V.is_valid({"base": "v-0007", "doc": {"sections": [{"body": "没有 id"}]}})              # by-id 元素 id 必填
+    assert not V.is_valid({"base": "v-0007", "doc": {"sections": [{"body": "没有 id"}]}})              # by-id 元素 id 恒必填
     assert not V.is_valid({"base": "v-0007", "doc": {"figures": [{"caption": "没有 id"}]}})
     assert not V.is_valid({"base": "v-0007", "bogus": 1})                                             # 顶层仍不收未知键
     assert not V.is_valid({"base": 7, "doc": {}})                                                     # base 是字符串
@@ -205,6 +224,7 @@ def test_delta_with_base_is_accepted_and_needs_ids():
 def test_delta_without_base_gets_no_relaxation():
     V = jsonschema.Draft202012Validator(BUILD)
     assert not V.is_valid({"doc": {"sections": [{"id": "s2", "body": "只有增量"}]}})
+    assert not V.is_valid({"doc": {"title": "只改标题"}})
 
 
 # ───────────────────────── 空槽的中间版本 ─────────────────────────

@@ -1,9 +1,9 @@
 {
   "package": "document",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "publisher": "mengos",
   "scope": "public",
-  "content_hash": "689b61248fa106a1b83ee6379cc29e4fc8606f83076a5444d88656edf13e1420",
+  "content_hash": "dd62ade9b9177f70e7203e68db69d3e274272ebe5924ccc7a40cc6e9bcb3f578",
   "types": [
     {
       "name": "document",
@@ -86,7 +86,7 @@
     "tool_ids": {
       "doc.assemble.write": "doc.build"
     },
-    "note": "TL-24 替换：旧 tool_id 摘册、不复用。旧契约的 {title, sections:[{heading, body}]} 原样是 doc.build 的合法输入；旧件是 T4、effect=write（写到 out_dir），新件是 effect=none（写到引擎给的 workdir，经 TL-9a 入 ObjectStore）。过渡路由见 README §6"
+    "note": "TL-24 替换：旧 tool_id 摘册、不复用。旧契约的 {title, sections:[{heading, body}]} 在 doc.build 上自 2.0.0 起须每节带 id（doc.check、doc.export 仍原样接受）；旧件是 T4、effect=write（写到 out_dir），新件是 effect=none（写到引擎给的 workdir，经 TL-9a 入 ObjectStore）。过渡路由见 README §6"
   },
   "certification": []
 }
