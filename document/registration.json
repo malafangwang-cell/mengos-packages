@@ -1,7 +1,7 @@
 {
   "family": "document",
-  "family_version": "1.2.5",
-  "lock_hash": "a0ddb53fe8b9a549",
+  "family_version": "1.3.0",
+  "lock_hash": "fc6e76cde324a51b",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。文件产出按 TL-9a：结果对象顶层的 files。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
@@ -72,18 +72,109 @@
       "signature": {
         "input_schema": {
           "type": "object",
-          "required": [
-            "doc"
-          ],
           "additionalProperties": false,
+          "if": {
+            "required": [
+              "base"
+            ]
+          },
+          "then": {
+            "required": [
+              "base"
+            ],
+            "properties": {
+              "doc": {
+                "properties": {
+                  "sections": {
+                    "items": {
+                      "required": [
+                        "id"
+                      ]
+                    }
+                  },
+                  "tables": {
+                    "items": {
+                      "required": [
+                        "id"
+                      ]
+                    }
+                  },
+                  "figures": {
+                    "items": {
+                      "required": [
+                        "id"
+                      ]
+                    }
+                  },
+                  "requirements": {
+                    "items": {
+                      "required": [
+                        "id"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "required": [
+              "doc"
+            ],
+            "properties": {
+              "doc": {
+                "required": [
+                  "title",
+                  "sections"
+                ],
+                "properties": {
+                  "sections": {
+                    "items": {
+                      "required": [
+                        "heading"
+                      ]
+                    }
+                  },
+                  "tables": {
+                    "items": {
+                      "required": [
+                        "id",
+                        "caption",
+                        "columns",
+                        "rows"
+                      ]
+                    }
+                  },
+                  "figures": {
+                    "items": {
+                      "required": [
+                        "id",
+                        "caption",
+                        "source"
+                      ]
+                    }
+                  },
+                  "requirements": {
+                    "items": {
+                      "required": [
+                        "id",
+                        "text"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
           "description": "要交付一份长文档时用。你把文档写进 doc：标题、各节正文、图表、要响应的要求；任务只给了题目时，内容由你按题目写。本工具统一给章节、图、表编号，生成目录，把交叉引用换成可跳转的“第 2.1 节”“图 3”，列出每条要求由哪些章节响应；交付 Word 文件（带目录与页码）、Markdown 原文，以及产出台可看、可按节定位的版本。",
           "properties": {
+            "base": {
+              "type": "string",
+              "x-mengos-base": true,
+              "description": "上一版产物的回执节点 id（取 SLICE 里标 $best:true 的那条）；给出时只写改动的部分，引擎按标注合并"
+            },
             "doc": {
               "type": "object",
-              "required": [
-                "title",
-                "sections"
-              ],
               "additionalProperties": false,
               "description": "doc：一份长文档的内容（报告、方案、标书、手册、论文等）。title 标题（必填）；sections 按顺序列出各节：heading 节标题（只写标题文字，编号由工具统一加）、level 层级 1–4（缺省 1，每节最多比上一节深一级）、body 正文（Markdown：段落、加粗、列表、表格、引用、代码块）、id（可选，供引用和后续修改时定位）、responds_to（这一节响应的要求 id）。图放进 figures：id、caption、source 为 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；表放进 tables：id、caption、columns、rows（每行格数与列数相同）、note。正文里单独一行写 [[fig:id]] 或 [[tab:id]]，图表就放在那里；行内写 [[sec:id]]、[[fig:id]]、[[tab:id]] 引用，交付时换成“第 2.1 节”“图 3”“表 1”并可点击跳转。requirements 列出任务书或招标文件提出的要求：id、text、source（出处，如“招标文件 第三章 3.2”）、priority（must 或 should），交付时列出每条要求由哪些章节响应。meta：lang（zh-CN 或 en）、author、org、date（YYYY-MM-DD）、version、numbering（decimal：1 / 1.1；chapter：第一章 / 1.1；zh：一、/（一）/ 1．/（1）；none：不编号）、figure_numbering（global：图 1、图 2；chapter：图 2-1）、toc（目录，缺省 true）、cover（封面页）、trace_table（文末附要求响应对照表）。kind=outline 表示提纲，允许各节暂时没有正文。也接受只有 {title, sections:[{heading, body}]} 的简单写法。",
               "properties": {
@@ -161,10 +252,6 @@
                   "maxItems": 2000,
                   "items": {
                     "type": "object",
-                    "required": [
-                      "id",
-                      "text"
-                    ],
                     "additionalProperties": false,
                     "properties": {
                       "id": {
@@ -209,6 +296,11 @@
                         }
                       }
                     }
+                  },
+                  "x-mengos-merge": {
+                    "mode": "by-id",
+                    "id": "id",
+                    "label": "text"
                   }
                 },
                 "sections": {
@@ -217,9 +309,6 @@
                   "maxItems": 2000,
                   "items": {
                     "type": "object",
-                    "required": [
-                      "heading"
-                    ],
                     "additionalProperties": false,
                     "properties": {
                       "id": {
@@ -249,6 +338,12 @@
                         "uniqueItems": true
                       }
                     }
+                  },
+                  "x-mengos-merge": {
+                    "mode": "by-id",
+                    "id": "id",
+                    "label": "heading",
+                    "fill": "body"
                   }
                 },
                 "figures": {
@@ -256,11 +351,6 @@
                   "maxItems": 300,
                   "items": {
                     "type": "object",
-                    "required": [
-                      "id",
-                      "caption",
-                      "source"
-                    ],
                     "additionalProperties": false,
                     "properties": {
                       "id": {
@@ -316,6 +406,11 @@
                         ]
                       }
                     }
+                  },
+                  "x-mengos-merge": {
+                    "mode": "by-id",
+                    "id": "id",
+                    "label": "caption"
                   }
                 },
                 "tables": {
@@ -323,12 +418,6 @@
                   "maxItems": 500,
                   "items": {
                     "type": "object",
-                    "required": [
-                      "id",
-                      "caption",
-                      "columns",
-                      "rows"
-                    ],
                     "additionalProperties": false,
                     "properties": {
                       "id": {
@@ -359,6 +448,9 @@
                               "null"
                             ]
                           }
+                        },
+                        "x-mengos-merge": {
+                          "mode": "append"
                         }
                       },
                       "align": {
@@ -379,6 +471,11 @@
                         "maxLength": 500
                       }
                     }
+                  },
+                  "x-mengos-merge": {
+                    "mode": "by-id",
+                    "id": "id",
+                    "label": "caption"
                   }
                 }
               }
@@ -677,7 +774,7 @@
           "不做脚注、尾注、参考文献格式与公式排版"
         ]
       },
-      "version": "a0ddb53fe8b9a549"
+      "version": "fc6e76cde324a51b"
     },
     {
       "tool_id": "doc.check",
@@ -1172,7 +1269,7 @@
           "document_meets_spec"
         ]
       },
-      "version": "a0ddb53fe8b9a549"
+      "version": "fc6e76cde324a51b"
     },
     {
       "tool_id": "doc.export",
@@ -1702,7 +1799,7 @@
           "不读入已有的 Word 文件"
         ]
       },
-      "version": "a0ddb53fe8b9a549"
+      "version": "fc6e76cde324a51b"
     }
   ]
 }

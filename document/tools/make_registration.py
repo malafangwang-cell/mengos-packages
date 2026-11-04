@@ -3,6 +3,7 @@
 字段严格按 kernel-spec 17 章 TL-6。给模型看的文字（各层 description、examples、non_goals、constraints）
 只写能做出什么、解决什么问题、不做什么，不写实现（TL-16 v0.2.23 澄清）。
 """
+import copy
 import json
 from pathlib import Path
 
@@ -78,6 +79,40 @@ DOC = {"type": "object", "required": ["title", "sections"], "additionalPropertie
            "sections": {"type": "array", "minItems": 1, "maxItems": 2000, "items": SECTION},
            "figures": {"type": "array", "maxItems": 300, "items": FIGURE},
            "tables": {"type": "array", "maxItems": 500, "items": TABLE}}}
+# ---- doc.build 贡献型声明（17 TL-30a；设计 产出不受模型输出长度限制 r8 §五）----
+# 只有 doc.build 声明 x-mengos-base 与 x-mengos-merge；doc.check / doc.export 仍用上面不带标注的 DOC，逐字节不变。
+# 不带 base 的整体写法行为不变：原来的必填原样搬进 if/else 的 else 分支（含 by-id 元素内嵌套的必填）。
+# base 非空时（then 分支）只要求 base；by-id 元素各自要有 id，供引擎按 id 合并。
+BASE_DESC = ("上一版产物的回执节点 id（取 SLICE 里标 $best:true 的那条）；"
+             "给出时只写改动的部分，引擎按标注合并")
+BUILD_BY_ID = {   # doc 内各 by-id 容器：字段名 → (标注, 元素原必填)
+    "sections": {"mode": "by-id", "id": "id", "label": "heading", "fill": "body"},
+    "tables": {"mode": "by-id", "id": "id", "label": "caption"},
+    "figures": {"mode": "by-id", "id": "id", "label": "caption"},
+    "requirements": {"mode": "by-id", "id": "id", "label": "text"},
+}
+
+
+def _build_doc_and_branches():
+    doc = copy.deepcopy(DOC)
+    else_doc = {"required": doc.pop("required"), "properties": {}}
+    then_doc = {"properties": {}}
+    for field, ann in BUILD_BY_ID.items():
+        arr = doc["properties"][field]
+        arr["x-mengos-merge"] = ann
+        else_doc["properties"][field] = {"items": {"required": arr["items"].pop("required")}}
+        then_doc["properties"][field] = {"items": {"required": ["id"]}}
+    rows = doc["properties"]["tables"]["items"]["properties"]["rows"]
+    rows["x-mengos-merge"] = {"mode": "append"}
+    return doc, then_doc, else_doc
+
+
+DOC_BUILD, _THEN_DOC, _ELSE_DOC = _build_doc_and_branches()
+BUILD_IF = {"required": ["base"]}
+BUILD_THEN = {"required": ["base"], "properties": {"doc": _THEN_DOC}}
+BUILD_ELSE = {"required": ["doc"], "properties": {"doc": _ELSE_DOC}}
+BASE_SLOT = {"type": "string", "x-mengos-base": True, "description": BASE_DESC}
+
 NAME = {"type": "string", "pattern": "^[^/\\\\.:*?\"<>|\\s]{1,64}$", "description": NAME_DESC}
 
 FILE_ITEM = {
@@ -139,12 +174,14 @@ units = [
                         "rows": [["书架与桌椅", "1,200"], ["首批图书", "3,800"]]}]}},
         "signature": {
             "input_schema": {
-                "type": "object", "required": ["doc"], "additionalProperties": False,
+                "type": "object", "additionalProperties": False,
+                "if": BUILD_IF, "then": BUILD_THEN, "else": BUILD_ELSE,
                 "description": "要交付一份长文档时用。你把文档写进 doc：标题、各节正文、图表、要响应的要求；任务只给了题目时，内容由你按题目写。"
                                "本工具统一给章节、图、表编号，生成目录，把交叉引用换成可跳转的“第 2.1 节”“图 3”，列出每条要求由哪些章节响应；"
                                "交付 Word 文件（带目录与页码）、Markdown 原文，以及产出台可看、可按节定位的版本。",
                 "properties": {
-                    "doc": DOC,
+                    "base": BASE_SLOT,
+                    "doc": DOC_BUILD,
                     "name": NAME,
                     "formats": {"type": "array", "uniqueItems": True, "items": {"enum": ["docx", "html"]},
                                 "description": "除文档模型、产出台数据与 Markdown 之外，再交哪些文件：docx（Word，缺省）、html（单个网页文件，可打印）。"},
@@ -297,7 +334,7 @@ for u in units:
 
 reg = {
     "family": "document",
-    "family_version": "1.2.5",
+    "family_version": "1.3.0",
     "lock_hash": "",
     "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。"
             "选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；"

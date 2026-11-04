@@ -1,0 +1,817 @@
+{
+  "_说明": "合并代数金样：逐条照抄自 mengosv2 tests/projection/contribution-merge.test.ts @4f708d686cd41e635b4c16d59236dc1b2284a966 里 U1/U2/U3、触及键 K、空槽清单各 it 的输入与期望（引擎主干上没有 merge-*.json 夹具，用例是写在该测试文件里的字面值）。schema 缺省为同目录 card.json 的 args_schema；\"named\" 为 U3 的内联 schema。不改期望去迁就包侧实现。",
+  "named_schema": {
+    "type": "object",
+    "properties": {
+      "plan": {
+        "type": "string",
+        "x-mengos-merge": {
+          "mode": "named-lines",
+          "name": "^\\s*([A-Za-z_][\\w-]*):"
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "U1-by-id-hit-and-append",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "title": "T",
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "概述",
+              "body": "b1"
+            },
+            {
+              "id": "s2",
+              "heading": "开放"
+            }
+          ]
+        }
+      },
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "id": "s2",
+              "body": "b2"
+            },
+            {
+              "id": "s5",
+              "heading": "附录"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "name": "n",
+        "doc": {
+          "title": "T",
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "概述",
+              "body": "b1"
+            },
+            {
+              "id": "s2",
+              "heading": "开放",
+              "body": "b2"
+            },
+            {
+              "id": "s5",
+              "heading": "附录"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "U1-missing-id",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "title": "T",
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "概述",
+              "body": "b1"
+            },
+            {
+              "id": "s2",
+              "heading": "开放"
+            }
+          ]
+        }
+      },
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "heading": "无 id"
+            }
+          ]
+        }
+      },
+      "expect_error": {
+        "instancePath": "/doc/sections",
+        "message": "by-id 元素缺 id"
+      }
+    },
+    {
+      "id": "U1-id-not-string",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "title": "T",
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "概述",
+              "body": "b1"
+            },
+            {
+              "id": "s2",
+              "heading": "开放"
+            }
+          ]
+        }
+      },
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "id": 3,
+              "heading": "x"
+            }
+          ]
+        }
+      },
+      "expect_error": {
+        "instancePath": "/doc/sections",
+        "message": "by-id 元素缺 id"
+      }
+    },
+    {
+      "id": "U1-P-absent-as-empty-array",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "title": "T"
+        }
+      },
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "h"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "name": "n",
+        "doc": {
+          "title": "T",
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "h"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "U1-parent-absent-missing-id",
+      "kind": "merge",
+      "P": {
+        "name": "n"
+      },
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "heading": "无 id"
+            }
+          ]
+        }
+      },
+      "expect_error": {
+        "instancePath": "/doc/sections",
+        "message": "by-id 元素缺 id"
+      }
+    },
+    {
+      "id": "U1-parent-absent-null-harmless",
+      "kind": "merge",
+      "P": {
+        "name": "n"
+      },
+      "delta": {
+        "doc": {
+          "title": null,
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "h"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "name": "n",
+        "doc": {
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "h"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "U1-nested-rows-append-plan-lines",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "rows": [
+                [
+                  "周一",
+                  "甲"
+                ]
+              ],
+              "plan": "h1: 1"
+            }
+          ]
+        }
+      },
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "rows": [
+                [
+                  "周三",
+                  "乙"
+                ]
+              ],
+              "plan": "h2: 2"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "name": "n",
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "rows": [
+                [
+                  "周一",
+                  "甲"
+                ],
+                [
+                  "周三",
+                  "乙"
+                ]
+              ],
+              "plan": "h1: 1\nh2: 2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "U2-null-deletes-unannotated-overwrites-absent-keeps",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "title": "T",
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "rows": [
+                [
+                  "a"
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "delta": {
+        "name": null,
+        "doc": {
+          "title": 5
+        }
+      },
+      "expect": {
+        "doc": {
+          "title": 5,
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "rows": [
+                [
+                  "a"
+                ]
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "U2-append-no-dedup",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "title": "T",
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "rows": [
+                [
+                  "a"
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "rows": [
+                [
+                  "a"
+                ],
+                [
+                  "b"
+                ]
+              ]
+            },
+            {
+              "id": "t2",
+              "caption": "二",
+              "rows": [
+                [
+                  "c"
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "name": "n",
+        "doc": {
+          "title": "T",
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "rows": [
+                [
+                  "a"
+                ],
+                [
+                  "a"
+                ],
+                [
+                  "b"
+                ]
+              ]
+            },
+            {
+              "id": "t2",
+              "caption": "二",
+              "rows": [
+                [
+                  "c"
+                ]
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "U2-append-P-absent",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表"
+            }
+          ]
+        }
+      },
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "rows": [
+                [
+                  "x"
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "expect": {
+        "name": "n",
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "rows": [
+                [
+                  "x"
+                ]
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "U2-annotated-type-mismatch-delta",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "title": "T",
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "rows": [
+                [
+                  "a"
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "delta": {
+        "doc": {
+          "tables": "不是数组"
+        }
+      },
+      "expect_error": {
+        "instancePath": "/doc/tables"
+      }
+    },
+    {
+      "id": "U2-annotated-type-mismatch-P",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "tables": "串"
+        }
+      },
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1"
+            }
+          ]
+        }
+      },
+      "expect_error": {
+        "instancePath": "/doc/tables"
+      }
+    },
+    {
+      "id": "U3-named-lines-replace-append",
+      "kind": "merge",
+      "schema": "named",
+      "P": {
+        "plan": "h1: 1\nh2: 2"
+      },
+      "delta": {
+        "plan": "h2: 22\nh3: 3\n# 注"
+      },
+      "expect": {
+        "plan": "h1: 1\nh2: 22\nh3: 3\n# 注"
+      }
+    },
+    {
+      "id": "U3-named-lines-P-absent",
+      "kind": "merge",
+      "schema": "named",
+      "P": {},
+      "delta": {
+        "plan": "h1: 1"
+      },
+      "expect": {
+        "plan": "h1: 1"
+      }
+    },
+    {
+      "id": "U3-named-lines-delta-not-string",
+      "kind": "merge",
+      "schema": "named",
+      "P": {
+        "plan": "h1: 1"
+      },
+      "delta": {
+        "plan": [
+          "h1"
+        ]
+      },
+      "expect_error": {
+        "instancePath": "/plan"
+      }
+    },
+    {
+      "id": "K-unannotated-leaf-paths",
+      "kind": "touched",
+      "delta": {
+        "name": "x",
+        "doc": {
+          "title": "t"
+        }
+      },
+      "expect": [
+        "doc.title",
+        "name"
+      ]
+    },
+    {
+      "id": "K-by-id-prefix-id-excluded",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "id": "s2",
+              "body": "b"
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.sections#s2.body"
+      ]
+    },
+    {
+      "id": "K-label-is-leaf",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "id": "s2",
+              "heading": "h",
+              "body": "b"
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.sections#s2.body",
+        "doc.sections#s2.heading"
+      ]
+    },
+    {
+      "id": "K-id-only-element",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "id": "s2"
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.sections#s2."
+      ]
+    },
+    {
+      "id": "K-missing-id-no-key",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "heading": "无 id"
+            }
+          ]
+        }
+      },
+      "expect": []
+    },
+    {
+      "id": "K-append-one-key",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "rows": [
+                [
+                  "a"
+                ],
+                [
+                  "b"
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.tables#t1.rows+"
+      ]
+    },
+    {
+      "id": "K-append-empty-still-key",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "rows": []
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.tables#t1.rows+"
+      ]
+    },
+    {
+      "id": "K-named-lines-names-and-plus",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "plan": "h1: 1\nh2: 2\n随笔"
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.tables#t1.plan@+",
+        "doc.tables#t1.plan@h1",
+        "doc.tables#t1.plan@h2"
+      ]
+    },
+    {
+      "id": "K-named-lines-blank-line-is-plus",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "plan": "h1: 1\n\n"
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.tables#t1.plan@+",
+        "doc.tables#t1.plan@h1"
+      ]
+    },
+    {
+      "id": "K-named-lines-empty-string-no-lines",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "plan": ""
+            }
+          ]
+        }
+      },
+      "expect": []
+    },
+    {
+      "id": "E-empty-slots",
+      "kind": "empty",
+      "args": {
+        "name": "n",
+        "doc": {
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "概述",
+              "body": "有"
+            },
+            {
+              "id": "s2",
+              "heading": "x"
+            },
+            {
+              "id": "s3",
+              "heading": "y",
+              "body": ""
+            }
+          ],
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "plan": "h1:\nh2: 有\nh3:  "
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.sections#s2",
+        "doc.sections#s3",
+        "doc.tables#t1.plan@h1",
+        "doc.tables#t1.plan@h3"
+      ]
+    },
+    {
+      "id": "E-filled-one-fewer",
+      "kind": "empty-after-merge",
+      "args": {
+        "name": "n",
+        "doc": {
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "概述",
+              "body": "有"
+            },
+            {
+              "id": "s2",
+              "heading": "x"
+            },
+            {
+              "id": "s3",
+              "heading": "y",
+              "body": ""
+            }
+          ],
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "plan": "h1:\nh2: 有\nh3:  "
+            }
+          ]
+        }
+      },
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "id": "s2",
+              "body": "补"
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.sections#s3",
+        "doc.tables#t1.plan@h1",
+        "doc.tables#t1.plan@h3"
+      ]
+    },
+    {
+      "id": "E-no-fill-declared-not-listed",
+      "kind": "empty",
+      "args": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t9",
+              "caption": ""
+            }
+          ]
+        }
+      },
+      "expect": []
+    }
+  ]
+}
