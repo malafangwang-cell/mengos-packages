@@ -1,0 +1,27 @@
+{
+  "_说明": "本目录夹具来源与校验值。card.json 逐字节复制自 mengosv2；merge_golden.json 是 document 包同名夹具里 named-lines 相关条目的子集（再往上是引擎测试里字面用例的转写）；tests/contribution_ref.py 与 document 包同名文件逐字节相同。tests/test_contribution.py 会重算本目录文件的 sha256，与此处不符即失败。",
+  "origin_repo": "malafangwang-cell/mengosv2",
+  "origin_commit": "4f708d686cd41e635b4c16d59236dc1b2284a966",
+  "files": {
+    "card.json": {
+      "origin": "tests/projection/fixtures/contribution/card.json",
+      "copy": "verbatim",
+      "sha256": "98e01315629e56afea13b0264121d06956cf3933828f880613c5ebd0ae553c96"
+    },
+    "merge_golden.json": {
+      "origin": "tests/projection/contribution-merge.test.ts（U3、触及键 K 的 named-lines 条目、嵌套 rows/plan、空槽；describe 名与 it 名见各条 origin_describe / origin_it）",
+      "origin_sha256": "84804ca40cdda078ee8fa54b86a0acb8e726475e98f54af81f3ad5da8143d260",
+      "copy": "transcribed-subset",
+      "note": "过渡用：引擎侧补交 merge-*.json 夹具后，包改为引用引擎夹具（逐字节一致、sha256 相同），删本文件",
+      "sha256": "8bfd1e6896351664b046f9b4b8b0371593d3980ac5905a8f86656116c62efe39"
+    }
+  },
+  "engine_reference": {
+    "file": "engine/projection/shapes/contribution.ts",
+    "sha256": "35d51d18340e1f1c662fc8b4b51d3e081aa02950bb4182631d300c3f6ab786c0",
+    "note": "tests/contribution_ref.py 是它的 Python 对照实现，靠金样验证忠实度；包侧没有运行引擎代码"
+  },
+  "shared_with_document_package": {
+    "tests/contribution_ref.py": "35274c6b981aa99befc5d1f6b36b487d2ceae02cd79edf3f6060f8f0bd6c691b"
+  }
+}

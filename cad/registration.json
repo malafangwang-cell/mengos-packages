@@ -1,7 +1,7 @@
 {
   "family": "cad",
-  "family_version": "2.4.4",
-  "lock_hash": "d4d06bdf0e22b172",
+  "family_version": "2.5.0",
+  "lock_hash": "2a4efb009363fc73",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。入参写法写在 signature.input_schema 的 description 里；选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25），引擎不含这些名字；verdict 为平台类型。文件产出按 TL-9a。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
@@ -29,16 +29,22 @@
       "signature": {
         "input_schema": {
           "type": "object",
-          "required": [
-            "plan"
-          ],
           "additionalProperties": false,
           "properties": {
+            "base": {
+              "type": "string",
+              "x-mengos-base": true,
+              "description": "上一版产物的回执节点 id（取输入材料中标 $best:true 的那条）；给出时只写改动的部分，引擎按标注合并"
+            },
             "plan": {
               "type": "string",
               "minLength": 1,
               "maxLength": 20000,
-              "description": "plan：零件计划，一行一个操作，# 之后不读。单位 mm；x 向右、y 向后、z 向上。至多 300 行，每行至多 400 字符，至多 400 个特征，单个尺寸 0.01–10000 mm。\n行：[名字:] 操作 参数…。参数为位置参数或 键=值。值为数、表达式（+ - * / %、括号、pi、let 变量）、括号元组 (a,b,…) 或单词。名字由字母、数字、下划线组成，是特征的句柄，倒角、阵列、镜像、核对都按名字引用。\n声明：units mm；material 牌号（6061-T6、7075、Q235、45、304、316、TC4、ABS、PLA、PETG 等，用于算质量）；let 变量 = 表达式。\n实体。单独一行为加料；写在 add 后面为并上，写在 cut 后面为减去：\n· box L W H [at=(x,y,z)]，at 为最小角点；\n· cylinder d= h= [axis=x|y|z] [at=(x,y,z)]，at 为底面圆心；cone d1= [d2=0] h= [axis=] [at=]；sphere d= [at=]，at 为球心；\n· prism (u,v) (u,v) (u,v) … h= [plane=xy|xz|yz] [off=] [twist=度] [smooth]：平面轮廓拉伸。xy 的点为 (x,y)，沿 +z；xz 的点为 (x,z)，沿 +y；yz 的点为 (y,z)，沿 +x；off 为起始平面的坐标。点写成 (u,v,r) 时该顶点倒圆，半径 r。smooth 为过各点的光滑闭合曲线。twist 为拉伸过程中绕平面原点转过的角度；\n· revolve (r,z) (r,z) … [angle=360] [axis=z] [at=]：r ≥ 0 的轮廓绕轴回转，点可写 (r,z,圆角半径)，at 为轴上的原点；\n· sweep d= (x,y,z) (x,y,z) … [r=] [id=]：圆截面沿折线路径扫掠，r 为各拐角的弯曲半径，给 id（内径）为管；\n· helix d= pitch= h= wire= [axis=] [at=] [hand=right|left]：螺旋弹簧，d 为中径，wire 为线径，at 为底面中心；\n· gear m= z= width= [alpha=20] [bore=] [at=]：直齿渐开线齿轮，以 at 为中心、从 at 向 +z。\n加工，从零件的外表面向里：\n· hole d= [at=center|(u,v)] [from=top|bottom|front|back|left|right] through|depth= [cbore=(直径,深)] [csk=(直径,角度)]；\n· pocket rect w= l= [r=] [angle=] 或 pocket circle d=，加 at= from= through|depth=，矩形的 w 沿 u、l 沿 v；\n· slot w= l= [angle=] at= from= through|depth=：长圆槽，l 为总长，沿 u；\n· at 为孔、型腔、槽的中心；(u,v) 的取法：top/bottom 为 (x,y)，front/back 为 (x,z)，left/right 为 (y,z)；angle 为从 u 向 v 转的角度；入口落在沿 from 方向在 at 处碰到的第一个材料表面，depth 从入口量起。\n修饰：fillet r= [edges=]、chamfer c= [edges=]，edges 取 all、vertical、面名（top 等）或特征名；shell t= [open=top|…|none]，向内抽壳。\n复制已命名的加料或去料特征：pattern 名字 linear n= dx= [dy=] [dz=]；pattern 名字 circular n= center=(u,v) [angle=360]，绕过 center 的轴转：去料特征的轴为它的加工方向，center 的取法同 at；加料特征的轴为 z，center 为 (x,y)；pattern 名字 grid n= m= 加两个方向的间距（如 dx= dy=），共 n×m 个；mirror 名字 plane=yz|xz|xy [off=]。\n数只写数：直径写 d=25（写成 d=Φ25 也认），角度写 angle=38（写成 38° 也认），长度一律毫米（12mm 也认）；乘号 × 按 * 读，所以三个尺寸要用空格分开（box 80 50 20，不写 80×50×20）；公差不写进计划。\n不执行代码，只认上述语法；出错时按行号报错并给提示。"
+              "description": "plan：零件计划，一行一个操作，# 之后不读。单位 mm；x 向右、y 向后、z 向上。至多 300 行，每行至多 400 字符，至多 400 个特征，单个尺寸 0.01–10000 mm。\n行：[名字:] 操作 参数…。参数为位置参数或 键=值。值为数、表达式（+ - * / %、括号、pi、let 变量）、括号元组 (a,b,…) 或单词。名字由字母、数字、下划线组成，是特征的句柄，倒角、阵列、镜像、核对都按名字引用。\n声明：units mm；material 牌号（6061-T6、7075、Q235、45、304、316、TC4、ABS、PLA、PETG 等，用于算质量）；let 变量 = 表达式。\n实体。单独一行为加料；写在 add 后面为并上，写在 cut 后面为减去：\n· box L W H [at=(x,y,z)]，at 为最小角点；\n· cylinder d= h= [axis=x|y|z] [at=(x,y,z)]，at 为底面圆心；cone d1= [d2=0] h= [axis=] [at=]；sphere d= [at=]，at 为球心；\n· prism (u,v) (u,v) (u,v) … h= [plane=xy|xz|yz] [off=] [twist=度] [smooth]：平面轮廓拉伸。xy 的点为 (x,y)，沿 +z；xz 的点为 (x,z)，沿 +y；yz 的点为 (y,z)，沿 +x；off 为起始平面的坐标。点写成 (u,v,r) 时该顶点倒圆，半径 r。smooth 为过各点的光滑闭合曲线。twist 为拉伸过程中绕平面原点转过的角度；\n· revolve (r,z) (r,z) … [angle=360] [axis=z] [at=]：r ≥ 0 的轮廓绕轴回转，点可写 (r,z,圆角半径)，at 为轴上的原点；\n· sweep d= (x,y,z) (x,y,z) … [r=] [id=]：圆截面沿折线路径扫掠，r 为各拐角的弯曲半径，给 id（内径）为管；\n· helix d= pitch= h= wire= [axis=] [at=] [hand=right|left]：螺旋弹簧，d 为中径，wire 为线径，at 为底面中心；\n· gear m= z= width= [alpha=20] [bore=] [at=]：直齿渐开线齿轮，以 at 为中心、从 at 向 +z。\n加工，从零件的外表面向里：\n· hole d= [at=center|(u,v)] [from=top|bottom|front|back|left|right] through|depth= [cbore=(直径,深)] [csk=(直径,角度)]；\n· pocket rect w= l= [r=] [angle=] 或 pocket circle d=，加 at= from= through|depth=，矩形的 w 沿 u、l 沿 v；\n· slot w= l= [angle=] at= from= through|depth=：长圆槽，l 为总长，沿 u；\n· at 为孔、型腔、槽的中心；(u,v) 的取法：top/bottom 为 (x,y)，front/back 为 (x,z)，left/right 为 (y,z)；angle 为从 u 向 v 转的角度；入口落在沿 from 方向在 at 处碰到的第一个材料表面，depth 从入口量起。\n修饰：fillet r= [edges=]、chamfer c= [edges=]，edges 取 all、vertical、面名（top 等）或特征名；shell t= [open=top|…|none]，向内抽壳。\n复制已命名的加料或去料特征：pattern 名字 linear n= dx= [dy=] [dz=]；pattern 名字 circular n= center=(u,v) [angle=360]，绕过 center 的轴转：去料特征的轴为它的加工方向，center 的取法同 at；加料特征的轴为 z，center 为 (x,y)；pattern 名字 grid n= m= 加两个方向的间距（如 dx= dy=），共 n×m 个；mirror 名字 plane=yz|xz|xy [off=]。\n数只写数：直径写 d=25（写成 d=Φ25 也认），角度写 angle=38（写成 38° 也认），长度一律毫米（12mm 也认）；乘号 × 按 * 读，所以三个尺寸要用空格分开（box 80 50 20，不写 80×50×20）；公差不写进计划。\n不执行代码，只认上述语法；出错时按行号报错并给提示。\n分多次写：给 base 时，plan 只写要新增或要改的行，与上一版的计划按行合并。带名字的行（名字: 操作 …）与上一版同名时，整行替换并留在原来的位置；名字是新的，追加在末尾。不带名字的行（material、units、let、fillet、chamfer、pattern、mirror、shell，以及注释行、空行）一律追加在末尾，不会替换已有的行；追加的 let 只对其后的行生效。想以后还能改的特征都写上名字。名字后面必须有操作，不要留只有名字的空行。注释行与空行可以写，但每次追加都会留在计划里。不给 base 时 plan 照常是完整的计划。",
+              "x-mengos-merge": {
+                "mode": "named-lines",
+                "name": "^\\s*([A-Za-z_\\u4e00-\\u9fff][A-Za-z0-9_\\u4e00-\\u9fff.]*)\\s*[:：]"
+              }
             },
             "name": {
               "type": "string",
@@ -61,7 +67,22 @@
               "description": "formats 缺省 [step, glb, svg]；文件写入引擎给的 workdir。"
             }
           },
-          "description": "做出可以加工或 3D 打印的三维零件：给出外形、体积、质量、孔位等测量值，以及精确模型（STEP）、网页可看的模型（GLB）和三视图（SVG）。"
+          "description": "做出可以加工或 3D 打印的三维零件：给出外形、体积、质量、孔位等测量值，以及精确模型（STEP）、网页可看的模型（GLB）和三视图（SVG）。",
+          "if": {
+            "required": [
+              "base"
+            ]
+          },
+          "then": {
+            "required": [
+              "base"
+            ]
+          },
+          "else": {
+            "required": [
+              "plan"
+            ]
+          }
         },
         "output_schema": {
           "type": "object",
@@ -399,7 +420,7 @@
           "不标注尺寸与公差（三视图只有图线、中心线与标题栏）"
         ]
       },
-      "version": "d4d06bdf0e22b172"
+      "version": "2a4efb009363fc73"
     },
     {
       "tool_id": "cad.check",
@@ -571,7 +592,7 @@
           "cad_model_meets_spec"
         ]
       },
-      "version": "d4d06bdf0e22b172"
+      "version": "2a4efb009363fc73"
     },
     {
       "tool_id": "cad.export",
@@ -773,7 +794,7 @@
           "不做格式间的反向转换（不读入文件）"
         ]
       },
-      "version": "d4d06bdf0e22b172"
+      "version": "2a4efb009363fc73"
     }
   ]
 }

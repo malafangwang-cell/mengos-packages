@@ -1,0 +1,274 @@
+{
+  "_说明": "named-lines 相关的合并金样子集（取自 document 包同名夹具，后者转写自 mengosv2 tests/projection/contribution-merge.test.ts @4f708d686cd41e635b4c16d59236dc1b2284a966）：U3 全部、触及键里的 named-lines 三条、嵌套 rows/plan 一条、空槽两条。schema 缺省为同目录 card.json 的 args_schema（其中 tables 元素的 plan 是 named-lines 字段）；\"named\" 为 U3 的内联 schema。不改期望去迁就包侧实现。每条的 origin_describe / origin_it 是引擎测试里的 describe 名与 it 名。过渡用：引擎侧补交 merge-*.json 夹具后，包改为引用引擎夹具，删本文件。",
+  "named_schema": {
+    "type": "object",
+    "properties": {
+      "plan": {
+        "type": "string",
+        "x-mengos-merge": {
+          "mode": "named-lines",
+          "name": "^\\s*([A-Za-z_][\\w-]*):"
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "U1-nested-rows-append-plan-lines",
+      "kind": "merge",
+      "P": {
+        "name": "n",
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "rows": [
+                [
+                  "周一",
+                  "甲"
+                ]
+              ],
+              "plan": "h1: 1"
+            }
+          ]
+        }
+      },
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "rows": [
+                [
+                  "周三",
+                  "乙"
+                ]
+              ],
+              "plan": "h2: 2"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "name": "n",
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "rows": [
+                [
+                  "周一",
+                  "甲"
+                ],
+                [
+                  "周三",
+                  "乙"
+                ]
+              ],
+              "plan": "h1: 1\nh2: 2"
+            }
+          ]
+        }
+      },
+      "origin_it": "元素内嵌套带标注字段递归 (rows append / plan named-lines)",
+      "origin_describe": "U1 by-id 递归合并"
+    },
+    {
+      "id": "U3-named-lines-replace-append",
+      "kind": "merge",
+      "schema": "named",
+      "P": {
+        "plan": "h1: 1\nh2: 2"
+      },
+      "delta": {
+        "plan": "h2: 22\nh3: 3\n# 注"
+      },
+      "expect": {
+        "plan": "h1: 1\nh2: 22\nh3: 3\n# 注"
+      },
+      "origin_describe": "U3 named-lines 与标注非法",
+      "origin_it": "同名替换, 新名追加, 不匹配行追加, P 行序保持; P 缺席视为空串"
+    },
+    {
+      "id": "U3-named-lines-P-absent",
+      "kind": "merge",
+      "schema": "named",
+      "P": {},
+      "delta": {
+        "plan": "h1: 1"
+      },
+      "expect": {
+        "plan": "h1: 1"
+      },
+      "origin_describe": "U3 named-lines 与标注非法",
+      "origin_it": "同名替换, 新名追加, 不匹配行追加, P 行序保持; P 缺席视为空串"
+    },
+    {
+      "id": "U3-named-lines-delta-not-string",
+      "kind": "merge",
+      "schema": "named",
+      "P": {
+        "plan": "h1: 1"
+      },
+      "delta": {
+        "plan": [
+          "h1"
+        ]
+      },
+      "expect_error": {
+        "instancePath": "/plan"
+      },
+      "origin_describe": "U3 named-lines 与标注非法",
+      "origin_it": "Δ 不是字符串 ⟹ 合并错误"
+    },
+    {
+      "id": "K-named-lines-names-and-plus",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "plan": "h1: 1\nh2: 2\n随笔"
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.tables#t1.plan@+",
+        "doc.tables#t1.plan@h1",
+        "doc.tables#t1.plan@h2"
+      ],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "append 整字段一个键 (即使为空); 嵌套带前缀; named-lines 按行名与 @+"
+    },
+    {
+      "id": "K-named-lines-blank-line-is-plus",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "plan": "h1: 1\n\n"
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.tables#t1.plan@+",
+        "doc.tables#t1.plan@h1"
+      ],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "named-lines: 任何不匹配的追加行 (含空白行) 都出 @+"
+    },
+    {
+      "id": "K-named-lines-empty-string-no-lines",
+      "kind": "touched",
+      "delta": {
+        "doc": {
+          "tables": [
+            {
+              "id": "t1",
+              "plan": ""
+            }
+          ]
+        }
+      },
+      "expect": [],
+      "origin_describe": "触及键集 K (§三.2 步骤 1b)",
+      "origin_it": "named-lines: 任何不匹配的追加行 (含空白行) 都出 @+"
+    },
+    {
+      "id": "E-empty-slots",
+      "kind": "empty",
+      "args": {
+        "name": "n",
+        "doc": {
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "概述",
+              "body": "有"
+            },
+            {
+              "id": "s2",
+              "heading": "x"
+            },
+            {
+              "id": "s3",
+              "heading": "y",
+              "body": ""
+            }
+          ],
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "plan": "h1:\nh2: 有\nh3:  "
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.sections#s2",
+        "doc.sections#s3",
+        "doc.tables#t1.plan@h1",
+        "doc.tables#t1.plan@h3"
+      ],
+      "origin_describe": "空槽清单 (残差)",
+      "origin_it": "by-id fill=字段名: 缺席或空串算空槽; 嵌套 named-lines 空行名 doc.tables#t1.plan@h1; 未声明 fill 的字段不入"
+    },
+    {
+      "id": "E-filled-one-fewer",
+      "kind": "empty-after-merge",
+      "args": {
+        "name": "n",
+        "doc": {
+          "sections": [
+            {
+              "id": "s1",
+              "heading": "概述",
+              "body": "有"
+            },
+            {
+              "id": "s2",
+              "heading": "x"
+            },
+            {
+              "id": "s3",
+              "heading": "y",
+              "body": ""
+            }
+          ],
+          "tables": [
+            {
+              "id": "t1",
+              "caption": "表",
+              "plan": "h1:\nh2: 有\nh3:  "
+            }
+          ]
+        }
+      },
+      "delta": {
+        "doc": {
+          "sections": [
+            {
+              "id": "s2",
+              "body": "补"
+            }
+          ]
+        }
+      },
+      "expect": [
+        "doc.sections#s3",
+        "doc.tables#t1.plan@h1",
+        "doc.tables#t1.plan@h3"
+      ],
+      "origin_describe": "空槽清单 (残差)",
+      "origin_it": "by-id fill=字段名: 缺席或空串算空槽; 嵌套 named-lines 空行名 doc.tables#t1.plan@h1; 未声明 fill 的字段不入"
+    }
+  ]
+}
