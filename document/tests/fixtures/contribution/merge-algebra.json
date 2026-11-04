@@ -1,0 +1,99 @@
+{
+  "_说明": "合并代数金样 (设计-产出不受模型输出长度限制 r8 §三.2 表 + kernel-spec v0.2.62 17 TL-30a)。card=card.json 的 args_schema; schema 字段在场时用该内联 schema 取代。期望值由施工方按设计逐条写定, 不从实现生成; 引擎测试 contribution-merge.test.ts 读本文件, 字面值不在测试里重复 (单一来源)。不含任何提示词文本 (包仓库会引用本夹具)。",
+  "card": "card.json",
+  "cases": [
+    {
+      "name": "U1 命中 id 只改 Δ 给的键; 新 id 追加末尾; P 顺序不变; 入参不被改",
+      "P": { "name": "n", "doc": { "title": "T", "sections": [{ "id": "s1", "heading": "概述", "body": "b1" }, { "id": "s2", "heading": "开放" }] } },
+      "delta": { "doc": { "sections": [{ "id": "s2", "body": "b2" }, { "id": "s5", "heading": "附录" }] } },
+      "expect": { "ok": true, "value": { "name": "n", "doc": { "title": "T", "sections": [{ "id": "s1", "heading": "概述", "body": "b1" }, { "id": "s2", "heading": "开放", "body": "b2" }, { "id": "s5", "heading": "附录" }] } } }
+    },
+    {
+      "name": "U1 缺 id ⟹ 合并错误, 带 instancePath",
+      "P": { "name": "n", "doc": { "title": "T", "sections": [{ "id": "s1", "heading": "概述", "body": "b1" }, { "id": "s2", "heading": "开放" }] } },
+      "delta": { "doc": { "sections": [{ "heading": "无 id" }] } },
+      "expect": { "ok": false, "instancePath": "/doc/sections", "message": "by-id 元素缺 id" }
+    },
+    {
+      "name": "U1 id 非字符串 ⟹ 合并错误",
+      "P": { "name": "n", "doc": { "title": "T", "sections": [{ "id": "s1", "heading": "概述", "body": "b1" }] } },
+      "delta": { "doc": { "sections": [{ "id": 3, "heading": "x" }] } },
+      "expect": { "ok": false, "instancePath": "/doc/sections", "message": "by-id 元素缺 id" }
+    },
+    {
+      "name": "U1 P 缺席视为 []: 第一次往还没有的 by-id 字段里写不撞类型不符",
+      "P": { "name": "n", "doc": { "title": "T" } },
+      "delta": { "doc": { "sections": [{ "id": "s1", "heading": "h" }] } },
+      "expect": { "ok": true, "value": { "name": "n", "doc": { "title": "T", "sections": [{ "id": "s1", "heading": "h" }] } } }
+    },
+    {
+      "name": "U1 P 的父节点缺席按 {} 递归: 带标注子节点的检查不取决于父节点在不在 (缺 id 照报)",
+      "P": { "name": "n" },
+      "delta": { "doc": { "sections": [{ "heading": "无 id" }] } },
+      "expect": { "ok": false, "instancePath": "/doc/sections", "message": "by-id 元素缺 id" }
+    },
+    {
+      "name": "U1 父节点缺席时显式 null 不留键",
+      "P": { "name": "n" },
+      "delta": { "doc": { "title": null, "sections": [{ "id": "s1", "heading": "h" }] } },
+      "expect": { "ok": true, "value": { "name": "n", "doc": { "sections": [{ "id": "s1", "heading": "h" }] } } }
+    },
+    {
+      "name": "U1 元素内嵌套带标注字段递归 (rows append / plan named-lines)",
+      "P": { "name": "n", "doc": { "tables": [{ "id": "t1", "caption": "表", "rows": [["周一", "甲"]], "plan": "h1: 1" }] } },
+      "delta": { "doc": { "tables": [{ "id": "t1", "rows": [["周三", "乙"]], "plan": "h2: 2" }] } },
+      "expect": { "ok": true, "value": { "name": "n", "doc": { "tables": [{ "id": "t1", "caption": "表", "rows": [["周一", "甲"], ["周三", "乙"]], "plan": "h1: 1\nh2: 2" }] } } }
+    },
+    {
+      "name": "U2 缺席保留, 显式 null 删键, 无标注节点类型不符照旧覆盖 (不判)",
+      "P": { "name": "n", "doc": { "title": "T", "tables": [{ "id": "t1", "caption": "表", "rows": [["a"]] }] } },
+      "delta": { "name": null, "doc": { "title": 5 } },
+      "expect": { "ok": true, "value": { "doc": { "title": 5, "tables": [{ "id": "t1", "caption": "表", "rows": [["a"]] }] } } }
+    },
+    {
+      "name": "U2 append 不去重, 追加末尾; 新 id 元素整体追加",
+      "P": { "name": "n", "doc": { "title": "T", "tables": [{ "id": "t1", "caption": "表", "rows": [["a"]] }] } },
+      "delta": { "doc": { "tables": [{ "id": "t1", "rows": [["a"], ["b"]] }, { "id": "t2", "caption": "二", "rows": [["c"]] }] } },
+      "expect": { "ok": true, "value": { "name": "n", "doc": { "title": "T", "tables": [{ "id": "t1", "caption": "表", "rows": [["a"], ["a"], ["b"]] }, { "id": "t2", "caption": "二", "rows": [["c"]] }] } } }
+    },
+    {
+      "name": "U2 append 的 P 缺席视为 []",
+      "P": { "name": "n", "doc": { "tables": [{ "id": "t1", "caption": "表" }] } },
+      "delta": { "doc": { "tables": [{ "id": "t1", "rows": [["x"]] }] } },
+      "expect": { "ok": true, "value": { "name": "n", "doc": { "tables": [{ "id": "t1", "caption": "表", "rows": [["x"]] }] } } }
+    },
+    {
+      "name": "U2 带标注节点类型不符 (增量不是数组) ⟹ 合并错误",
+      "P": { "name": "n", "doc": { "title": "T", "tables": [{ "id": "t1", "caption": "表", "rows": [["a"]] }] } },
+      "delta": { "doc": { "tables": "不是数组" } },
+      "expect": { "ok": false, "instancePath": "/doc/tables", "message": "合并类型不符: 增量不是数组" }
+    },
+    {
+      "name": "U2 带标注节点类型不符 (best 里不是数组) ⟹ 合并错误",
+      "P": { "name": "n", "doc": { "tables": "串" } },
+      "delta": { "doc": { "tables": [{ "id": "t1" }] } },
+      "expect": { "ok": false, "instancePath": "/doc/tables", "message": "合并类型不符: best 里不是数组" }
+    },
+    {
+      "name": "U3 named-lines 同名替换, 新名追加, 不匹配行追加, P 行序保持",
+      "schema": { "type": "object", "properties": { "plan": { "type": "string", "x-mengos-merge": { "mode": "named-lines", "name": "^\\s*([A-Za-z_][\\w-]*):" } } } },
+      "P": { "plan": "h1: 1\nh2: 2" },
+      "delta": { "plan": "h2: 22\nh3: 3\n# 注" },
+      "expect": { "ok": true, "value": { "plan": "h1: 1\nh2: 22\nh3: 3\n# 注" } }
+    },
+    {
+      "name": "U3 named-lines 的 P 缺席视为空串",
+      "schema": { "type": "object", "properties": { "plan": { "type": "string", "x-mengos-merge": { "mode": "named-lines", "name": "^\\s*([A-Za-z_][\\w-]*):" } } } },
+      "P": {},
+      "delta": { "plan": "h1: 1" },
+      "expect": { "ok": true, "value": { "plan": "h1: 1" } }
+    },
+    {
+      "name": "U3 named-lines 的 Δ 不是字符串 ⟹ 合并错误",
+      "schema": { "type": "object", "properties": { "plan": { "type": "string", "x-mengos-merge": { "mode": "named-lines", "name": "^\\s*([A-Za-z_][\\w-]*):" } } } },
+      "P": { "plan": "h1: 1" },
+      "delta": { "plan": ["h1"] },
+      "expect": { "ok": false, "instancePath": "/plan", "message": "合并类型不符: 增量不是字符串" }
+    }
+  ]
+}

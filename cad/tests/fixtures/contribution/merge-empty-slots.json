@@ -1,0 +1,21 @@
+{
+  "_说明": "空槽清单金样 (设计 r8 §三.3 空槽/残差)。card=card.json 的 args_schema; fill 声明在 sections (fill=body); tables 元素未声明 fill。slots 按实现的文档序 (路径段以 . 连接, by-id 元素 #id, named-lines 行 @name)。期望值由施工方按设计写定。不含任何提示词文本 (包仓库会引用本夹具)。",
+  "card": "card.json",
+  "cases": [
+    {
+      "name": "fill=字段名: 缺席或空串算空槽; 嵌套 named-lines 空行名入账; 未声明 fill 的字段不入",
+      "args": { "name": "n", "doc": { "sections": [{ "id": "s1", "heading": "概述", "body": "有" }, { "id": "s2", "heading": "x" }, { "id": "s3", "heading": "y", "body": "" }], "tables": [{ "id": "t1", "caption": "表", "plan": "h1:\nh2: 有\nh3:  " }] } },
+      "slots": ["doc.sections#s2", "doc.sections#s3", "doc.tables#t1.plan@h1", "doc.tables#t1.plan@h3"]
+    },
+    {
+      "name": "填一减一: 给 s2 补 body 之后 s2 不再是空槽",
+      "args": { "name": "n", "doc": { "sections": [{ "id": "s1", "heading": "概述", "body": "有" }, { "id": "s2", "heading": "x", "body": "补" }, { "id": "s3", "heading": "y", "body": "" }], "tables": [{ "id": "t1", "caption": "表", "plan": "h1:\nh2: 有\nh3:  " }] } },
+      "slots": ["doc.sections#s3", "doc.tables#t1.plan@h1", "doc.tables#t1.plan@h3"]
+    },
+    {
+      "name": "未声明 fill 的 by-id 元素本身不入空槽; append 字段无空槽",
+      "args": { "doc": { "tables": [{ "id": "t9", "caption": "" }] } },
+      "slots": []
+    }
+  ]
+}

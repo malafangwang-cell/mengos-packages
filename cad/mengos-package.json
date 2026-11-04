@@ -3,7 +3,7 @@
   "version": "2.5.0",
   "publisher": "mengos",
   "scope": "public",
-  "content_hash": "ce6a9616eb2169eda9fc6ccb582c58f5b7d3da41ff886b92be1d437ed9608200",
+  "content_hash": "4842765c39cade4b8096e92cb041e0c4ffd1b2c6410cbdf8dd927f5bb1ca7385",
   "types": [
     {
       "name": "cad_model",
