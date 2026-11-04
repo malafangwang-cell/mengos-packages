@@ -1,0 +1,1284 @@
+[
+ {
+  "id": "num_decimal",
+  "note": "decimal：1 / 1.1 / 1.2 / 2 / 2.1 / 2.1.1",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "B",
+      "level": 2,
+      "body": "正文。"
+     },
+     {
+      "heading": "C",
+      "level": 2,
+      "body": "正文。"
+     },
+     {
+      "heading": "D",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "E",
+      "level": 2,
+      "body": "正文。"
+     },
+     {
+      "heading": "F",
+      "level": 3,
+      "body": "正文。"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "outline[0].number": "1",
+   "outline[1].number": "1.1",
+   "outline[2].number": "1.2",
+   "outline[3].number": "2",
+   "outline[4].number": "2.1",
+   "outline[5].number": "2.1.1",
+   "stats.chapters": 2,
+   "stats.sections": 6
+  }
+ },
+ {
+  "id": "num_chapter",
+  "note": "chapter：第一章 / 1.1 / 第二章，章标题用全角空格",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "总则",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "范围",
+      "level": 2,
+      "body": "正文。"
+     },
+     {
+      "heading": "方案",
+      "level": 1,
+      "body": "正文。"
+     }
+    ],
+    "meta": {
+     "numbering": "chapter"
+    }
+   }
+  },
+  "expect": {
+   "outline[0].number": "第一章",
+   "outline[1].number": "1.1",
+   "outline[2].number": "第二章",
+   "md_contains": [
+    "## 第一章　总则",
+    "### 1.1 范围",
+    "## 第二章　方案"
+   ]
+  }
+ },
+ {
+  "id": "num_zh",
+  "note": "zh：一、/（一）/ 1．/（1）/ 二、/（一）（下级在上级变化时重新计数）",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "B",
+      "level": 2,
+      "body": "正文。"
+     },
+     {
+      "heading": "C",
+      "level": 3,
+      "body": "正文。"
+     },
+     {
+      "heading": "D",
+      "level": 4,
+      "body": "正文。"
+     },
+     {
+      "heading": "E",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "F",
+      "level": 2,
+      "body": "正文。"
+     }
+    ],
+    "meta": {
+     "numbering": "zh"
+    }
+   }
+  },
+  "expect": {
+   "outline[0].number": "一、",
+   "outline[1].number": "（一）",
+   "outline[2].number": "1．",
+   "outline[3].number": "（1）",
+   "outline[4].number": "二、",
+   "outline[5].number": "（一）",
+   "md_contains": [
+    "## 一、A",
+    "### （一）B"
+   ]
+  }
+ },
+ {
+  "id": "num_none",
+  "note": "none：不编号",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "背景",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "预算",
+      "level": 1,
+      "body": "正文。"
+     }
+    ],
+    "meta": {
+     "numbering": "none"
+    }
+   }
+  },
+  "expect": {
+   "outline[0].number": "",
+   "md_contains": [
+    "## 背景",
+    "## 预算"
+   ]
+  }
+ },
+ {
+  "id": "num_zh_eleven",
+  "note": "第十一章、十一、：中文数字",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "S1",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S2",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S3",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S4",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S5",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S6",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S7",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S8",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S9",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S10",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S11",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "S12",
+      "level": 1,
+      "body": "正文。"
+     }
+    ],
+    "meta": {
+     "numbering": "chapter"
+    }
+   }
+  },
+  "expect": {
+   "outline[9].number": "第十章",
+   "outline[10].number": "第十一章",
+   "outline[11].number": "第十二章"
+  }
+ },
+ {
+  "id": "compat_old",
+  "note": "旧契约 {title, sections:[{heading, body}]}：缺省 level 1、id s1…，标题前加编号",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "读书角方案",
+    "sections": [
+     {
+      "heading": "背景",
+      "body": "社区需要。"
+     },
+     {
+      "heading": "预算",
+      "body": "五千元。"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "outline[0].id": "s1",
+   "outline[1].id": "s2",
+   "outline[1].level": 1,
+   "name": "读书角方案",
+   "md_contains": [
+    "# 读书角方案",
+    "## 1 背景",
+    "社区需要。",
+    "## 2 预算",
+    "<a id=\"sec-s2\"></a>"
+   ],
+   "warnings": []
+  }
+ },
+ {
+  "id": "ref_sec",
+  "note": "[[sec:b]] → 第 1.1 节，并链接到 #sec-b",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "见[[sec:b]]。",
+      "id": "a"
+     },
+     {
+      "heading": "B",
+      "level": 2,
+      "body": "正文。",
+      "id": "b"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "md_contains": [
+    "见[第 1.1 节](#sec-b)。"
+   ],
+   "warnings": []
+  }
+ },
+ {
+  "id": "fig_order",
+  "note": "图按放置顺序编号，不按声明顺序：先放 f1 → 图 1，后放 f2 → 图 2",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "[[fig:f1]]\n\n见[[fig:f2]]与[[fig:f1]]。\n\n[[fig:f2]]"
+     }
+    ],
+    "figures": [
+     {
+      "id": "f2",
+      "caption": "图题f2",
+      "source": {
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 30\"><rect width=\"40\" height=\"30\" fill=\"#ddd\"/></svg>"
+      }
+     },
+     {
+      "id": "f1",
+      "caption": "图题f1",
+      "source": {
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 30\"><rect width=\"40\" height=\"30\" fill=\"#ddd\"/></svg>"
+      }
+     }
+    ]
+   }
+  },
+  "expect": {
+   "stats.figures": 2,
+   "md_contains": [
+    "见[图 2](#fig-f2)与[图 1](#fig-f1)。",
+    "*图 1　图题f1*",
+    "*图 2　图题f2*"
+   ]
+  }
+ },
+ {
+  "id": "fig_chapter",
+  "note": "figure_numbering=chapter：第 2 章的第 1 张图为 图 2-1",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "B",
+      "level": 1,
+      "body": "[[fig:f1]]"
+     }
+    ],
+    "figures": [
+     {
+      "id": "f1",
+      "caption": "图题f1",
+      "source": {
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 30\"><rect width=\"40\" height=\"30\" fill=\"#ddd\"/></svg>"
+      }
+     }
+    ],
+    "meta": {
+     "figure_numbering": "chapter"
+    }
+   }
+  },
+  "expect": {
+   "md_contains": [
+    "*图 2-1　图题f1*"
+   ]
+  }
+ },
+ {
+  "id": "code_literal",
+  "note": "代码块与行内代码里的记号不解析，也不算放置",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "行内 `[[sec:zz]]`。\n\n```\n[[fig:f1]]\n[[sec:zz]]\n```\n\n[[fig:f1]]"
+     }
+    ],
+    "figures": [
+     {
+      "id": "f1",
+      "caption": "图题f1",
+      "source": {
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 30\"><rect width=\"40\" height=\"30\" fill=\"#ddd\"/></svg>"
+      }
+     }
+    ]
+   }
+  },
+  "expect": {
+   "md_contains": [
+    "行内 `[[sec:zz]]`。",
+    "```\n[[fig:f1]]\n[[sec:zz]]\n```"
+   ],
+   "stats.figures": 1,
+   "warnings": []
+  }
+ },
+ {
+  "id": "ref_unknown",
+  "note": "引用不存在的节：显眼标记 + 提醒；核对 refs 为 fail",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "见[[sec:nope]]。"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "verdict": "fail",
+   "checks[0].kind": "refs",
+   "checks[0].verdict": "fail",
+   "checks[0].actual": 1
+  }
+ },
+ {
+  "id": "auto_place",
+  "note": "只被引用、没有放置的图：放在第一次引用它的节末尾；从未出现的图：orphan",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "见[[fig:f1]]。"
+     }
+    ],
+    "figures": [
+     {
+      "id": "f1",
+      "caption": "图题f1",
+      "source": {
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 30\"><rect width=\"40\" height=\"30\" fill=\"#ddd\"/></svg>"
+      }
+     },
+     {
+      "id": "f2",
+      "caption": "图题f2",
+      "source": {
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 30\"><rect width=\"40\" height=\"30\" fill=\"#ddd\"/></svg>"
+      }
+     }
+    ]
+   }
+  },
+  "expect": {
+   "checks[1].kind": "placement",
+   "checks[1].verdict": "fail",
+   "checks[1].actual": 1,
+   "verdict": "fail"
+  }
+ },
+ {
+  "id": "double_place",
+  "note": "同一张图放两次：只用第一次，第二次报提醒",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "[[fig:f1]]"
+     },
+     {
+      "heading": "B",
+      "level": 1,
+      "body": "[[fig:f1]]"
+     }
+    ],
+    "figures": [
+     {
+      "id": "f1",
+      "caption": "图题f1",
+      "source": {
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 30\"><rect width=\"40\" height=\"30\" fill=\"#ddd\"/></svg>"
+      }
+     }
+    ]
+   }
+  },
+  "expect": {
+   "checks[1].verdict": "fail",
+   "checks[1].actual": 1
+  }
+ },
+ {
+  "id": "words_cjk",
+  "note": "“五千元。”：4 个全角字符 → 字数 4、字符数 4",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "五千元。"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "outline[0].words": 4,
+   "stats.chars": 4
+  }
+ },
+ {
+  "id": "words_mixed",
+  "note": "“共 186 台”：共、台各 1，186 算 1 → 字数 3；字符数 5",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "共 186 台"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "outline[0].words": 3,
+   "stats.chars": 5
+  }
+ },
+ {
+  "id": "words_latin",
+  "note": "“Hello world 2026”：3 个词；字符数 14",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "Hello world 2026"
+     }
+    ],
+    "meta": {
+     "lang": "en"
+    }
+   }
+  },
+  "expect": {
+   "outline[0].words": 3,
+   "stats.chars": 14
+  }
+ },
+ {
+  "id": "words_total",
+  "note": "words_total 含子节：父 4 + 子 2 = 6",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "一二三四"
+     },
+     {
+      "heading": "B",
+      "level": 2,
+      "body": "五六"
+     },
+     {
+      "heading": "C",
+      "level": 1,
+      "body": "七"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "outline[0].words": 4,
+   "outline[0].words_total": 6,
+   "outline[2].words_total": 1
+  }
+ },
+ {
+  "id": "empty_leaf",
+  "note": "叶子节没有正文 → empty fail；有子节的父节没有正文不算空",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": ""
+     },
+     {
+      "heading": "B",
+      "level": 2,
+      "body": "有"
+     },
+     {
+      "heading": "C",
+      "level": 1,
+      "body": ""
+     }
+    ]
+   }
+  },
+  "expect": {
+   "checks[2].kind": "empty",
+   "checks[2].verdict": "fail",
+   "checks[2].actual": 1
+  }
+ },
+ {
+  "id": "outline_kind",
+  "note": "kind=outline：允许空节，不做空节与占位核对",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": ""
+     },
+     {
+      "heading": "B",
+      "level": 1,
+      "body": "待补"
+     }
+    ],
+    "kind": "outline"
+   }
+  },
+  "expect": {
+   "verdict": "pass",
+   "checks[2].kind": "numbering"
+  }
+ },
+ {
+  "id": "placeholder",
+  "note": "正文里的“待补”“TODO” → placeholder fail，两处",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "预算待补。"
+     },
+     {
+      "heading": "B",
+      "level": 1,
+      "body": "TODO: 写进度"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "checks[3].kind": "placeholder",
+   "checks[3].verdict": "fail",
+   "checks[3].actual": 2
+  }
+ },
+ {
+  "id": "heading_numbered",
+  "note": "标题自带“1.1 ”而又自动编号 → numbering fail；numbering=none 时不报",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "1.1 预算",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "第二章 方案",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "2024 年回顾",
+      "level": 1,
+      "body": "正文。"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "checks[4].kind": "numbering",
+   "checks[4].actual": 2
+  }
+ },
+ {
+  "id": "trace",
+  "note": "必须项 r1 有非空节响应；r2 声明了但该节空 → 未响应；should 项未响应只记 note",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "有",
+      "responds_to": [
+       "r1"
+      ]
+     },
+     {
+      "heading": "B",
+      "level": 1,
+      "body": "",
+      "responds_to": [
+       "r2"
+      ]
+     }
+    ],
+    "requirements": [
+     {
+      "id": "r1",
+      "text": "x"
+     },
+     {
+      "id": "r2",
+      "text": "y"
+     },
+     {
+      "id": "r3",
+      "text": "z",
+      "priority": "should"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "checks[6].kind": "requirements",
+   "checks[6].verdict": "fail",
+   "checks[6].actual": "1/2 有响应",
+   "checks[6].note": "建议项未响应：r3"
+  }
+ },
+ {
+  "id": "expect_lines",
+  "note": "has / order / length / contains / figures / tables / covered 逐条手判",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "背景",
+      "level": 1,
+      "body": "一二三四五"
+     },
+     {
+      "heading": "方案",
+      "level": 1,
+      "body": "六七八 [[fig:f1]]",
+      "responds_to": [
+       "r1"
+      ]
+     }
+    ],
+    "figures": [
+     {
+      "id": "f1",
+      "caption": "图题f1",
+      "source": {
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 30\"><rect width=\"40\" height=\"30\" fill=\"#ddd\"/></svg>"
+      }
+     }
+    ],
+    "requirements": [
+     {
+      "id": "r1",
+      "text": "x"
+     }
+    ]
+   },
+   "expect": "has 背景\nhas 方案 level=2\norder 方案 背景\nlength 背景 min=5 max=5\nlength total max=8\ncontains 方案 六七\ncontains total 九\nfigures min=1\ntables min=1\ncovered\ncovered r9"
+  },
+  "expect": {
+   "checks[7].verdict": "pass",
+   "checks[8].verdict": "fail",
+   "checks[9].verdict": "fail",
+   "checks[10].verdict": "pass",
+   "checks[10].actual": 5,
+   "checks[11].verdict": "fail",
+   "checks[12].verdict": "pass",
+   "checks[13].verdict": "fail",
+   "checks[14].verdict": "pass",
+   "checks[15].verdict": "fail",
+   "checks[16].verdict": "pass",
+   "checks[17].verdict": "fail",
+   "verdict": "fail"
+  }
+ },
+ {
+  "id": "expect_pages",
+  "note": "pages 恒为 unknown，covered=false",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。"
+     }
+    ]
+   },
+   "expect": "pages max=60"
+  },
+  "expect": {
+   "verdict": "unknown",
+   "covered": false,
+   "checks[6].verdict": "unknown"
+  }
+ },
+ {
+  "id": "expect_bad",
+  "note": "期望清单写错：按行号报错",
+  "tool": "doc.check",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。"
+     }
+    ]
+   },
+   "expect": "has A\nwordcount A min=3"
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.line": 2
+  }
+ },
+ {
+  "id": "table_align",
+  "note": "数字列（含千分位、百分号、数值）自动右对齐，文字列左对齐",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "[[tab:t]]"
+     }
+    ],
+    "tables": [
+     {
+      "id": "t",
+      "caption": "表题",
+      "columns": [
+       "项",
+       "金额",
+       "占比"
+      ],
+      "rows": [
+       [
+        "书架",
+        "1,200",
+        "24%"
+       ],
+       [
+        "图书",
+        3800,
+        "76%"
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "expect": {
+   "md_contains": [
+    "|:--|--:|--:|",
+    "| 图书 | 3800 | 76% |",
+    "**表 1　表题**"
+   ]
+  }
+ },
+ {
+  "id": "lang_en",
+  "note": "英文：Section 2 / Figure 1. caption",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "See [[sec:b]] and [[fig:f1]].\n\n[[fig:f1]]"
+     },
+     {
+      "heading": "B",
+      "level": 1,
+      "body": "正文。",
+      "id": "b"
+     }
+    ],
+    "figures": [
+     {
+      "id": "f1",
+      "caption": "图题f1",
+      "source": {
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 30\"><rect width=\"40\" height=\"30\" fill=\"#ddd\"/></svg>"
+      }
+     }
+    ],
+    "meta": {
+     "lang": "en"
+    }
+   }
+  },
+  "expect": {
+   "md_contains": [
+    "See [Section 2](#sec-b) and [Figure 1](#fig-f1).",
+    "*Figure 1. 图题f1*"
+   ]
+  }
+ },
+ {
+  "id": "trace_table",
+  "note": "trace_table=true：文末附要求响应对照表",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "有",
+      "responds_to": [
+       "r1"
+      ]
+     }
+    ],
+    "requirements": [
+     {
+      "id": "r1",
+      "text": "要求一",
+      "source": "第 2 条"
+     }
+    ],
+    "meta": {
+     "trace_table": true
+    }
+   }
+  },
+  "expect": {
+   "md_contains": [
+    "## 附：要求响应对照表",
+    "| r1 | 要求一 | 第 2 条 | 必须 | 1 A | 已响应 |"
+   ]
+  }
+ },
+ {
+  "id": "err_level_jump",
+  "note": "level 跳级拒收",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。"
+     },
+     {
+      "heading": "B",
+      "level": 3,
+      "body": "正文。"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "doc.sections[1].level"
+  }
+ },
+ {
+  "id": "err_first_level",
+  "note": "第一节不是 level 1 拒收",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 2,
+      "body": "正文。"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "doc.sections[0].level"
+  }
+ },
+ {
+  "id": "err_dup_id",
+  "note": "节 id 重复拒收",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。",
+      "id": "x"
+     },
+     {
+      "heading": "B",
+      "level": 1,
+      "body": "正文。",
+      "id": "x"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "doc.sections[1].id"
+  }
+ },
+ {
+  "id": "err_default_id_clash",
+  "note": "缺省 id 与显式 id 冲突拒收",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。",
+      "id": "s2"
+     },
+     {
+      "heading": "B",
+      "level": 1,
+      "body": "正文。"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "doc.sections[1].id"
+  }
+ },
+ {
+  "id": "err_row_cells",
+  "note": "表格行的格数与列数不符拒收",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。"
+     }
+    ],
+    "tables": [
+     {
+      "id": "t",
+      "caption": "c",
+      "columns": [
+       "a",
+       "b"
+      ],
+      "rows": [
+       [
+        "1"
+       ]
+      ]
+     }
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "doc.tables[0].rows[0]"
+  }
+ },
+ {
+  "id": "err_svg_script",
+  "note": "SVG 带脚本拒收",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。"
+     }
+    ],
+    "figures": [
+     {
+      "id": "f",
+      "caption": "c",
+      "source": {
+       "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>x()</script></svg>"
+      }
+     }
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "doc.figures[0].source.svg"
+  }
+ },
+ {
+  "id": "err_fig_chapter_none",
+  "note": "figure_numbering=chapter 与 numbering=none 冲突拒收",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。"
+     }
+    ],
+    "meta": {
+     "numbering": "none",
+     "figure_numbering": "chapter"
+    }
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "doc.meta.figure_numbering"
+  }
+ },
+ {
+  "id": "err_old_no_title",
+  "note": "旧契约同样拒收：缺 title",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "sections": [
+     {
+      "heading": "a",
+      "body": "b"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "doc.title"
+  }
+ },
+ {
+  "id": "err_old_empty_heading",
+  "note": "旧契约同样拒收：空标题",
+  "tool": "doc.build",
+  "payload": {
+   "doc": {
+    "title": "t",
+    "sections": [
+     {
+      "heading": "",
+      "body": "b"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "doc.sections[0].heading"
+  }
+ },
+ {
+  "id": "err_name",
+  "note": "文件名带路径拒收",
+  "tool": "doc.export",
+  "payload": {
+   "doc": {
+    "title": "T",
+    "sections": [
+     {
+      "heading": "A",
+      "level": 1,
+      "body": "正文。"
+     }
+    ]
+   },
+   "name": "../x",
+   "formats": [
+    "md"
+   ]
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "name"
+  }
+ }
+]

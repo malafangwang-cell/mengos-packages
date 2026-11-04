@@ -1,0 +1,165 @@
+[
+  {
+    "tool_id": "doc.build",
+    "task": "写一份社区读书角运营方案",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "doc.build",
+    "task": "按招标文件的要求编写投标文件技术部分",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "doc.build",
+    "task": "先给这份年度报告列个提纲",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "outline",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "doc.build",
+    "task": "画一个带孔的铝底座",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "cad_model",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "doc.build",
+    "task": "求 2^10 + 3^5 的精确值",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "number",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "doc.build",
+    "task": "核对标书是否逐条响应了招标要求",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "doc.check",
+    "task": "核对标书是否逐条响应了招标文件的要求",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "doc.check",
+    "task": "检查报告里有没有待补的占位和失效的图表引用",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "doc.check",
+    "task": "检查技术方案一章是否不少于 3000 字",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "doc.check",
+    "task": "写一份项目周报",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "doc.check",
+    "task": "把报告导出成 Word",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "doc_file",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "doc.check",
+    "task": "核对这个零件外形是不是 80×50×20",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false,
+    "stage": "model"
+  },
+  {
+    "tool_id": "doc.export",
+    "task": "把投标文件导出成 Word",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "doc_file",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "doc.export",
+    "task": "要一个能在浏览器里打开的报告网页版",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "doc_file",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "doc.export",
+    "task": "导出报告的 Markdown 原文",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "doc_file",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "doc.export",
+    "task": "写一份项目周报",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "doc.export",
+    "task": "核对报告的图表引用",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "doc.export",
+    "task": "把支架导出成 STL 给 3D 打印",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "cad_file",
+    "expect_selected": false
+  }
+]

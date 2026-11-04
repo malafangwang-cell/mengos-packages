@@ -1,0 +1,3 @@
+# 直齿轮 m=2 z=30
+material 45
+g: gear m=2 z=30 width=12 bore=12

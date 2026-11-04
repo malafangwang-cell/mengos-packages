@@ -1,0 +1,9 @@
+[project]
+name = "mengos-document"
+version = "1.1.0"
+description = "mengos 通用长文包：组装（内容 → 文档模型）、核对（结构与要求追溯）、导出（Markdown、Word、网页）"
+requires-python = ">=3.12,<3.14"
+dependencies = ["python-docx==1.2.0", "markdown-it-py==4.0.0"]
+
+[dependency-groups]
+dev = ["pytest>=8", "jsonschema>=4"]

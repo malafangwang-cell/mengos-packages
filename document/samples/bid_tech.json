@@ -1,0 +1,241 @@
+{
+ "title": "城东街道智慧社区安防改造项目",
+ "subtitle": "投标文件 · 技术部分",
+ "meta": {
+  "org": "某某智能科技有限公司",
+  "date": "2026-10-03",
+  "version": "V1.0",
+  "numbering": "chapter",
+  "figure_numbering": "chapter",
+  "cover": true,
+  "toc": true,
+  "trace_table": true
+ },
+ "requirements": [
+  {
+   "id": "r1",
+   "text": "★ 视频监控覆盖小区出入口、主干道与地下车库，录像保存不少于 90 天",
+   "source": "招标文件 第三章 3.2.1",
+   "priority": "must",
+   "anchor": {
+    "page": 18
+   }
+  },
+  {
+   "id": "r2",
+   "text": "★ 系统与街道现有平台对接，提供标准接口",
+   "source": "招标文件 第三章 3.2.4",
+   "priority": "must",
+   "anchor": {
+    "page": 19
+   }
+  },
+  {
+   "id": "r3",
+   "text": "★ 总工期不超过 90 日历天",
+   "source": "招标文件 第二章 2.5",
+   "priority": "must",
+   "anchor": {
+    "page": 9
+   }
+  },
+  {
+   "id": "r4",
+   "text": "★ 项目经理具有机电工程二级及以上注册建造师资格",
+   "source": "招标文件 第二章 2.8",
+   "priority": "must",
+   "anchor": {
+    "page": 11
+   }
+  },
+  {
+   "id": "r5",
+   "text": "提供不少于 3 年的免费质保与 7×24 小时响应",
+   "source": "招标文件 第三章 3.5",
+   "priority": "must",
+   "anchor": {
+    "page": 22
+   }
+  },
+  {
+   "id": "r6",
+   "text": "鼓励提供居民端便民服务功能",
+   "source": "招标文件 第三章 3.3",
+   "priority": "should",
+   "anchor": {
+    "page": 20
+   }
+  }
+ ],
+ "sections": [
+  {
+   "id": "overview",
+   "heading": "项目理解",
+   "body": "城东街道下辖 6 个老旧小区，现有监控以单点录像为主，设备老化、覆盖不全，告警依赖人工巡查。本项目的目标是建成**统一接入、分级告警、街道可监管**的社区安防体系。\n\n我方对项目的理解归纳为三点：\n\n1. 覆盖要全：出入口、主干道、地下车库三类重点区域无死角；\n2. 平台要通：与街道现有平台对接，数据按标准接口上报；\n3. 工期要稳：老旧小区施工扰民敏感，须分区分段、夜间不施工。\n\n总体方案见[[sec:design]]，进度安排见[[sec:schedule]]。"
+  },
+  {
+   "id": "design",
+   "heading": "总体设计",
+   "body": "系统按四层架构设计，各层职责清晰、接口标准，见[[fig:arch]]。\n\n[[fig:arch]]\n\n架构遵循“前端智能、边缘汇聚、平台统一”的原则：前端设备完成目标识别，汇聚节点做本地存储与转发，平台层统一管理与告警。",
+   "responds_to": [
+    "r2"
+   ]
+  },
+  {
+   "id": "video",
+   "level": 2,
+   "heading": "视频监控子系统",
+   "body": "在 6 个小区共布设高清摄像机 186 台，覆盖全部出入口、主干道与地下车库，主要设备见[[tab:devices]]。\n\n[[tab:devices]]\n\n录像采用边缘存储加中心备份：前端汇聚节点按 4 Mbps 码流、7×24 小时录像配置存储，单路保存 **90 天**；重点点位同步备份至街道中心。",
+   "responds_to": [
+    "r1"
+   ]
+  },
+  {
+   "id": "access",
+   "level": 2,
+   "heading": "门禁与告警子系统",
+   "body": "出入口部署人脸门禁 24 套，楼栋单元门保留原有刷卡方式并接入平台。烟感、水浸等告警统一推送至告警中心，按三级处置：\n\n- 一级（火警、水浸）：值班台声光告警，3 分钟内电话通知物业主管；\n- 二级（设备离线）：值班台提示，当班处理；\n- 三级（一般事件）：汇总进日报。"
+  },
+  {
+   "id": "interface",
+   "level": 2,
+   "heading": "平台对接",
+   "body": "平台按街道现有平台的接口规范对接，视频接入采用国家标准协议，告警与设备状态以接口方式推送。对接内容、频率与责任分工在深化设计阶段与街道信息中心逐项确认，形成对接说明书。",
+   "responds_to": [
+    "r2"
+   ]
+  },
+  {
+   "id": "resident",
+   "level": 2,
+   "heading": "居民端服务",
+   "body": "居民小程序提供访客预约、报事报修、告警通知三项功能，与物业工单打通。",
+   "responds_to": [
+    "r6"
+   ]
+  },
+  {
+   "id": "schedule",
+   "heading": "施工组织与进度",
+   "body": "总工期 **84 日历天**，分六个阶段推进，见[[fig:gantt]]。施工按小区分批进行，每个小区封闭作业不超过 10 天，夜间 20:00 后不施工。\n\n[[fig:gantt]]\n\n关键节点：第 6 周末设备全部到场，第 10 周末完成安装，第 12 周完成联调与验收。",
+   "responds_to": [
+    "r3"
+   ]
+  },
+  {
+   "id": "team",
+   "heading": "项目团队",
+   "body": "项目实行项目经理负责制，主要人员见[[tab:staff]]。项目经理持机电工程一级注册建造师证书，近三年主持完成同类社区安防项目 4 个。\n\n[[tab:staff]]",
+   "responds_to": [
+    "r4"
+   ]
+  },
+  {
+   "id": "service",
+   "heading": "质保与售后服务",
+   "body": "我方承诺：\n\n- 免费质保 **5 年**，自终验合格之日起计算；\n- 7×24 小时服务热线，接报后 30 分钟内远程响应，2 小时内到场；\n- 每季度一次巡检，出具巡检报告。\n\n> 质保期内因设备质量问题产生的维修与更换费用由我方承担。",
+   "responds_to": [
+    "r5"
+   ]
+  }
+ ],
+ "figures": [
+  {
+   "id": "arch",
+   "caption": "系统总体架构",
+   "width": 0.9,
+   "source": {
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 640 380\" width=\"640\" height=\"380\" font-family=\"Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif\" font-size=\"14\"><rect width=\"640\" height=\"380\" fill=\"#ffffff\"/><defs><marker id=\"a\" viewBox=\"0 0 10 10\" refX=\"5\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\"><path d=\"M0 0 L10 5 L0 10 z\" fill=\"#6b7a90\"/></marker></defs><rect x=\"10\" y=\"14\" width=\"620\" height=\"76\" rx=\"8\" fill=\"#e8f0fb\" stroke=\"#9aa4b2\"/><text x=\"28\" y=\"58\" font-weight=\"bold\" fill=\"#333\">应用层</text><rect x=\"115.0\" y=\"30\" width=\"157.3\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"193.7\" y=\"57\" text-anchor=\"middle\" fill=\"#222\">物业值班台</text><rect x=\"286.3\" y=\"30\" width=\"157.3\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"365.0\" y=\"57\" text-anchor=\"middle\" fill=\"#222\">居民小程序</text><rect x=\"457.7\" y=\"30\" width=\"157.3\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"536.3\" y=\"57\" text-anchor=\"middle\" fill=\"#222\">街道监管端</text><path d=\"M320 91 v14\" stroke=\"#6b7a90\" stroke-width=\"2\" marker-end=\"url(#a)\"/><rect x=\"10\" y=\"106\" width=\"620\" height=\"76\" rx=\"8\" fill=\"#eaf6ee\" stroke=\"#9aa4b2\"/><text x=\"28\" y=\"150\" font-weight=\"bold\" fill=\"#333\">平台层</text><rect x=\"115.0\" y=\"122\" width=\"157.3\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"193.7\" y=\"149\" text-anchor=\"middle\" fill=\"#222\">视频管理平台</text><rect x=\"286.3\" y=\"122\" width=\"157.3\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"365.0\" y=\"149\" text-anchor=\"middle\" fill=\"#222\">告警中心</text><rect x=\"457.7\" y=\"122\" width=\"157.3\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"536.3\" y=\"149\" text-anchor=\"middle\" fill=\"#222\">数据中台</text><path d=\"M320 183 v14\" stroke=\"#6b7a90\" stroke-width=\"2\" marker-end=\"url(#a)\"/><rect x=\"10\" y=\"198\" width=\"620\" height=\"76\" rx=\"8\" fill=\"#fdf3e4\" stroke=\"#9aa4b2\"/><text x=\"28\" y=\"242\" font-weight=\"bold\" fill=\"#333\">网络层</text><rect x=\"115.0\" y=\"214\" width=\"243.0\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"236.5\" y=\"241\" text-anchor=\"middle\" fill=\"#222\">光纤环网</text><rect x=\"372.0\" y=\"214\" width=\"243.0\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"493.5\" y=\"241\" text-anchor=\"middle\" fill=\"#222\">4G 备份链路</text><path d=\"M320 275 v14\" stroke=\"#6b7a90\" stroke-width=\"2\" marker-end=\"url(#a)\"/><rect x=\"10\" y=\"290\" width=\"620\" height=\"76\" rx=\"8\" fill=\"#f4ecf8\" stroke=\"#9aa4b2\"/><text x=\"28\" y=\"334\" font-weight=\"bold\" fill=\"#333\">感知层</text><rect x=\"115.0\" y=\"306\" width=\"157.3\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"193.7\" y=\"333\" text-anchor=\"middle\" fill=\"#222\">高清摄像机</text><rect x=\"286.3\" y=\"306\" width=\"157.3\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"365.0\" y=\"333\" text-anchor=\"middle\" fill=\"#222\">人脸门禁</text><rect x=\"457.7\" y=\"306\" width=\"157.3\" height=\"44\" rx=\"6\" fill=\"#ffffff\" stroke=\"#6b7a90\"/><text x=\"536.3\" y=\"333\" text-anchor=\"middle\" fill=\"#222\">烟感与水浸</text></svg>"
+   }
+  },
+  {
+   "id": "gantt",
+   "caption": "进度计划横道图",
+   "width": 0.95,
+   "source": {
+    "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 640 250\" width=\"640\" height=\"250\" font-family=\"Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif\" font-size=\"13\"><rect width=\"640\" height=\"250\" fill=\"#ffffff\"/><rect x=\"110\" y=\"10\" width=\"42\" height=\"22\" fill=\"#e9edf2\"/><text x=\"131.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第1周</text><line x1=\"110\" y1=\"32\" x2=\"110\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"152\" y=\"10\" width=\"42\" height=\"22\" fill=\"#f2f4f7\"/><text x=\"173.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第2周</text><line x1=\"152\" y1=\"32\" x2=\"152\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"194\" y=\"10\" width=\"42\" height=\"22\" fill=\"#e9edf2\"/><text x=\"215.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第3周</text><line x1=\"194\" y1=\"32\" x2=\"194\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"236\" y=\"10\" width=\"42\" height=\"22\" fill=\"#f2f4f7\"/><text x=\"257.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第4周</text><line x1=\"236\" y1=\"32\" x2=\"236\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"278\" y=\"10\" width=\"42\" height=\"22\" fill=\"#e9edf2\"/><text x=\"299.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第5周</text><line x1=\"278\" y1=\"32\" x2=\"278\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"320\" y=\"10\" width=\"42\" height=\"22\" fill=\"#f2f4f7\"/><text x=\"341.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第6周</text><line x1=\"320\" y1=\"32\" x2=\"320\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"362\" y=\"10\" width=\"42\" height=\"22\" fill=\"#e9edf2\"/><text x=\"383.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第7周</text><line x1=\"362\" y1=\"32\" x2=\"362\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"404\" y=\"10\" width=\"42\" height=\"22\" fill=\"#f2f4f7\"/><text x=\"425.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第8周</text><line x1=\"404\" y1=\"32\" x2=\"404\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"446\" y=\"10\" width=\"42\" height=\"22\" fill=\"#e9edf2\"/><text x=\"467.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第9周</text><line x1=\"446\" y1=\"32\" x2=\"446\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"488\" y=\"10\" width=\"42\" height=\"22\" fill=\"#f2f4f7\"/><text x=\"509.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第10周</text><line x1=\"488\" y1=\"32\" x2=\"488\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"530\" y=\"10\" width=\"42\" height=\"22\" fill=\"#e9edf2\"/><text x=\"551.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第11周</text><line x1=\"530\" y1=\"32\" x2=\"530\" y2=\"228\" stroke=\"#e1e5ea\"/><rect x=\"572\" y=\"10\" width=\"42\" height=\"22\" fill=\"#f2f4f7\"/><text x=\"593.0\" y=\"26\" text-anchor=\"middle\" fill=\"#555\">第12周</text><line x1=\"572\" y1=\"32\" x2=\"572\" y2=\"228\" stroke=\"#e1e5ea\"/><text x=\"100\" y=\"57\" text-anchor=\"end\" fill=\"#222\">现场勘察</text><rect x=\"112\" y=\"44\" width=\"80\" height=\"18\" rx=\"4\" fill=\"#3b78c4\"/><text x=\"100\" y=\"89\" text-anchor=\"end\" fill=\"#222\">深化设计</text><rect x=\"154\" y=\"76\" width=\"122\" height=\"18\" rx=\"4\" fill=\"#3b78c4\"/><text x=\"100\" y=\"121\" text-anchor=\"end\" fill=\"#222\">设备采购</text><rect x=\"196\" y=\"108\" width=\"164\" height=\"18\" rx=\"4\" fill=\"#3b78c4\"/><text x=\"100\" y=\"153\" text-anchor=\"end\" fill=\"#222\">施工安装</text><rect x=\"280\" y=\"140\" width=\"248\" height=\"18\" rx=\"4\" fill=\"#3b78c4\"/><text x=\"100\" y=\"185\" text-anchor=\"end\" fill=\"#222\">联调测试</text><rect x=\"448\" y=\"172\" width=\"122\" height=\"18\" rx=\"4\" fill=\"#3b78c4\"/><text x=\"100\" y=\"217\" text-anchor=\"end\" fill=\"#222\">验收交付</text><rect x=\"532\" y=\"204\" width=\"80\" height=\"18\" rx=\"4\" fill=\"#3b78c4\"/><path d=\"M593 34 l-6 -8 h12 z\" fill=\"#d0473b\"/><text x=\"593\" y=\"252\" text-anchor=\"middle\" fill=\"#d0473b\">竣工</text></svg>"
+   }
+  }
+ ],
+ "tables": [
+  {
+   "id": "devices",
+   "caption": "主要设备清单",
+   "columns": [
+    "设备",
+    "型号规格",
+    "数量",
+    "单位"
+   ],
+   "rows": [
+    [
+     "高清摄像机（枪机）",
+     "400 万像素，H.265",
+     132,
+     "台"
+    ],
+    [
+     "高清摄像机（球机）",
+     "400 万像素，23 倍光学变焦",
+     54,
+     "台"
+    ],
+    [
+     "人脸门禁一体机",
+     "双目活体检测",
+     24,
+     "套"
+    ],
+    [
+     "汇聚存储节点",
+     "16 盘位，单盘 16 TB",
+     6,
+     "台"
+    ],
+    [
+     "烟感与水浸探测器",
+     "NB-IoT",
+     420,
+     "个"
+    ]
+   ],
+   "note": "型号规格为最低配置要求，品牌以深化设计确认为准。"
+  },
+  {
+   "id": "staff",
+   "caption": "项目主要人员",
+   "columns": [
+    "岗位",
+    "人数",
+    "资格",
+    "职责"
+   ],
+   "rows": [
+    [
+     "项目经理",
+     1,
+     "机电工程一级注册建造师",
+     "全面负责"
+    ],
+    [
+     "技术负责人",
+     1,
+     "高级工程师",
+     "方案与技术质量"
+    ],
+    [
+     "施工队长",
+     2,
+     "电工证、高处作业证",
+     "现场施工"
+    ],
+    [
+     "调试工程师",
+     3,
+     "—",
+     "联调与培训"
+    ]
+   ]
+  }
+ ]
+}

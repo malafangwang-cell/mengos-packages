@@ -1,0 +1,11 @@
+# L 形支架：底板 + 立板，4 个沉头安装孔，立板长圆槽，两道加强筋
+material 6061-T6
+let t = 10
+base: box 120 60 t
+wall: add box 120 t 50 at=(0,50,0)
+m1: hole d=8.5 at=(20,25) from=top through cbore=(14,5)
+pattern m1 linear n=4 dx=80/3
+s1: slot w=8 l=24 at=(60,32) from=back through
+rib: add prism (10,10) (50,10) (50,50) h=6 plane=yz off=0
+pattern rib linear n=2 dx=114
+fillet r=3 edges=vertical

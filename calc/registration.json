@@ -1,0 +1,501 @@
+{
+  "family": "calc",
+  "family_version": "2.2.1",
+  "lock_hash": "ecbbbd50de6a4d29",
+  "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。入参写法写在 signature.input_schema 的 description 里；选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。本包按安装包交付（mengos-package.json，TL-25），仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
+  "units": [
+    {
+      "tool_id": "calc.evaluate",
+      "version": "ecbbbd50de6a4d29",
+      "trust_claim": "T1",
+      "effect": "none",
+      "executor": {
+        "kind": "process",
+        "entry": "calc_tool.py",
+        "mode": "sync"
+      },
+      "cost": {
+        "latency": 450,
+        "price": 0,
+        "timeout": 10000
+      },
+      "input_example": {
+        "expr": "2^n + n^2",
+        "bindings": {
+          "n": 7
+        }
+      },
+      "signature": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "expr"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "expr": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000,
+              "description": "expr：要求值的算式（不含等号），普通数学记法，例如 2^n + n^2、(3+4)*5、sqrt(8)、sin(30°)、ln(e)、log(8, 2)、10!、mod(17, 5)、\\frac{1}{3}。^ 与 ** 都是乘方；% 是百分号；° 是角度；ln 自然对数，lg 常用对数；常数 pi、e、I；支持 2x、2(x+1) 这类隐式乘法和全角符号。"
+            },
+            "bindings": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              },
+              "description": "bindings：算式里每个变量的取值，变量名到数或表达式字符串，例如 {\"n\": 7} 或 {\"a\": \"1/3\"}。"
+            },
+            "digits": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "description": "digits：近似值的有效位数，缺省 30。"
+            }
+          },
+          "description": "需要一个精确的计算结果、不想自己心算时用：一个算式等于多少。用平常的数学写法写（2^n、sqrt、°、%、10! 都认），算式里的每个变量在 bindings 里给出取值；拿回精确值（分数、根式、π 保持精确）和十进制近似。"
+        },
+        "output_schema": {
+          "type": "object",
+          "required": [
+            "value",
+            "exact",
+            "approx",
+            "kind",
+            "path"
+          ],
+          "properties": {
+            "value": {
+              "type": "string",
+              "description": "精确值，例如 177、1/3、3*sqrt(2)"
+            },
+            "exact": {
+              "type": "boolean"
+            },
+            "approx": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "十进制近似，默认 30 位有效数字"
+            },
+            "kind": {
+              "enum": [
+                "integer",
+                "rational",
+                "real",
+                "complex",
+                "number"
+              ]
+            },
+            "path": {
+              "enum": [
+                "rational",
+                "symbolic"
+              ]
+            }
+          }
+        }
+      },
+      "capability": {
+        "ops": [
+          "compute"
+        ],
+        "in_types": [
+          "math_expression"
+        ],
+        "out_types": [
+          "number"
+        ],
+        "constraints": {
+          "exact": true,
+          "max_expr_chars": 4000,
+          "max_result_digits": 100000,
+          "code_execution": false,
+          "latency_note": "有理数约 25 ms；含无理数、三角、对数约 0.4 s"
+        },
+        "examples": [
+          {
+            "input": "已知 y = 2^n + n^2，求 n = 7 时 y 的精确值",
+            "output": "{\"expr\":\"2^n + n^2\",\"bindings\":{\"n\":7}} → 177"
+          },
+          {
+            "input": "原价 200 元打 85 折是多少钱",
+            "output": "{\"expr\":\"200 * 85%\"} → 170"
+          },
+          {
+            "input": "半径为 3 的圆面积的精确值",
+            "output": "{\"expr\":\"pi * 3^2\"} → 9*pi"
+          },
+          {
+            "input": "sin 30° 加 lg 1000",
+            "output": "{\"expr\":\"sin(30°) + lg(1000)\"} → 7/2"
+          }
+        ],
+        "non_goals": [
+          "不解方程，解方程用 calc.algebra",
+          "不做单位换算",
+          "不处理数据表与统计",
+          "不执行代码"
+        ]
+      }
+    },
+    {
+      "tool_id": "calc.algebra",
+      "version": "ecbbbd50de6a4d29",
+      "trust_claim": "T1",
+      "effect": "none",
+      "executor": {
+        "kind": "process",
+        "entry": "calc_tool.py",
+        "mode": "sync"
+      },
+      "cost": {
+        "latency": 500,
+        "price": 0,
+        "timeout": 10000
+      },
+      "input_example": {
+        "op": "solve",
+        "expr": "x^2 - 5x + 6 = 0"
+      },
+      "signature": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "enum": [
+                "simplify",
+                "expand",
+                "factor",
+                "subs",
+                "diff",
+                "integrate",
+                "limit",
+                "solve"
+              ]
+            },
+            "expr": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "exprs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 4000
+              },
+              "minItems": 1,
+              "maxItems": 20
+            },
+            "var": {
+              "type": "string"
+            },
+            "vars": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "order": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            },
+            "lower": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "upper": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "at": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "dir": {
+              "enum": [
+                "+",
+                "-",
+                "+-"
+              ]
+            },
+            "domain": {
+              "enum": [
+                "complex",
+                "real"
+              ]
+            },
+            "bindings": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              }
+            },
+            "digits": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          "description": "需要做代数或微积分运算时用：化简、展开、因式分解、代入、求导、积分、求极限、解方程或方程组。用平常的数学写法写，op 选运算；拿回结果式子或解集，解集可能不完备时附假设。入参写法：op ∈ simplify、expand、factor、subs、diff、integrate、limit、solve。expr 用普通数学记法；solve 的 expr 可写成等式 x^2 - 4 = 0，方程组用 exprs 数组；var/vars 指明变量；integrate 可给 lower/upper 求定积分；limit 需要 at，可选 dir（+、-、+-）；solve 可选 domain（complex 或 real）。"
+        },
+        "output_schema": {
+          "type": "object",
+          "required": [
+            "op"
+          ],
+          "properties": {
+            "op": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            },
+            "approx": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "evaluated": {
+              "type": "boolean"
+            },
+            "solutions": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "count": {
+              "type": "integer"
+            },
+            "complete": {
+              "type": "boolean",
+              "description": "solve：解集是否完备（多项式方程组为 true）"
+            },
+            "domain": {
+              "type": "string"
+            },
+            "vars": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "达不到证明级的结论逐条声明（TL-22a），引擎挂为随行假设"
+            }
+          }
+        }
+      },
+      "capability": {
+        "ops": [
+          "compute"
+        ],
+        "in_types": [],
+        "in_any": [
+          "math_expression",
+          "equation"
+        ],
+        "out_types": [
+          "math_expression",
+          "solution_set"
+        ],
+        "constraints": {
+          "exact": true,
+          "code_execution": false,
+          "latency_note": "约 0.4 s；复杂积分可能更久，超时按 TIMEOUT 返回"
+        },
+        "examples": [
+          {
+            "input": "解方程 x^2 - 5x + 6 = 0",
+            "output": "{\"op\":\"solve\",\"expr\":\"x^2 - 5x + 6 = 0\"} → x ∈ {2, 3}"
+          },
+          {
+            "input": "解方程组 x + y = 3，x - y = 1",
+            "output": "{\"op\":\"solve\",\"exprs\":[\"x + y = 3\",\"x - y = 1\"]} → x=2, y=1"
+          },
+          {
+            "input": "求 x^3 + 2x 的导数",
+            "output": "{\"op\":\"diff\",\"expr\":\"x^3 + 2x\",\"var\":\"x\"} → 3*x**2 + 2"
+          },
+          {
+            "input": "计算 0 到 3 上 x^2 的定积分",
+            "output": "{\"op\":\"integrate\",\"expr\":\"x^2\",\"var\":\"x\",\"lower\":0,\"upper\":3} → 9"
+          }
+        ],
+        "non_goals": [
+          "不做数值优化与拟合",
+          "不做证明",
+          "不执行代码"
+        ]
+      }
+    },
+    {
+      "tool_id": "calc.check_equal",
+      "version": "ecbbbd50de6a4d29",
+      "trust_claim": "T1",
+      "effect": "none",
+      "executor": {
+        "kind": "process",
+        "entry": "calc_tool.py",
+        "mode": "sync"
+      },
+      "cost": {
+        "latency": 450,
+        "price": 0,
+        "timeout": 10000
+      },
+      "input_example": {
+        "left": "2^n + n^2",
+        "right": "y = 177",
+        "bindings": {
+          "n": 7
+        }
+      },
+      "signature": {
+        "input_schema": {
+          "type": "object",
+          "required": [
+            "left",
+            "right"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "left": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "left、right：普通数学记法，例如 2^n + n^2、(3+4)*5、sqrt(8)、sin(30°)、ln(e)、log(8, 2)、10!、mod(17, 5)、\\frac{1}{3}。^ 与 ** 都是乘方；% 是百分号；° 是角度；ln 自然对数，lg 常用对数；常数 pi、e、I；支持 2x、2(x+1) 这类隐式乘法和全角符号。right 可以写成 'y = 177' 的形式。equal 为 null 且 covered 为 false 表示无法判定，不是失败。"
+            },
+            "right": {
+              "type": "string",
+              "maxLength": 4000,
+              "description": "写法同 left；也接受 y = 177 这样带标签的答案，只取右边"
+            },
+            "bindings": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              },
+              "description": "bindings：变量的取值，变量名到数或表达式字符串，例如 {\"n\": 7}。"
+            }
+          },
+          "description": "要判一个答案对不对时用：一边写题目给出的式子或标准答案，另一边写待核的答案，拿回相等、不等或判不了。用平常的数学写法写。式子含变量时，给了取值（bindings）按取值比；没给取值，就把两式之差做符号化简来比，所以也能判两个式子是否恒等。"
+        },
+        "output_schema": {
+          "type": "object",
+          "required": [
+            "equal",
+            "covered",
+            "method"
+          ],
+          "properties": {
+            "equal": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "covered": {
+              "type": "boolean"
+            },
+            "method": {
+              "enum": [
+                "exact-rational",
+                "symbolic",
+                "numeric-nonzero",
+                "sympy-equals",
+                "undetermined"
+              ]
+            },
+            "left": {
+              "type": "string"
+            },
+            "right": {
+              "type": "string"
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "达不到证明级的结论逐条声明（TL-22a），引擎挂为随行假设"
+            }
+          }
+        }
+      },
+      "review_coverage": {
+        "by_predicate": [
+          "value_eq_answer"
+        ]
+      },
+      "capability": {
+        "ops": [
+          "check"
+        ],
+        "in_types": [
+          "math_expression",
+          "number"
+        ],
+        "out_types": [
+          "verdict"
+        ],
+        "constraints": {
+          "exact": true,
+          "code_execution": false,
+          "latency_note": "有理数约 25 ms；符号约 0.4 s"
+        },
+        "examples": [
+          {
+            "input": "核验答案 177 是否等于 2^7 + 7^2",
+            "output": "{\"left\":\"2^7 + 7^2\",\"right\":\"177\"} → equal=true"
+          },
+          {
+            "input": "核验 2√2 是否等于 √8",
+            "output": "{\"left\":\"sqrt(8)\",\"right\":\"2*sqrt(2)\"} → equal=true"
+          },
+          {
+            "input": "核验 0.1 + 0.2 是否等于 0.3",
+            "output": "{\"left\":\"0.1 + 0.2\",\"right\":\"0.3\"} → equal=true（精确有理数）"
+          }
+        ],
+        "non_goals": [
+          "不判断文字答案",
+          "不判断近似值是否'足够接近'",
+          "不执行代码"
+        ]
+      }
+    }
+  ]
+}

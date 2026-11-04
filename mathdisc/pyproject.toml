@@ -1,0 +1,36 @@
+# 承: D10裁决2026-08-18 · mathdisc设计文档v1§2选型定案 · mathdisc工程文档v1§1 · 层: 工具·环0 · 版本: mathdisc/v0.1.0
+# 独立pip包(pyproject真源); 锁文件 mathdisc.lock 治理四库精确版+文法版+prompt版+ρ绑定 (承工程文档§2 D-8)
+[project]
+name = "mathdisc"
+version = "0.1.0"
+description = "数学发现工具族: 提边归模型,判定归计算器 (承 mathdisc设计文档v1)"
+requires-python = ">=3.11"
+# 核心四库 (承设计文档§2选型定案"本节即裁决"; D10随裁补入D5白名单)
+dependencies = [
+    "sympy",
+    "mpmath",
+    "scipy",
+    "numpy",
+]
+
+[project.optional-dependencies]
+# 服务面 (承工程文档§1: extra: mathdisc[service], 核心包零web依赖)
+# httpx2 = fastapi TestClient 的必传依赖 (SVC 套件消费面, 随 service extra 登记)
+service = ["fastapi", "uvicorn", "httpx2"]
+# 量纲(可选, 承设计§2: extra mathdisc[units], formula四查之量纲查)
+units = ["pint"]
+dev = ["pytest"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mathdisc"]
+
+[tool.pytest.ini_options]
+# 默认收集不含真模型跑分 (承测试文件README纪律2: live_llm仅D8基线流水线)
+markers = [
+    "service: 服务面冒烟,需mathdisc[service]与本地端口",
+    "live_llm: 真模型跑分,仅D8基线流水线执行",
+]

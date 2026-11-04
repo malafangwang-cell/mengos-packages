@@ -1,0 +1,5 @@
+# 抽壳盒子，侧面开窗
+material ABS
+body: box 100 60 40
+shell t=2.5 open=top
+win: pocket rect w=30 l=15 r=3 at=(50,20) from=front depth=2.5

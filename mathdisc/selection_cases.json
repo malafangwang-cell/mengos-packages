@@ -1,0 +1,341 @@
+[
+ {
+  "tool_id": "mathdisc.identity",
+  "task": "核验 (a+b)^2 与 a^2+2ab+b^2 是否恒等",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.identity",
+  "task": "判断 ζ(2) 是否等于 π²/6",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.identity",
+  "task": "验证 sin²x + cos²x = 1",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.identity",
+  "task": "把 (a+b)^3 展开",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "math_expression",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.identity",
+  "task": "核对这个零件外形是不是 80×50×20",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": false,
+  "stage": "model"
+ },
+ {
+  "tool_id": "mathdisc.identity",
+  "task": "这组行星数据符不符合 T = c·a^1.5",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": false,
+  "stage": "model"
+ },
+ {
+  "tool_id": "mathdisc.identity",
+  "task": "写一份项目周报",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "document",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.formula",
+  "task": "这组行星周期与半长轴数据符不符合 T = c1·a^c2",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.formula",
+  "task": "实验数据能否用 y = c1·T/V 解释",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.formula",
+  "task": "检验单摆周期是否与摆长的平方根成正比（附测量数据）",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.formula",
+  "task": "核验 (a+b)^2 与 a^2+2ab+b^2 是否恒等",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": false,
+  "stage": "model"
+ },
+ {
+  "tool_id": "mathdisc.formula",
+  "task": "求 2^10 + 3^5",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.formula",
+  "task": "把这份销售数据做成柱状图",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "chart",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.recurrence",
+  "task": "1, 2, 6, 24, 120 是否满足 a[n] = n·a[n-1]",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.recurrence",
+  "task": "斐波那契递推对 1,1,2,3,5,8,13 成立吗",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.recurrence",
+  "task": "数列 2, 5, 11, 23 是否满足 a[n] = 2a[n-1] + 1",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.recurrence",
+  "task": "求数列 1,2,6,24 的下一项是多少",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.recurrence",
+  "task": "核验 π 与 22/7 是否相等",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": false,
+  "stage": "model"
+ },
+ {
+  "tool_id": "mathdisc.recurrence",
+  "task": "查询客户 A 的合同记录",
+  "ops": [
+   "retrieve"
+  ],
+  "required_type": "data_record",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.reach",
+  "task": "8/(3-8/3) 是不是等于 24",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.reach",
+  "task": "核对 (1+1/2)×4 = 6",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.reach",
+  "task": "验证 1/3 + 1/6 恰好等于 1/2",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.reach",
+  "task": "用 3、3、8、8 凑出 24",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "math_solution",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.reach",
+  "task": "判断 2^(2^5)+1 是不是素数的反例",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": false,
+  "stage": "model"
+ },
+ {
+  "tool_id": "mathdisc.reach",
+  "task": "把会议纪要整理成文档",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "document",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.counterexample",
+  "task": "n=5 是不是“2^(2^n)+1 都是素数”这个猜想的反例",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.counterexample",
+  "task": "用 n=6 检验“n²+n+41 都是素数”",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.counterexample",
+  "task": "验证 n=4 能否推翻“2^n−1 都是素数”",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.counterexample",
+  "task": "判断 97 是否为素数并给出分解",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.counterexample",
+  "task": "核验 (a+b)^2 与 a^2+2ab+b^2 是否恒等",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": false,
+  "stage": "model"
+ },
+ {
+  "tool_id": "mathdisc.counterexample",
+  "task": "生成一个零件三维模型",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "cad_model",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.solve_closed",
+  "task": "用 3、3、8、8 各一次加减乘除凑出 24",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "math_solution",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.solve_closed",
+  "task": "1、1、1、1 能不能算出 24",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "math_solution",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.solve_closed",
+  "task": "用 4、7、8、8 四个数算 24 点",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "math_solution",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "mathdisc.solve_closed",
+  "task": "8/(3-8/3) 是不是等于 24",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.solve_closed",
+  "task": "解方程 x^2 - 5x + 6 = 0",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "solution_set",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "mathdisc.solve_closed",
+  "task": "写一份项目周报",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "document",
+  "expect_selected": false
+ }
+]

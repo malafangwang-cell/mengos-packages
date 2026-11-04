@@ -1,0 +1,164 @@
+[
+  {
+    "tool_id": "calc.evaluate",
+    "task": "求 2^10 + 3^5 的精确值",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "number",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "calc.evaluate",
+    "task": "半径为 3 的圆面积的精确值",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "number",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "calc.evaluate",
+    "task": "原价 200 元打 85 折是多少",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "number",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "calc.evaluate",
+    "task": "解方程 x^2 - 5x + 6 = 0",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "solution_set",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "calc.evaluate",
+    "task": "写一份项目周报",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "calc.evaluate",
+    "task": "查询客户 A 的合同记录",
+    "ops": [
+      "retrieve"
+    ],
+    "required_type": "data_record",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "calc.algebra",
+    "task": "解方程 x^2 - 5x + 6 = 0",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "solution_set",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "calc.algebra",
+    "task": "把 (a+b)^3 展开",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "math_expression",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "calc.algebra",
+    "task": "求 x*sin(x) 的导数",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "math_expression",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "calc.algebra",
+    "task": "核对答案是否等于 177",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "calc.algebra",
+    "task": "画一个带孔的铝底座",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "cad_model",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "calc.algebra",
+    "task": "写一份项目周报",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "calc.check_equal",
+    "task": "核对 2^7 + 7^2 是否等于 177",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "calc.check_equal",
+    "task": "验证 sin(x)^2 + cos(x)^2 恒等于 1",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "calc.check_equal",
+    "task": "检查 (a+b)^2 与 a^2+2ab+b^2 是否相等",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "calc.check_equal",
+    "task": "求 2^10 的值",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "number",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "calc.check_equal",
+    "task": "解方程 x^2 = 4",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "solution_set",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "calc.check_equal",
+    "task": "写一份项目周报",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": false
+  }
+]

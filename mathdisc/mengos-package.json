@@ -1,0 +1,104 @@
+{
+  "package": "mathdisc",
+  "version": "1.1.0",
+  "publisher": "mengos",
+  "scope": "public",
+  "content_hash": "3ac2112452196af029346c98f7dd12579da58128326f8eda69085a20fc608c73",
+  "types": [
+    {
+      "name": "math_relation",
+      "parent": null,
+      "kind": "value",
+      "note": "要核验的数学关系：等式两边、含参数的公式、递推式、全称猜想或算式"
+    },
+    {
+      "name": "math_table",
+      "parent": null,
+      "kind": "value",
+      "note": "按列给出的数据表，含响应列 y"
+    },
+    {
+      "name": "math_sequence",
+      "parent": null,
+      "kind": "value",
+      "note": "整数数列或参与运算的整数组"
+    },
+    {
+      "name": "math_witness",
+      "parent": null,
+      "kind": "value",
+      "note": "变量到整数的取值，用作候选反例"
+    },
+    {
+      "name": "math_solution",
+      "parent": null,
+      "kind": "value",
+      "note": "封闭求解的结果：可解时附一个算式，不可解时以穷举为证"
+    }
+  ],
+  "uses_platform_types": [
+    "verdict"
+  ],
+  "tools": "registration.json",
+  "tools_lock": {
+    "covers": [
+      "md_tool.py",
+      "mathdisc/__init__.py",
+      "mathdisc/check/__init__.py",
+      "mathdisc/check/counterex.py",
+      "mathdisc/check/formula.py",
+      "mathdisc/check/identity.py",
+      "mathdisc/check/reach.py",
+      "mathdisc/check/receipt.py",
+      "mathdisc/check/recurrence.py",
+      "mathdisc/expr/__init__.py",
+      "mathdisc/expr/grammar.py",
+      "mathdisc/expr/ir.py",
+      "mathdisc/expr/render.py",
+      "mathdisc/forensics/__init__.py",
+      "mathdisc/forensics/signature.py",
+      "mathdisc/loop/__init__.py",
+      "mathdisc/loop/solve_closed.py",
+      "pyproject.toml",
+      "uv.lock",
+      "registration.json"
+    ],
+    "note": "工具 version（lock hash）只覆盖这些文件；tests/、tools/、README、金样不在其内"
+  },
+  "certification_material": {
+    "golden_cases": "golden_cases.json",
+    "selection_cases": "selection_cases.json",
+    "golden_runner": "tools/run_golden.py"
+  },
+  "runtime": {
+    "process": {
+      "lang": "python",
+      "requires": ">=3.11",
+      "project": "pyproject.toml",
+      "lock": "uv.lock",
+      "entry": "md_tool.py",
+      "network": "none",
+      "workdir": false
+    }
+  },
+  "replaces": {
+    "family": "mathdisc",
+    "tool_ids": {
+      "check.identity": "mathdisc.identity",
+      "check.formula": "mathdisc.formula",
+      "check.recurrence": "mathdisc.recurrence",
+      "check.reach": "mathdisc.reach",
+      "check.counterexample": "mathdisc.counterexample",
+      "solve_closed": "mathdisc.solve_closed"
+    },
+    "moved": {
+      "eval.evaluate": "calc.evaluate"
+    },
+    "not_replaced": {
+      "validate.grammar": "发布门内部使用，不进工具册；由施工方在引擎侧处理",
+      "discover": "异步、出网、T3，参照包未覆盖（17 TL-28）；暂留适配器，另包交付"
+    },
+    "note": "TL-24 替换：旧 tool_id 摘册、不复用；引用旧 tool_id 的 manifest 与 agent 资产在同一次替换中改为右侧新 tool_id。eval.evaluate 与 calc.evaluate 能力相同（符号代入、精确分数），并入 calc，不在本包重复登记；math_eval agent 的工具引用随之改为 calc.evaluate"
+  },
+  "certification": []
+}

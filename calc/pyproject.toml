@@ -1,0 +1,9 @@
+[project]
+name = "mengos-calc"
+version = "2.0.0"
+description = "mengos calc v2: 安全表达式解析 + 精确求值 + 符号代数 + 等值核验（process 执行器）"
+requires-python = ">=3.10"
+dependencies = ["sympy==1.14.0"]
+
+[dependency-groups]
+dev = ["pytest>=8", "jsonschema>=4"]

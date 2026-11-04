@@ -1,0 +1,164 @@
+[
+  {
+    "tool_id": "cad.build",
+    "task": "画一个 80×50×20 的铝底座，中间打 Φ20 通孔",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "cad_model",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.build",
+    "task": "做一个 m=2、z=30 的直齿轮模型",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "cad_part",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.build",
+    "task": "设计一个能 3D 打印的 L 形支架",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "cad_model",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.build",
+    "task": "写一份项目周报",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "cad.build",
+    "task": "求 2^10 + 3^5 的精确值",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "number",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "cad.build",
+    "task": "核对这个零件外形是不是 80×50×20",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "cad.check",
+    "task": "核对这个零件外形是不是 80×50×20",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.check",
+    "task": "检查法兰的螺栓孔是不是 6 个 Φ10",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.check",
+    "task": "这个零件能不能放进 220×220×250 的打印机",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.check",
+    "task": "画一个带孔的铝底座",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "cad_model",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "cad.check",
+    "task": "把支架导出成 STL",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "cad_file",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "cad.check",
+    "task": "写一份项目周报",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "cad.export",
+    "task": "把支架导出成 STL 给 3D 打印",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "cad_file",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.export",
+    "task": "给加工厂发 STEP 和 DXF 三视图",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "cad_file",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.export",
+    "task": "要一个能在网页里转着看的 GLB",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "cad_file",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.export",
+    "task": "画一个带孔的铝底座",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "cad_model",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "cad.export",
+    "task": "核对零件外形",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "cad.export",
+    "task": "求 2^10 的值",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "number",
+    "expect_selected": false
+  }
+]

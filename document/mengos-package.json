@@ -1,0 +1,92 @@
+{
+  "package": "document",
+  "version": "1.2.5",
+  "publisher": "mengos",
+  "scope": "public",
+  "content_hash": "37ce30491dc1caf22351d154c22430731d5061ff622288a2edaf6a22397ff69c",
+  "types": [
+    {
+      "name": "document",
+      "parent": null,
+      "kind": "deliverable",
+      "realizes": [
+        "long_doc"
+      ],
+      "renderer": {
+        "full": "renderer/index.html",
+        "embed": "renderer/index.html",
+        "status": "正式渲染器，按渲染器契约 v0.1（数据经 postMessage 由宿主传入，本页不取网络数据；下载经 mengos.download 交宿主派生）"
+      },
+      "note": "长文档：报告、方案、标书、手册等。规范形态是文档模型（role document.model）；Markdown、Word、网页都由它派生。码本形态 long_doc 由本类型实现（TL-27）"
+    },
+    {
+      "name": "outline",
+      "parent": "document",
+      "kind": "deliverable",
+      "realizes": [
+        "toc_outline"
+      ],
+      "note": "提纲：kind=outline 的文档，允许空节。继承 document 的渲染器"
+    },
+    {
+      "name": "doc_plan",
+      "parent": null,
+      "kind": "value",
+      "note": "文档内容（README §3），由调用方写出"
+    },
+    {
+      "name": "doc_spec",
+      "parent": null,
+      "kind": "value",
+      "note": "期望清单（README §4）"
+    },
+    {
+      "name": "doc_file",
+      "parent": null,
+      "kind": "value",
+      "note": "导出的文件集合，经 TL-9a 进入 ObjectStore；以通用文件卡片展示"
+    }
+  ],
+  "uses_platform_types": [
+    "verdict"
+  ],
+  "tools": "registration.json",
+  "tools_lock": {
+    "covers": [
+      "model.py",
+      "assemble.py",
+      "render.py",
+      "docx_writer.py",
+      "checker.py",
+      "doc_tool.py",
+      "pyproject.toml",
+      "uv.lock",
+      "registration.json"
+    ],
+    "note": "工具 version（lock hash）只覆盖这些文件；renderer/、samples/、tests/、tools/、README 不在其内，改它们不使认证失效（TL-25）"
+  },
+  "certification_material": {
+    "golden_cases": "golden_cases.json",
+    "selection_cases": "selection_cases.json",
+    "golden_runner": "tools/run_golden.py"
+  },
+  "runtime": {
+    "process": {
+      "lang": "python",
+      "requires": ">=3.12,<3.14",
+      "project": "pyproject.toml",
+      "lock": "uv.lock",
+      "entry": "doc_tool.py",
+      "network": "none",
+      "workdir": true
+    }
+  },
+  "replaces": {
+    "family": "t-doc",
+    "tool_ids": {
+      "doc.assemble.write": "doc.build"
+    },
+    "note": "TL-24 替换：旧 tool_id 摘册、不复用。旧契约的 {title, sections:[{heading, body}]} 原样是 doc.build 的合法输入；旧件是 T4、effect=write（写到 out_dir），新件是 effect=none（写到引擎给的 workdir，经 TL-9a 入 ObjectStore）。过渡路由见 README §6"
+  },
+  "certification": []
+}

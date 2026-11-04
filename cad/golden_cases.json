@@ -1,0 +1,908 @@
+[
+  {
+    "id": "build-base",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "# 带孔底座\nmaterial 6061-T6\nbase: box 80 50 20\nhole1: hole d=20 at=center from=top through\nchamfer c=0.5 edges=hole1\n",
+      "name": "base",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 73700.84493,
+          "rtol": 1e-07,
+          "source": "手算：80·50·20 − π·10²·20 − 两个 0.5 倒角环（Pappus）"
+        },
+        {
+          "path": "measure.mass_g",
+          "value": 198.992281,
+          "rtol": 1e-07,
+          "source": "体积 × 2.70 g/cm³"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.bbox.size",
+          "value": [
+            80.0,
+            50.0,
+            20.0
+          ]
+        },
+        {
+          "path": "measure.holes.0.d",
+          "value": 20.0
+        },
+        {
+          "path": "measure.holes.0.through",
+          "value": true
+        },
+        {
+          "path": "measure.solids",
+          "value": 1
+        },
+        {
+          "path": "measure.valid",
+          "value": true
+        },
+        {
+          "path": "features.1.id",
+          "value": "hole1"
+        },
+        {
+          "path": "features.1.line",
+          "value": 4
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-flange",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\npattern b1 circular n=6 center=(0,0)\nfillet r=2 edges=boss\n",
+      "name": "flange",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 159754.805404,
+          "rtol": 1e-07,
+          "source": "手算：盘 + 凸台 − 中心孔 − 6 螺栓孔；凸台根部凹圆角加、顶边凸圆角减（Pappus，形心距 r(10−3π)/(12−3π)）"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.bbox.size",
+          "value": [
+            120.0,
+            120.0,
+            30.0
+          ]
+        },
+        {
+          "path": "measure.watertight",
+          "value": true
+        }
+      ],
+      "count": [
+        {
+          "path": "measure.holes",
+          "where": {
+            "d": 10.0,
+            "through": true
+          },
+          "value": 6
+        },
+        {
+          "path": "measure.holes",
+          "where": {
+            "d": 30.0,
+            "through": true
+          },
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-bracket-nofillet",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "# L 形支架：底板 + 立板，4 个沉头安装孔，立板长圆槽，两道加强筋\nmaterial 6061-T6\nlet t = 10\nbase: box 120 60 t\nwall: add box 120 t 50 at=(0,50,0)\nm1: hole d=8.5 at=(20,25) from=top through cbore=(14,5)\npattern m1 linear n=4 dx=80/3\ns1: slot w=8 l=24 at=(60,32) from=back through\nrib: add prism (10,10) (50,10) (50,50) h=6 plane=yz off=0\npattern rib linear n=2 dx=114\n\n",
+      "name": "bracket",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 123603.684029,
+          "rtol": 1e-07,
+          "source": "手算：底板 + 立板 − 4×(Φ8.5 孔 + Φ14×5 沉头) − 长圆槽 × 壁厚 + 2 道三角筋"
+        }
+      ],
+      "count": [
+        {
+          "path": "measure.holes",
+          "where": {
+            "d": 8.5,
+            "through": true
+          },
+          "value": 4
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-bracket",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "# L 形支架：底板 + 立板，4 个沉头安装孔，立板长圆槽，两道加强筋\nmaterial 6061-T6\nlet t = 10\nbase: box 120 60 t\nwall: add box 120 t 50 at=(0,50,0)\nm1: hole d=8.5 at=(20,25) from=top through cbore=(14,5)\npattern m1 linear n=4 dx=80/3\ns1: slot w=8 l=24 at=(60,32) from=back through\nrib: add prism (10,10) (50,10) (50,50) h=6 plane=yz off=0\npattern rib linear n=2 dx=114\nfillet r=3 edges=vertical\n",
+      "name": "bracket",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 123526.427,
+          "rtol": 5e-05,
+          "source": "手算近似：无圆角体积 − 凸棱 120 mm × 圆角截面 + 凹棱 80 mm × 圆角截面；筋顶端效应约 3 mm³，故放宽到 5e-5"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.bbox.size",
+          "value": [
+            120.0,
+            60.0,
+            50.0
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-box",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "# 抽壳盒子，侧面开窗\nmaterial ABS\nbody: box 100 60 40\nshell t=2.5 open=top\nwin: pocket rect w=30 l=15 r=3 at=(50,20) from=front depth=2.5\n",
+      "name": "box",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 42956.814165,
+          "rtol": 1e-07,
+          "source": "手算：外 100·60·40 − 内 95·55·37.5 − 圆角窗 (30·15 − (4−π)·3²)·2.5"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.watertight",
+          "value": true
+        },
+        {
+          "path": "measure.holes",
+          "value": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-gear",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "# 直齿轮 m=2 z=30\nmaterial 45\ng: gear m=2 z=30 width=12 bore=12\n",
+      "name": "gear",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 32113.202,
+          "rtol": 2e-05,
+          "source": "独立计算：渐开线齿廓按 4000 点/段的多边形面积 × 齿宽 − 轴孔；工具用样条拟合齿廓，相对误差 < 1e-5"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.bbox.size.0",
+          "value": 64.0
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-files",
+    "tool": "cad.build",
+    "workdir": true,
+    "payload": {
+      "plan": "# 带孔底座\nmaterial 6061-T6\nbase: box 80 50 20\nhole1: hole d=20 at=center from=top through\nchamfer c=0.5 edges=hole1\n",
+      "name": "base",
+      "formats": [
+        "step",
+        "glb",
+        "stl",
+        "3mf",
+        "svg",
+        "dxf"
+      ]
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "files.0.format",
+          "value": "step"
+        },
+        {
+          "path": "files.5.format",
+          "value": "dxf"
+        }
+      ],
+      "files_verified": true
+    }
+  },
+  {
+    "id": "check-pass",
+    "tool": "cad.check",
+    "payload": {
+      "plan": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\npattern b1 circular n=6 center=(0,0)\nfillet r=2 edges=boss\n",
+      "expect": "bbox 120 120 30\nholes 6 d=10\nhole d=30 axis=z at=(0,0) through\nmass 1.254 kg rtol=0.001\nfits 125 125 35\nwatertight\nfeature boss"
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "verdict",
+          "value": "pass"
+        },
+        {
+          "path": "covered",
+          "value": true
+        }
+      ]
+    }
+  },
+  {
+    "id": "check-fail",
+    "tool": "cad.check",
+    "payload": {
+      "plan": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\npattern b1 circular n=6 center=(0,0)\nfillet r=2 edges=boss\n",
+      "expect": "holes 8 d=10\nbbox 120 120 30"
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "verdict",
+          "value": "fail"
+        },
+        {
+          "path": "checks.0.verdict",
+          "value": "fail"
+        },
+        {
+          "path": "checks.0.actual",
+          "value": 6
+        },
+        {
+          "path": "checks.1.verdict",
+          "value": "pass"
+        }
+      ]
+    }
+  },
+  {
+    "id": "check-unknown",
+    "tool": "cad.check",
+    "payload": {
+      "plan": "b: box 10 10 10",
+      "expect": "mass 2 g\nvolume 1000"
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "verdict",
+          "value": "unknown"
+        },
+        {
+          "path": "covered",
+          "value": false
+        },
+        {
+          "path": "checks.0.verdict",
+          "value": "unknown"
+        },
+        {
+          "path": "checks.1.verdict",
+          "value": "pass"
+        }
+      ]
+    }
+  },
+  {
+    "id": "check-bounds",
+    "tool": "cad.check",
+    "payload": {
+      "plan": "# L 形支架：底板 + 立板，4 个沉头安装孔，立板长圆槽，两道加强筋\nmaterial 6061-T6\nlet t = 10\nbase: box 120 60 t\nwall: add box 120 t 50 at=(0,50,0)\nm1: hole d=8.5 at=(20,25) from=top through cbore=(14,5)\npattern m1 linear n=4 dx=80/3\ns1: slot w=8 l=24 at=(60,32) from=back through\nrib: add prism (10,10) (50,10) (50,50) h=6 plane=yz off=0\npattern rib linear n=2 dx=114\nfillet r=3 edges=vertical\n",
+      "expect": "mass max=300\nmass max=0.35 kg\nvolume min=1e5 max=2e5"
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "verdict",
+          "value": "fail"
+        },
+        {
+          "path": "checks.0.verdict",
+          "value": "fail"
+        },
+        {
+          "path": "checks.1.verdict",
+          "value": "pass"
+        },
+        {
+          "path": "checks.2.verdict",
+          "value": "pass"
+        }
+      ]
+    }
+  },
+  {
+    "id": "check-hole-mismatch",
+    "tool": "cad.check",
+    "payload": {
+      "plan": "# L 形支架：底板 + 立板，4 个沉头安装孔，立板长圆槽，两道加强筋\nmaterial 6061-T6\nlet t = 10\nbase: box 120 60 t\nwall: add box 120 t 50 at=(0,50,0)\nm1: hole d=8.5 at=(20,25) from=top through cbore=(14,5)\npattern m1 linear n=4 dx=80/3\ns1: slot w=8 l=24 at=(60,32) from=back through\nrib: add prism (10,10) (50,10) (50,50) h=6 plane=yz off=0\npattern rib linear n=2 dx=114\nfillet r=3 edges=vertical\n",
+      "expect": "hole d=8.5 cbore=(14,5) through\nhole d=8.5 cbore=(16,5) through"
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "checks.0.verdict",
+          "value": "pass"
+        },
+        {
+          "path": "checks.1.verdict",
+          "value": "fail"
+        }
+      ]
+    }
+  },
+  {
+    "id": "export-stl",
+    "tool": "cad.export",
+    "workdir": true,
+    "payload": {
+      "plan": "# 抽壳盒子，侧面开窗\nmaterial ABS\nbody: box 100 60 40\nshell t=2.5 open=top\nwin: pocket rect w=30 l=15 r=3 at=(50,20) from=front depth=2.5\n",
+      "name": "box",
+      "formats": [
+        "stl"
+      ]
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "files.0.path",
+          "value": "box.stl"
+        }
+      ],
+      "files_verified": true
+    }
+  },
+  {
+    "id": "err-unknown-op",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "b: box 10 10 10\nb2: torus d=5"
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT",
+      "line": 2
+    }
+  },
+  {
+    "id": "err-empty-part",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "b: box 10 10 10\nhole d=50 from=top through",
+      "formats": []
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT",
+      "line": 2
+    }
+  },
+  {
+    "id": "err-fillet-too-big",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "b: box 10 10 10\nfillet r=6 edges=all",
+      "formats": []
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT",
+      "line": 2,
+      "hint_contains": "最大圆角"
+    }
+  },
+  {
+    "id": "err-undefined-var",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "b: box w 10 10",
+      "formats": []
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT",
+      "line": 1,
+      "hint_contains": "let"
+    }
+  },
+  {
+    "id": "err-no-workdir",
+    "tool": "cad.export",
+    "payload": {
+      "plan": "b: box 10 10 10",
+      "formats": [
+        "step"
+      ]
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT"
+    }
+  },
+  {
+    "id": "err-blind-into-air",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "b: box 40 40 10\nh: hole d=10 at=center from=top through\nh2: hole d=4 at=center from=top depth=3",
+      "formats": []
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT",
+      "line": 3
+    }
+  },
+  {
+    "id": "err-bad-check",
+    "tool": "cad.check",
+    "payload": {
+      "plan": "b: box 10 10 10",
+      "expect": "density 2"
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT",
+      "line": 1
+    }
+  },
+  {
+    "id": "build-revolve-ring",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "revolve (5,0) (10,0) (10,20) (5,20)",
+      "name": "revolve-ring",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 4712.38898,
+          "rtol": 1e-07,
+          "source": "手算：π(10²−5²)·20"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.bbox.size",
+          "value": [
+            20.0,
+            20.0,
+            20.0
+          ]
+        },
+        {
+          "path": "measure.solids",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-revolve-pulley",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "revolve (12.5,0) (60,0) (60,10) (48,14) (48,16) (60,20) (60,40) (12.5,40)",
+      "name": "revolve-pulley",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 407722.177768,
+          "rtol": 1e-07,
+          "source": "手算：截面多边形绕 z 轴回转，Pappus（一阶矩按格林公式）"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.bbox.size",
+          "value": [
+            120.0,
+            120.0,
+            40.0
+          ]
+        },
+        {
+          "path": "measure.solids",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-prism-rounded",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "prism (0,0,5) (40,0,5) (40,40,5) (0,40,5) h=10",
+      "name": "prism-rounded",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 15785.398163,
+          "rtol": 1e-07,
+          "source": "手算：(40² − (4−π)·5²)·10"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.bbox.size",
+          "value": [
+            40.0,
+            40.0,
+            10.0
+          ]
+        },
+        {
+          "path": "measure.solids",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-prism-twist",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "prism (-50,-5) (50,-5) (50,5) (-50,5) h=20 twist=30",
+      "name": "prism-twist",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 20000,
+          "rtol": 1e-06,
+          "source": "手算：扭转不改变截面面积，体积 = 100·10·20"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.solids",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-sweep-tube",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "sweep d=12 id=8 (0,0,0) (0,0,50)",
+      "name": "sweep-tube",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 3141.592654,
+          "rtol": 1e-07,
+          "source": "手算：π(6²−4²)·50"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.bbox.size",
+          "value": [
+            12.0,
+            12.0,
+            50.0
+          ]
+        },
+        {
+          "path": "measure.solids",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-sweep-bend",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "sweep d=12 (0,0,46) (0,0,6) (100,0,6) (100,0,46) r=15",
+      "name": "sweep-bend",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 18901.26664,
+          "rtol": 1e-06,
+          "source": "手算：π·6²·中心线长（两段直 25、底边 70、两段 R15 四分之一弧；Pappus）"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.bbox.size",
+          "value": [
+            112.0,
+            12.0,
+            46.0
+          ]
+        },
+        {
+          "path": "measure.solids",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-helix",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "helix d=20 pitch=6 h=48 wire=2",
+      "name": "helix",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 1586.320365,
+          "rtol": 1e-05,
+          "source": "手算：π·1²·螺旋线长，线长 = 圈数·√((πD)²+p²)"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.solids",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-grid",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "base: box 100 60 3\nh1: hole d=5 at=(20,15) from=top through\npattern h1 grid n=7 m=4 dx=10 dy=10",
+      "name": "grid",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 16350.663857,
+          "rtol": 1e-07,
+          "source": "手算：板 − 28 个 Φ5 通孔"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.solids",
+          "value": 1
+        },
+        {
+          "path": "features.2.op",
+          "value": "pattern"
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-mirror",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "base: box 100 20 10\nrib: add box 10 20 30 at=(5,0,10)\nmirror rib plane=yz off=50",
+      "name": "mirror",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 32000,
+          "rtol": 1e-07,
+          "source": "手算：板 + 两块筋"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.bbox.size",
+          "value": [
+            100.0,
+            20.0,
+            40.0
+          ]
+        },
+        {
+          "path": "measure.solids",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-expr-minus",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "let c = 25\nlet hb = 5\nbox 10 10 c-hb",
+      "name": "expr-minus",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 2000,
+          "rtol": 1e-07,
+          "source": "手算：10·10·(25−5)；c-hb 按减法读"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.solids",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "build-eng-symbols",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "plate: cylinder d=Φ40 h=10mm\nbore: hole d=Ø10 at=center from=top through\nv: cut cylinder d=Φ20 h=2mm at=(0,0,8)\nb: hole d=⌀4 at=(15,0) from=top through\npattern b circular n=4 center=(0,0) angle=360°",
+      "name": "eng-symbols",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "values": [
+        {
+          "path": "measure.volume_mm3",
+          "value": 10807.078728,
+          "rtol": 1e-07,
+          "source": "手算：Φ40×10 盘 − Φ10 通孔 − 顶面 Φ20 深 2 的沉台（与通孔重叠部分扣回）− 4 个 Φ4 通孔（在沉台外）；记号 Φ Ø ⌀ ° mm 按 2.4.0 规范化"
+        }
+      ],
+      "equals": [
+        {
+          "path": "measure.solids",
+          "value": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "export-from-object",
+    "tool": "cad.export",
+    "workdir": true,
+    "payload": {
+      "object": {
+        "tool": "cad.build",
+        "args": {
+          "plan": "b: box 10 10 10"
+        }
+      },
+      "name": "obj",
+      "format": "stl"
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "files.0.format",
+          "value": "stl"
+        }
+      ]
+    }
+  },
+  {
+    "id": "err-sweep-tight-bend",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "sweep d=12 (0,0,40) (0,0,0) (50,0,0) r=4",
+      "formats": []
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT",
+      "line": 1,
+      "hint_contains": "r 至少"
+    }
+  },
+  {
+    "id": "err-unknown-symbol-hint",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "box 10 10 10\nb: box 5 5 5±0.1",
+      "formats": []
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT",
+      "line": 2,
+      "hint_contains": "公差"
+    }
+  },
+  {
+    "id": "err-helix-wire-pitch",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "helix d=20 pitch=2 h=20 wire=2",
+      "formats": []
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT",
+      "line": 1
+    }
+  }
+]

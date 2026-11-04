@@ -1,0 +1,68 @@
+{
+  "package": "calc",
+  "version": "2.2.1",
+  "publisher": "mengos",
+  "scope": "public",
+  "content_hash": "352edcb2300d5e52d806565b30cfc70c7b0854c624cedf614d1d4599a798cc86",
+  "types": [
+    {
+      "name": "math_expression",
+      "parent": null,
+      "kind": "value",
+      "note": "普通数学记法的表达式字符串"
+    },
+    {
+      "name": "equation",
+      "parent": null,
+      "kind": "value",
+      "note": "等式或方程组"
+    },
+    {
+      "name": "solution_set",
+      "parent": null,
+      "kind": "value",
+      "note": "方程的解；solve 的结果带 complete 标记"
+    }
+  ],
+  "uses_platform_types": [
+    "number",
+    "verdict"
+  ],
+  "tools": "registration.json",
+  "tools_lock": {
+    "covers": [
+      "expr_parser.py",
+      "evaluator.py",
+      "calc_tool.py",
+      "pyproject.toml",
+      "uv.lock",
+      "registration.json"
+    ],
+    "note": "工具 version（lock hash）只覆盖这些文件；tests/、bench.py、README 不在其内"
+  },
+  "certification_material": {
+    "golden_cases": "golden_cases.json",
+    "selection_cases": "selection_cases.json",
+    "golden_runner": "tools/run_golden.py"
+  },
+  "runtime": {
+    "process": {
+      "lang": "python",
+      "requires": ">=3.10",
+      "project": "pyproject.toml",
+      "lock": "uv.lock",
+      "entry": "calc_tool.py",
+      "network": "none",
+      "workdir": false
+    }
+  },
+  "replaces": {
+    "family": "calc",
+    "tool_ids": {
+      "calc.solver.arithmetic": "calc.evaluate",
+      "calc.solver.symbolic": "calc.algebra"
+    },
+    "note": "TL-24 替换：旧 tool_id 摘册、不复用；引用旧 tool_id 的 manifest 与 agent 资产在同一次替换中改为右侧新 tool_id。入参形状不同（旧为 AST JSON 或 sympy 代码，新为数学记法字符串），工具卡由登记资产渲染，模型侧自动跟随"
+  },
+  "certification": []
+}

@@ -1,0 +1,428 @@
+<script>
+// 渲染器契约 v0.1：脚本一就绪就发 mengos.ready；数据到了再画。三维库加载失败不影响其他面板。
+window.__mg = { msg: null, onRender: null };
+addEventListener("message", (e) => {
+  const m = e.data;
+  if (!m || typeof m !== "object" || m.contract !== "0.1") return;
+  if (m.type === "mengos.render") { window.__mg.msg = m; if (window.__mg.onRender) window.__mg.onRender(m); }
+  if (m.type === "mengos.theme" && (m.theme === "light" || m.theme === "dark")) document.documentElement.dataset.theme = m.theme;
+});
+parent.postMessage({ type: "mengos.ready", contract: "0.1", views: ["full", "embed"] }, "*");
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (x, d = 2) => (x == null ? "—" : Number(x).toLocaleString("zh-CN", { minimumFractionDigits: d, maximumFractionDigits: d }));
+const num = (x) => (typeof x !== "number" ? x : Number.isInteger(x) ? x.toLocaleString("zh-CN") : (+x.toFixed(3)).toLocaleString("zh-CN", { maximumFractionDigits: 3 }));
+const kb = (n) => (n >= 1048576 ? (n / 1048576).toFixed(2) + " MB" : (n / 1024).toFixed(1) + " KB");
+const post = (m) => parent.postMessage({ contract: "0.1", ...m }, "*");
+
+const ROLE = {
+  "model.exact": "精确几何，交给加工或其他 CAD",
+  "model.view": "网页查看，按特征分节点",
+  "mesh.print": "三角网格，3D 打印",
+  drawing: "三视图，第一角画法",
+};
+const FMT_NOTE = { step: "STEP AP214", glb: "glTF 2.0 二进制", stl: "二进制 STL", "3mf": "3MF 打印包", svg: "SVG 矢量", dxf: "DXF R2018" };
+const OP_NAME = { box: "长方体", cylinder: "圆柱", sphere: "球", cone: "圆锥", prism: "拉伸", gear: "齿轮", add: "加料", cut: "去料",
+  hole: "孔", pocket: "型腔", slot: "长圆槽", fillet: "圆角", chamfer: "倒角", shell: "抽壳", pattern: "阵列", body: "基体",
+  revolve: "回转", sweep: "扫掠", helix: "螺旋", mirror: "镜像" };
+
+const state = { part: null, files: [], formats: [], tab: "plan", sel: null, hole: null, view: "iso", cut: "none", cutPos: 0.5, edges: true };
+const fmtOf = (f) => f.format || (f.path || "").split(".").pop();
+const fileOf = (fmtKey) => state.files.find((f) => fmtOf(f) === fmtKey);
+
+/* ---------------- 数据：渲染器契约 v0.1 §4.2 ---------------- */
+function adopt(msg) {
+  const obj = msg.object && typeof msg.object === "object" ? msg.object : {};
+  const out = obj.output && typeof obj.output === "object" ? obj.output : obj;
+  const build = { features: out.features || [], files: out.files || [], measure: out.measure || null, warnings: out.warnings || [], plan_sha256: out.plan_sha256 || "" };
+  const plan = (obj.args && typeof obj.args.plan === "string") ? obj.args.plan : build.features.map((f) => f.src).join("\n");
+  const byPath = new Map((msg.files || []).map((f) => [f.path, f]));
+  state.files = build.files.map((f) => ({ ...f, bytes: byPath.get(f.path)?.bytes ?? null }));
+  state.formats = Array.isArray(msg.formats) ? msg.formats : [];
+  state.part = {
+    name: out.name || obj.args?.name || "part",
+    title: msg.artifact?.target || out.name || "零件",
+    kind: msg.artifact?.type || "",
+    plan, build,
+    check: obj.check || null,          // v0.1 不传同一 run 的相关值；规范对象自带核对时才显示
+    tool_version: obj.tool_version || "—",
+  };
+}
+
+/* ---------------- 三维（按需加载，失败不影响其他面板） ---------------- */
+let THREE = null, GLTFLoader = null, OrbitControls = null;
+let renderer, scene, camera, controls, key, fill, clip, loader, ray;
+let root = null, featMeshes = [], edgeObj = null, axisLine = null, box = null, radius = 0.1;
+const vp = $("#viewport");
+
+async function load3d() {
+  try {
+    THREE = await import("three");
+    ({ GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js"));
+    ({ OrbitControls } = await import("three/addons/controls/OrbitControls.js"));
+  } catch {
+    THREE = null;
+    vp.insertAdjacentHTML("beforeend", `<div class="no3d">三维查看需要从公共 CDN 加载 three.js，这里没加载成功。<br>其余面板与下载不受影响。</div>`);
+    $("#loading").hidden = true;
+    return false;
+  }
+  renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.localClippingEnabled = true;
+  vp.prepend(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.0001, 100);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.12;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8a86, 1.6));
+  key = new THREE.DirectionalLight(0xffffff, 1.5); scene.add(key);
+  fill = new THREE.DirectionalLight(0xffffff, 0.5); scene.add(fill);
+  clip = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0);
+  box = new THREE.Box3();
+  loader = new GLTFLoader();
+  ray = new THREE.Raycaster();
+  new ResizeObserver(resize).observe(vp);
+  let down = null;
+  renderer.domElement.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener("pointerup", (e) => {
+    if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+    const r = renderer.domElement.getBoundingClientRect();
+    ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    const hits = ray.intersectObjects(featMeshes, false).filter((h) => state.cut === "none" || clip.distanceToPoint(h.point) >= -1e-9);
+    select(hits.length ? hits[0].object.userData.feature : null, true);
+  });
+  resize(); loop();
+  return true;
+}
+
+function themeColors() {
+  if (!THREE || !scene) return;
+  scene.background = new THREE.Color(css("--view-bg"));
+  const base = new THREE.Color(css("--model")), sel = new THREE.Color(css("--model-sel")), cap = new THREE.Color(css("--model-cap"));
+  for (const m of featMeshes) {
+    const on = state.sel && m.userData.feature === state.sel;
+    m.material.color.copy(on ? sel : base);
+    m.userData.cap.material.color.copy(cap);
+    m.userData.cap.visible = state.cut !== "none";
+  }
+  if (edgeObj) edgeObj.traverse((o) => { if (o.material) o.material.color.set(css("--edge")); });
+  if (axisLine) axisLine.material.color.set(css("--axis"));
+}
+function frame(view) {
+  if (!THREE || !root) return;
+  const c = box.getCenter(new THREE.Vector3());
+  // 模型 z 向上 → glTF y 向上；模型 y（向后）→ glTF −z
+  const dirs = { iso: [1, 0.85, 1.15], front: [0, 0, 1], top: [0, 1, 0.0001], left: [-1, 0, 0] };
+  const d = new THREE.Vector3(...dirs[view]).normalize();
+  camera.position.copy(c).addScaledVector(d, radius * 6);
+  camera.up.set(0, 1, 0);
+  if (view === "top") camera.up.set(0, 0, -1);
+  controls.target.copy(c);
+  camera.near = radius * 0.01; camera.far = radius * 20;
+  fit(); controls.update();
+}
+function fit() {
+  if (!camera) return;
+  const w = vp.clientWidth, h = vp.clientHeight, a = w / Math.max(h, 1), r = radius * 1.18;
+  if (a >= 1) Object.assign(camera, { left: -r * a, right: r * a, top: r, bottom: -r });
+  else Object.assign(camera, { left: -r, right: r, top: r / a, bottom: -r / a });
+  camera.updateProjectionMatrix();
+}
+function resize() { if (!renderer) return; renderer.setSize(vp.clientWidth, vp.clientHeight, false); fit(); }
+function applyCut() {
+  const on = state.cut !== "none";
+  $("#cutpos").hidden = !on;
+  if (!THREE || !root) return;
+  const planes = on ? [clip] : [];
+  if (on) {
+    // 保留朝向等轴测相机的一侧被切开：模型 x ≤ p、模型 z ≤ p、模型 y ≥ p（模型 y 对应 glTF −z）
+    const t = state.cutPos, lo = box.min, hi = box.max;
+    if (state.cut === "x") { clip.normal.set(-1, 0, 0); clip.constant = lo.x + (hi.x - lo.x) * t; }
+    if (state.cut === "z") { clip.normal.set(0, -1, 0); clip.constant = lo.y + (hi.y - lo.y) * t; }
+    if (state.cut === "y") { clip.normal.set(0, 0, -1); clip.constant = hi.z - (hi.z - lo.z) * t; }
+  }
+  for (const m of featMeshes) { m.material.clippingPlanes = planes; m.userData.cap.material.clippingPlanes = planes; }
+  if (edgeObj) edgeObj.traverse((o) => { if (o.material) o.material.clippingPlanes = planes; });
+  themeColors();
+}
+async function loadModel() {
+  if (!THREE) return;
+  $("#loading").hidden = false;
+  if (root) { scene.remove(root); root = null; }
+  if (axisLine) { scene.remove(axisLine); axisLine = null; }
+  featMeshes = []; edgeObj = null;
+  const glb = fileOf("glb")?.bytes;
+  if (!glb) { $("#loading").textContent = "规范对象里没有可查看的 GLB 文件"; return; }
+  const gltf = await loader.parseAsync(glb.slice(0), "");
+  root = gltf.scene;
+  const meshes = [];
+  root.traverse((o) => {
+    if (o.isMesh && !o.userData.edges) meshes.push(o);
+    if (o.isLineSegments || o.isLine) o.material = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.85 });
+  });
+  for (const o of meshes) {                      // 先收集再加剖面子网格，免得遍历时一边走一边加
+    o.userData.feature = o.userData.feature || o.parent?.userData?.feature;
+    o.material = new THREE.MeshStandardMaterial({ metalness: 0.12, roughness: 0.62, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    const cap = new THREE.Mesh(o.geometry, new THREE.MeshBasicMaterial({ side: THREE.BackSide }));
+    cap.raycast = () => {};
+    o.add(cap); o.userData.cap = cap; featMeshes.push(o);
+  }
+  root.traverse((o) => { if (o.userData?.edges) edgeObj = o; });
+  scene.add(root);
+  root.updateMatrixWorld(true);
+  box.setFromObject(root);
+  radius = box.getBoundingSphere(new THREE.Sphere()).radius;
+  if (edgeObj) edgeObj.visible = state.edges;
+  themeColors(); applyCut(); frame(state.view);
+  $("#loading").hidden = true;
+}
+function showHoleAxis(h) {
+  if (!THREE) return;
+  if (axisLine) { scene.remove(axisLine); axisLine = null; }
+  if (!h) return;
+  const s = 0.001, L = h.length / 2 + Math.max(4, h.d * 0.6);
+  const toGl = (p) => new THREE.Vector3(p[0] * s, p[2] * s, -p[1] * s);
+  const c = h.center, d = h.dir;
+  const a = toGl([c[0] - d[0] * L, c[1] - d[1] * L, c[2] - d[2] * L]);
+  const b = toGl([c[0] + d[0] * L, c[1] + d[1] * L, c[2] + d[2] * L]);
+  axisLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), new THREE.LineDashedMaterial({ dashSize: radius * 0.04, gapSize: radius * 0.02, depthTest: false }));
+  axisLine.computeLineDistances(); axisLine.renderOrder = 10;
+  scene.add(axisLine); themeColors();
+}
+function loop() {
+  controls.update();
+  key.position.copy(camera.position).add(new THREE.Vector3(radius, radius * 2, radius));
+  fill.position.copy(camera.position).multiplyScalar(-1);
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- 检视 ---------------- */
+function feat(id) { return state.part.build.features.find((f) => f.id === id); }
+async function select(fid, fromView) {
+  state.sel = fid && fid !== state.sel ? fid : (fromView && fid ? null : fid);
+  themeColors();
+  const f = state.sel && feat(state.sel);
+  const pick = $("#pick");
+  pick.hidden = !f;
+  if (f) {
+    pick.innerHTML = `<b>${esc(f.id)}</b> · ${OP_NAME[f.op] || esc(f.op)} <span class="mono">第 ${f.line} 行 · ${f.faces} 个面</span>`;
+    post({ type: "mengos.select", handle_id: `feature:${f.id}`, label: `${f.id}（第 ${f.line} 行）` });
+  }
+  if (fromView && f && state.tab !== "plan") await setTab("plan");
+  else if (state.tab === "plan") await renderPane();
+  if (fromView && f) $(`.pl[data-line="${f.line}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+function hiliteSrc(src) {
+  const [code, cm] = src.split(/(?=#)/);
+  const m = code.match(/^(\s*)([^\s:]+)(\s*:)(.*)$/);
+  const body = m ? `${m[1]}<span class="nm">${esc(m[2])}</span>${esc(m[3])}${esc(m[4])}` : esc(code);
+  return body + (cm ? `<span class="cm">${esc(cm)}</span>` : "");
+}
+function paneP() {
+  const b = state.part.build, byLine = {};
+  for (const f of b.features) byLine[f.line] = f;
+  const rows = state.part.plan.replace(/\n$/, "").split("\n").map((src, i) => {
+    const f = byLine[i + 1];
+    const cls = ["pl", f ? "feat" : "", f && f.id === state.sel ? "sel" : "", f && !f.faces ? "gone" : ""].join(" ");
+    const fx = f ? (f.faces ? `${f.faces} 面` : "已被覆盖") : "";
+    return `<div class="${cls}" data-line="${i + 1}" ${f ? `data-fid="${esc(f.id)}" tabindex="0" role="button"` : ""}><span class="no">${i + 1}</span><span class="src">${hiliteSrc(src) || "&nbsp;"}</span><span class="fx">${fx}</span></div>`;
+  }).join("");
+  const warn = b.warnings.length ? `<div class="card"><h2>提示</h2>${b.warnings.map((w) => `<div class="note">第 ${w.line} 行：${esc(w.message)}</div>`).join("")}</div>` : "";
+  return `<div class="card plan">${rows}</div>${warn}
+  <div class="card note">点模型上的面，或点带“面”的行，就能定位到产生它的那一行。行名就是特征的句柄，倒角、阵列、核对都用它。</div>`;
+}
+function paneM() {
+  const m = state.part.build.measure;
+  if (!m) return `<div class="card note">规范对象里没有测量值。</div>`;
+  const holes = m.holes.map((h, i) => {
+    const at = h.at ? `(${h.at.map((v) => fmt(v, 2)).join(", ")})` : "—";
+    const extra = [h.cbore ? `沉头 Ø${fmt(h.cbore.d, 1)}×${fmt(h.cbore.depth, 1)}` : "", h.csk ? `锥口 Ø${fmt(h.csk.d, 1)} ${fmt(h.csk.angle, 0)}°` : ""].filter(Boolean).join(" ");
+    return `<tr class="hole ${state.hole === i ? "sel" : ""}" data-hole="${i}" tabindex="0"><td>Ø${fmt(h.d, 2)}</td><td>${typeof h.axis === "string" ? h.axis : "斜"}</td><td>${at}</td><td>${h.through ? "通" : "深 " + fmt(h.depth, 2)}</td><td>${extra || "—"}</td></tr>`;
+  }).join("");
+  return `<div class="card"><h2>实体</h2><div class="kv">
+    <span class="k">外形</span><span class="v">${m.bbox.size.map((v) => fmt(v, 3)).join(" × ")} mm</span>
+    <span class="k">最小角点</span><span class="v">(${m.bbox.min.map((v) => fmt(v, 3)).join(", ")})</span>
+    <span class="k">体积</span><span class="v">${fmt(m.volume_mm3, 3)} mm³</span>
+    <span class="k">表面积</span><span class="v">${fmt(m.area_mm2, 3)} mm²</span>
+    <span class="k">质量</span><span class="v">${m.mass_g == null ? "未给材料" : fmt(m.mass_g, 2) + " g"}</span>
+    <span class="k">材料</span><span class="v">${esc(m.material || "—")}${m.density_g_cm3 ? ` · ${m.density_g_cm3} g/cm³` : ""}</span>
+    <span class="k">质心</span><span class="v">(${m.center_of_mass.map((v) => fmt(v, 3)).join(", ")})</span>
+    <span class="k">拓扑</span><span class="v">${m.solids} 实体 · ${m.faces} 面 · ${m.edges} 边</span>
+    <span class="k">有效 / 水密</span><span class="v">${m.valid ? "B-rep 有效" : "无效"} · ${m.watertight ? "网格水密" : "不水密"}（${(m.triangles || 0).toLocaleString()} 三角形）</span>
+  </div></div>
+  <div class="card"><h2>孔 <span class="mono" style="font-size:11px;color:var(--mute)">${m.holes.length}</span></h2>
+    ${m.holes.length ? `<div class="tbl-wrap"><table><thead><tr><th>直径</th><th>轴</th><th>位置</th><th>深度</th><th>孔口</th></tr></thead><tbody>${holes}</tbody></table></div>
+    <p class="note" style="margin:8px 0 0">位置按孔轴方向的投影面给出：z 轴孔为 (x, y)，y 轴孔为 (x, z)，x 轴孔为 (y, z)。点一行在模型上显示孔轴。</p>` : `<p class="note" style="margin:0">没有整圈的孔。圆角、长圆槽端头不算孔。</p>`}
+  </div>`;
+}
+const ICON = {
+  pass: `<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3 6.8-7"/></svg>`,
+  fail: `<svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--alert)" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>`,
+  unknown: `<span class="dot unknown"></span>`,
+};
+function showVal(v) {
+  if (v == null) return "—";
+  if (Array.isArray(v)) return v.map(num).join(" × ");
+  if (typeof v === "number") return num(v);
+  if (typeof v === "boolean") return v ? "是" : "否";
+  if (typeof v === "object") return v.d != null ? `Ø${fmt(v.d, 2)}${v.at ? " @(" + v.at.map((x) => fmt(x, 2)).join(", ") + ")" : ""}` : Object.entries(v).map(([k, x]) => `${({ faces: "面", line: "行", min: "下限", max: "上限" })[k] || k} ${num(x)}`).join(" · ");
+  return esc(v);
+}
+function paneC() {
+  const c = state.part.check;
+  if (!c) return `<div class="card note">核对结论见交付卡。按渲染器契约 v0.1，宿主只传产物本身与它的文件，不传同一 run 里核对工具的结论。</div>`;
+  const n = c.checks.length, p = c.checks.filter((x) => x.verdict === "pass").length;
+  const rows = c.checks.map((x) => `<div class="ck ${x.verdict}"><span class="ic">${ICON[x.verdict]}</span><span class="t">${esc(x.src)}</span><span class="a">${x.actual !== undefined ? "实测 " + showVal(x.actual) : ""}</span>${x.reason ? `<span class="r">${esc(x.reason)}</span>` : ""}</div>`).join("");
+  const head = { pass: "全部通过", fail: "有未通过项", unknown: "有条目无法判定" }[c.verdict];
+  return `<div class="card"><div class="ck-head"><h2 style="margin:0">核对</h2><span class="mono">${p}/${n} · ${head}</span></div>${rows}</div>`;
+}
+function drawingSvg() {
+  const f = state.files.find((x) => x.role === "drawing" || fmtOf(x) === "svg");
+  if (!f || !f.bytes) return null;
+  return new TextDecoder().decode(f.bytes).replace(/^<\?xml[^>]*>/, "");
+}
+function paneD() {
+  const svg = drawingSvg();
+  if (!svg) return `<div class="card note">规范对象里没有三视图文件。</div>`;
+  return `<div class="card"><h2>三视图</h2><div class="paper">${svg}</div>
+  <p class="note" style="margin:10px 0 0">第一角画法：主视图在左上，俯视图在下，左视图在右。粗实线为可见轮廓，虚线为不可见轮廓，点划线为孔的中心线。圆角的相切边按制图习惯不画。图上暂无尺寸标注。</p></div>`;
+}
+function paneF() {
+  const own = new Set(state.files.map(fmtOf));
+  const rows = state.files.map((f) => `<div class="file"><span class="f">${esc(fmtOf(f).toUpperCase())}</span><span class="d">${esc(ROLE[f.role] || f.role || "")}</span>
+    <button class="btn" data-dl="${esc(f.path)}">下载</button>
+    <span class="m">${esc(FMT_NOTE[fmtOf(f)] || f.media_type || "")} · ${kb(f.bytes ? f.bytes.byteLength : 0)}${f.sha256 ? ` · sha256 ${esc(f.sha256.slice(0, 16))}…` : ""}</span></div>`).join("");
+  const more = state.formats.filter((x) => !own.has(x));
+  const moreRows = more.map((x) => `<div class="file"><span class="f">${esc(x.toUpperCase())}</span><span class="d">由平台按需导出</span><button class="btn" data-export="${esc(x)}">导出</button></div>`).join("");
+  return `<div class="card"><h2>文件</h2>${rows}${moreRows}
+    <div class="file-actions"><button class="btn primary" data-dl="__all" ${window.JSZip ? "" : "disabled"}>全部打包下载</button><span class="toast" id="toast">${window.JSZip ? "" : "打包需要从 CDN 加载 JSZip，这里没加载成功；可以逐个下载。"}</span></div></div>
+  <div class="card prov">cad.build · 版本 ${esc(state.part.tool_version)}<br>计划 sha256 ${esc(state.part.build.plan_sha256)}<br>单位 mm · 同一计划导出的文件逐字节相同</div>`;
+}
+function save(name, data) {
+  const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
+  const a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+async function doDownload(key) {
+  const toast = $("#toast");
+  try {
+    if (key === "__all") {
+      const zip = new window.JSZip();
+      for (const f of state.files) if (f.bytes) zip.file(f.path, f.bytes, { date: new Date(1980, 0, 1) });
+      save(`${state.part.name}-cad.zip`, await zip.generateAsync({ type: "blob", compression: "DEFLATE" }));
+    } else {
+      const f = state.files.find((x) => x.path === key);
+      if (f && f.bytes) save(f.path, f.bytes);
+      else post({ type: "mengos.download", format: fmtOf(f || { path: key }) });   // 字节没随来（过大）时由宿主取
+    }
+    if (toast) toast.textContent = "";
+  } catch (e) { if (toast) toast.textContent = `没有保存：${e?.message || e}`; }
+}
+async function renderPane() {
+  const html = { plan: paneP, measure: paneM, check: paneC, drawing: paneD, files: paneF }[state.tab]();
+  $("#pane").innerHTML = await html;
+}
+function setTab(t) {
+  state.tab = t;
+  for (const b of $("#tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === t));
+  return renderPane();
+}
+function renderHead() {
+  const p = state.part, m = p.build.measure, c = p.check;
+  $("#title").textContent = p.title;
+  $("#kind").textContent = (p.kind || "").toUpperCase();
+  if (c) {
+    const nPass = c.checks.filter((x) => x.verdict === "pass").length;
+    const label = { pass: `核对 ${nPass}/${c.checks.length} 通过`, fail: `核对 ${c.checks.length - nPass} 项未通过`, unknown: "核对有项无法判定" }[c.verdict];
+    $("#verdict").innerHTML = `<span class="dot ${c.verdict}"></span>${label}`;
+  } else $("#verdict").textContent = "";
+  $("#sum").innerHTML = m ? `
+    <div><div class="k">外形 mm</div><div class="v">${m.bbox.size.map(num).join(" × ")}</div></div>
+    <div><div class="k">质量</div><div class="v">${m.mass_g == null ? "—" : fmt(m.mass_g, 1) + " g"}</div></div>
+    <div><div class="k">材料</div><div class="v">${esc(m.material || "—")}</div></div>
+    <div><div class="k">体积 mm³</div><div class="v">${fmt(m.volume_mm3, 0)}</div></div>
+    <div><div class="k">孔</div><div class="v">${m.holes.length}</div></div>
+    <div><div class="k">特征</div><div class="v">${p.build.features.length}</div></div>` : "";
+  $("#hudinfo").textContent = "拖动旋转 · 滚轮缩放 · 右键平移";
+}
+
+/* ---------------- 嵌入视图 ---------------- */
+function renderEmbed() {
+  const m = state.part.build.measure;
+  const svg = drawingSvg();
+  $("#embed").innerHTML = `<div class="e-title">${esc(state.part.title)}</div>
+    <div class="e-meta">${m ? `${m.bbox.size.map(num).join(" × ")} mm · ${m.holes.length} 孔 · ` : ""}${state.part.build.features.length} 个特征</div>
+    ${svg ? `<div class="e-draw">${svg}</div>` : ""}`;
+  $("#embed").hidden = false;
+  const send = () => post({ type: "mengos.resize", height: document.documentElement.scrollHeight });
+  new ResizeObserver(send).observe(document.body);
+  send();
+}
+
+/* ---------------- 事件 ---------------- */
+$("#pane").addEventListener("click", (e) => {
+  const pl = e.target.closest(".pl.feat");
+  if (pl) { select(pl.dataset.fid === state.sel ? null : pl.dataset.fid, false); return; }
+  const tr = e.target.closest("tr.hole");
+  if (tr) { const i = +tr.dataset.hole; state.hole = state.hole === i ? null : i; showHoleAxis(state.hole == null ? null : state.part.build.measure.holes[i]); renderPane(); return; }
+  const dl = e.target.closest("[data-dl]");
+  if (dl) { doDownload(dl.dataset.dl); return; }
+  const ex = e.target.closest("[data-export]");
+  if (ex) post({ type: "mengos.download", format: ex.dataset.export });
+});
+$("#pane").addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.matches(".pl.feat, tr.hole")) { e.preventDefault(); e.target.click(); } });
+$("#tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) setTab(b.dataset.tab); });
+document.querySelector('[aria-label="视角"]').addEventListener("click", (e) => {
+  const b = e.target.closest("[data-view]"); if (!b) return;
+  state.view = b.dataset.view;
+  for (const x of b.parentNode.querySelectorAll("[data-view]")) x.setAttribute("aria-pressed", String(x === b));
+  frame(state.view);
+});
+document.querySelector('[aria-label="剖切"]').addEventListener("click", (e) => {
+  const b = e.target.closest("[data-cut]"); if (!b) return;
+  state.cut = b.dataset.cut;
+  for (const x of b.parentNode.querySelectorAll("[data-cut]")) x.setAttribute("aria-pressed", String(x === b));
+  applyCut();
+});
+$("#cutpos").addEventListener("input", (e) => { state.cutPos = e.target.value / 1000; applyCut(); });
+$("#edges").addEventListener("click", (e) => {
+  state.edges = !state.edges; e.currentTarget.setAttribute("aria-pressed", String(state.edges));
+  if (edgeObj) edgeObj.visible = state.edges;
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeColors);
+new MutationObserver(themeColors).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+/* ---------------- 启动 ---------------- */
+let started = false;
+async function onRender(msg) {
+  try {
+    if (msg.theme === "light" || msg.theme === "dark") document.documentElement.dataset.theme = msg.theme;
+    adopt(msg);
+    if (msg.view === "embed") { renderEmbed(); return; }
+    $("#app").hidden = false;
+    state.sel = null; state.hole = null; $("#pick").hidden = true;
+    renderHead();
+    await setTab(state.tab);
+    if (!started) { started = true; await load3d(); }
+    await loadModel();
+  } catch (e) {
+    post({ type: "mengos.error", message: String(e?.message || e) });
+  }
+}
+window.__mg.onRender = onRender;
+if (window.__mg.msg) onRender(window.__mg.msg);
+</script>
+</body>
+</html>

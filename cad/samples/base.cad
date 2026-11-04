@@ -1,0 +1,5 @@
+# 带孔底座
+material 6061-T6
+base: box 80 50 20
+hole1: hole d=20 at=center from=top through
+chamfer c=0.5 edges=hole1

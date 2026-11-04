@@ -1,0 +1,50 @@
+{
+ "title": "Pilot Results: Smart Water Meters",
+ "subtitle": "Quarterly brief",
+ "meta": {
+  "lang": "en",
+  "author": "Operations Team",
+  "date": "2026-09-30",
+  "toc": false
+ },
+ "sections": [
+  {
+   "id": "summary",
+   "heading": "Summary",
+   "body": "The pilot replaced **1,200 meters** in two districts. Leak alerts reduced average repair time from 9 days to 2 days (see [[tab:kpi]]). Details of the rollout are in [[sec:rollout]]."
+  },
+  {
+   "id": "rollout",
+   "heading": "Rollout",
+   "body": "Installation ran for six weeks.\n\n[[tab:kpi]]"
+  },
+  {
+   "id": "next",
+   "heading": "Next steps",
+   "body": "1. Extend to District 3\n2. Integrate billing\n3. Review vendor SLA"
+  }
+ ],
+ "tables": [
+  {
+   "id": "kpi",
+   "caption": "Key indicators",
+   "columns": [
+    "Indicator",
+    "Before",
+    "After"
+   ],
+   "rows": [
+    [
+     "Average repair time (days)",
+     "9",
+     "2"
+    ],
+    [
+     "Unbilled water",
+     "14.2%",
+     "9.8%"
+    ]
+   ]
+  }
+ ]
+}

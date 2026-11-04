@@ -1,0 +1,9 @@
+# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）
+material Q235
+let D = 120
+plate: cylinder d=D h=12
+boss: cylinder d=60 h=18 at=(0,0,12)
+bore: hole d=30 at=center from=top through
+b1: hole d=10 at=(45,0) from=bottom through
+pattern b1 circular n=6 center=(0,0)
+fillet r=2 edges=boss
