@@ -5,7 +5,7 @@
 > - 必填放宽：`if {required:[base]} then {required:[base]} else {required:[plan]}`。不带 base 时与 2.4.4 的校验口径逐键相同（`tests/test_contribution.py` 比对 2.4.4 schema 的 sha256），带 base 时 plan 只写改动的行。
 > - **分次写的约定**（写进 plan 的说明，也是引擎合并语义的结果）：带名字的行与上一版同名 ⟹ 整行替换、留在原位；新名字 ⟹ 追加在末尾；不带名字的行（material、units、let、fillet、chamfer、pattern、mirror、shell，以及注释行、空行）一律追加在末尾，不替换已有的行；追加的 let 只对其后的行生效。想以后还能改的特征都写上名字。
 > - **空行名与注释的读数**（实跑，`tests/test_contribution.py`）：`# 注释` 行、行尾注释、空行、全角冒号的行名，cad.build 都接受；**只有名字、没有操作的行（如 `h1:`）被拒**（BAD_INPUT「缺少操作名」，报行号）；同名两行被拒（「名字已经用过」，所以合并才按名字替换）；重复的 material、let 无害。因此 cad 的约定是不留空行名：cad 没有"空槽中间版本"，合并与运行不受影响，只是引擎没有空槽可以定向。
-> - 包内预检加三项：标注合法（行名正则恰一个捕获组）、base 槽唯一、引擎合并金样中 named-lines 相关的条目（`tests/fixtures/contribution/`，来源与 sha256 见其 `SOURCE.json`）；另核行名正则与计划解析器在全部样例与金样的每一行上读法一致。合并代数的 Python 参照实现 `tests/contribution_ref.py` 与 document 包同名文件逐字节相同。变异读数见 `tests/MUTANTS.md`。
+> - 包内预检加三项：标注合法（行名正则恰一个捕获组）、base 槽唯一、引擎合并金样（`tests/fixtures/contribution/`，引擎自己的夹具逐字节拷贝，其中含 named-lines 相关条目；来源 commit 与 sha256 见其 `SOURCE.json`）；另核行名正则与计划解析器在全部样例与金样的每一行上读法一致。合并代数的 Python 参照实现 `tests/contribution_ref.py` 与 document 包同名文件逐字节相同。变异读数见 `tests/MUTANTS.md`。
 > - 版本：lock `2a4efb009363fc73`，须重新认证。既有 35 条金样与确定性测试逐项照旧通过。
 
 > 2.4.4（W-11，17 TL-16c v0.2.32）：cad.export 的输入类型改为“或”：`in_types: []`、`in_any: [cad_plan, cad_model, cad_part]`——它要的是建模计划或三维模型二选一（input_schema 无 required）。按旧形状这三个类型会被 PLAN 的路径搜索读成“全都要”，导出就走不通。cad.check 的 `[cad_plan, cad_spec]` 两个都必填，不变。工具代码未改；registration 改了，lock 变（d4d06bdf0e22b172），须重新认证。本容器无 cadquery，执行类测试未跑；登记与包自检 12 项过。
@@ -271,7 +271,7 @@ uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 69 条
 | `test_determinism.py` | 五个样件，六种格式，两个进程、不同哈希种子，逐字节相同 |
 | `test_safety.py` | · 源码中没有 eval、exec、compile；<br>· 16 种恶意或畸形计划只得到结构化失败；<br>· 150 条随机组合的计划从不出现 INTERNAL；<br>· workdir 与 name 不能越界 |
 | `test_registration.py` | · 登记资产的件数与入口一致；<br>· lock hash 是最新的，覆盖执行体、依赖与登记资产；<br>· input_example 与金样的输入、输出都通过 schema；<br>· 动词在受控表内；<br>· 审核工具声明了覆盖范围 |
-| `test_contribution.py` | 49 项，贡献型接入预检：标注合法、base 槽唯一、引擎合并金样（named-lines 子集）；整体写法 schema 与 2.4.4 等价；行名正则与计划解析器逐行一致；合并后的计划与一次写成的交出同一份产物；注释行、空行、空行名的读数。夹具与参照实现见 `tests/fixtures/contribution/`、`tests/contribution_ref.py`；变异读数见 `tests/MUTANTS.md` |
+| `test_contribution.py` | 74 项，贡献型接入预检：标注合法、base 槽唯一、引擎合并金样（引擎自己的夹具逐字节拷贝，全量跑，含 named-lines 条目）；整体写法 schema 与 2.4.4 等价；行名正则与计划解析器逐行一致；合并后的计划与一次写成的交出同一份产物；注释行、空行、空行名的读数。夹具与参照实现见 `tests/fixtures/contribution/`、`tests/contribution_ref.py`；变异读数见 `tests/MUTANTS.md` |
 | `test_package.py` | 登记资产严格是 TL-6 的字段，cost 全为数值；选择金样每件应选与不应选各 3 条，且应选的能通过程序过滤。安装包清单：<br>· 交付物类型有 realizes 与渲染器（可继承）；<br>· 工具引用的类型都已声明或是平台类型；<br>· cad.build 只产出 cad_part；<br>· 运行环境不出网；<br>· content_hash 是最新的 |
 
 维护顺序：

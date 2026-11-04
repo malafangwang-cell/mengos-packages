@@ -5,7 +5,7 @@
 > - doc.build 顶层加 base 槽（`x-mengos-base`）；`doc.sections`（by-id，label=heading，fill=body）、`doc.tables`（by-id，label=caption；其 `rows` 为 append）、`doc.figures`、`doc.requirements` 标 `x-mengos-merge`。doc.check、doc.export 的 schema 不动。
 > - 必填放宽：`if {required:[base]} then {required:[base]} else {…}`。id 以外的原必填（顶层 doc、doc 的 title/sections、各元素的 heading/caption/columns/rows/source/text）搬进 else：不带 base 的整体写法走 else，校验口径与 1.2.5 相比只多了节 id 必填一处（`tests/test_contribution.py` 比对 1.2.5 schema 的 sha256）；带 base 的增量只要求 base 与各元素的 id。
 > - 带空槽的中间版本：`body` 缺席、空串、纯空白都接受（本就接受，只出 `empty_section` 提醒），不报 BAD_INPUT。
-> - 包内预检加三项：标注合法、base 槽唯一、引擎合并金样（`tests/fixtures/contribution/`，来源与 sha256 见其 `SOURCE.json`）；合并代数的 Python 参照实现在 `tests/contribution_ref.py`，靠金样验证。缺 id 时工具自己的缺省 id 行为另由 `tests/test_legacy_default_ids.py` 守住。
+> - 包内预检加三项：标注合法、base 槽唯一、引擎合并金样（`tests/fixtures/contribution/`，引擎自己的夹具 merge-algebra / merge-touched-keys / merge-empty-slots 逐字节拷贝，来源 commit 与 sha256 见其 `SOURCE.json`）；合并代数的 Python 参照实现在 `tests/contribution_ref.py`，靠金样验证。缺 id 时工具自己的缺省 id 行为另由 `tests/test_legacy_default_ids.py` 守住。
 > - 版本：lock `219a4dd622f9cda7`，须重新认证。
 
 > 1.2.5（W-11，17 TL-16c v0.2.32）：doc.check 的输入类型改为 `in_types: [document]`——input_schema 只 required doc，expect（doc_spec）可有可无，按 TL-16c 不列（规格里就以 doc.check 为例）。旧形状 `[document, doc_spec]` 在 TL-16c 下会被读成两个都要。工具代码未改；registration 改了，lock 变（a0ddb53fe8b9a549），须重新认证。登记与包自检 13 项过。
@@ -303,7 +303,7 @@ uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider      # 项
 | `test_registration.py` | 例子合 input_schema。例子与三份样例跑三件工具，输出合 output_schema。schema 与代码对同一批坏输入都拒收。version 等于 lock hash |
 | `test_package.py` | 只用 TL-6 字段；类型与渲染器；lock 覆盖范围；content_hash 最新；替换映射；选择金样每件应选与不应选各 3 条；给模型看的文字不含实现用词 |
 | `test_review_regressions.py` | 57 项。独立审查（另起的审查代理用对抗性输入找出 22 处缺陷）逐条钉住：<br>· 信封与预算的各种坏值不再让进程无输出退出；<br>· 坏图、非有限尺寸、实体解码出的控制字符、超长文件名不再导致内部错误，出错时不留半截文件；<br>· 两万行表格导出 Word 是线性耗时；<br>· 各种代码块里的记号不处理，跨块的行内代码不吞引用；<br>· Markdown 里的标题、表注不能注入结构，没闭合的代码块不吞后文；<br>· 十五种 SVG 绕过写法被拒；<br>· 核对的引号、参数与同名节 |
-| `test_contribution.py` | 53 项（另有 `test_legacy_default_ids.py` 3 项），贡献型接入预检（TL-30a）：标注合法、base 槽唯一、引擎合并金样（合并 / 触及键 / 空槽 / 骨架）；整体写法 schema 与 1.2.5 等价；带 base 的增量被接受；空槽中间版本被接受；分次合并出的文档与一次写成的交出同一份产物（文件逐字节相同）。夹具与参照实现见 `tests/fixtures/contribution/`、`tests/contribution_ref.py`；变异读数见 `tests/MUTANTS.md` |
+| `test_contribution.py` | 60 项（另有 `test_legacy_default_ids.py` 3 项），贡献型接入预检（TL-30a）：标注合法、base 槽唯一、引擎合并金样（合并 / 触及键 / 空槽 / 骨架）；整体写法 schema 与 1.2.5 等价；带 base 的增量被接受；空槽中间版本被接受；分次合并出的文档与一次写成的交出同一份产物（文件逐字节相同）。夹具与参照实现见 `tests/fixtures/contribution/`、`tests/contribution_ref.py`；变异读数见 `tests/MUTANTS.md` |
 | `test_safety.py` | 源码不执行代码；十种不合格 SVG 拒收且不写文件；正文里的原始 HTML 被转义、`javascript:` 链接失效；文件名不能越出 workdir；控制字符拒收；超时结构化 |
 
 **开销**：同一台机器，进程冷启动，含 Word。

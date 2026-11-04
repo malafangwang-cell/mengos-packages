@@ -1,6 +1,6 @@
 """贡献型接入预检（17 TL-30a；设计 产出不受模型输出长度限制 r8 §五 第 5 条）。cad 2.5.0。
 
-三项预检：① 标注合法　② base 槽唯一　③ 引擎合并金样中 named-lines 相关的条目（tests/fixtures/contribution，来源与 sha256 见 SOURCE.json）。
+三项预检：① 标注合法　② base 槽唯一　③ 引擎合并金样（tests/fixtures/contribution，引擎自己的夹具逐字节拷贝，其中含 named-lines 相关条目；来源与 sha256 见 SOURCE.json）。
 另有包侧自己的核对：cad.build 在贡献型判别下成立、cad.check / cad.export 仍是整体型；行名正则与计划解析器认的行名一致；
 整体写法的 schema 与 2.4.4 逐键等价；分次合并出的计划与一次写成的计划交出同一份产物；注释行、空行、空行名的实际读数。
 """
@@ -24,7 +24,6 @@ REG = json.loads((ROOT / "registration.json").read_text(encoding="utf-8"))
 UNITS = {u["tool_id"]: u for u in REG["units"]}
 BUILD = UNITS["cad.build"]["signature"]["input_schema"]
 CARD = json.loads((FIX / "card.json").read_text(encoding="utf-8"))["args_schema"]
-GOLD = json.loads((FIX / "merge_golden.json").read_text(encoding="utf-8"))
 SOURCE = json.loads((FIX / "SOURCE.json").read_text(encoding="utf-8"))
 BASE_DESC = "上一版产物的回执节点 id（取输入材料中标 $best:true 的那条）；给出时只写改动的部分，引擎按标注合并"
 # 2.4.4 的 cad.build input_schema 去掉 plan.description 后的规范 JSON sha256（取自 2.4.4 的 registration.json）
@@ -43,7 +42,7 @@ def test_fixture_sha256_matches_source_record(name):
 
 
 def test_shared_reference_implementation_matches_record():
-    assert sha((ROOT / "tests" / "contribution_ref.py").read_bytes()) == SOURCE["shared_with_document_package"]["tests/contribution_ref.py"]
+    assert sha((ROOT / "tests" / "contribution_ref.py").read_bytes()) == SOURCE["shared_with_other_package"]["tests/contribution_ref.py"]
 
 
 # ───────────────────────── 预检 ① 标注合法 ─────────────────────────
@@ -95,35 +94,46 @@ def test_annotations_are_only_on_reachable_paths():
         assert "x-mengos" not in json.dumps(BUILD[k])
 
 
-# ───────────────────────── 预检 ③ 引擎合并金样（named-lines 相关） ─────────────────────────
-def _schema_of(case):
-    return GOLD["named_schema"] if case.get("schema") == "named" else CARD
+# ───────────────────────── 预检 ③ 引擎合并金样（引擎自己的夹具，逐字节拷贝） ─────────────────────────
+def _fx(name):
+    return json.loads((FIX / name).read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize("case", GOLD["cases"], ids=[c["id"] for c in GOLD["cases"]])
-def test_engine_merge_golden_named_lines(case):
-    sch, kind = _schema_of(case), case["kind"]
-    if kind == "merge":
-        if "expect_error" in case:
-            with pytest.raises(MergeError) as ei:
-                merge(sch, case["P"], case["delta"])
-            for k, v in case["expect_error"].items():
-                assert getattr(ei.value, "instance_path" if k == "instancePath" else k) == v
-        else:
-            assert merge(sch, case["P"], case["delta"]) == case["expect"]
-    elif kind == "touched":
-        assert sorted(touched_keys(sch, case["delta"])) == sorted(case["expect"])
-    elif kind == "empty":
-        assert empty_slots(sch, case["args"]) == case["expect"]
-    elif kind == "empty-after-merge":
-        assert empty_slots(sch, merge(sch, case["args"], case["delta"])) == case["expect"]
+ALGEBRA, TOUCHED, EMPTY = _fx("merge-algebra.json"), _fx("merge-touched-keys.json"), _fx("merge-empty-slots.json")
+for _f in (ALGEBRA, TOUCHED, EMPTY):
+    assert _f["card"] == "card.json"          # 夹具里的 schema 指向同目录 card.json
+
+
+@pytest.mark.parametrize("case", ALGEBRA["cases"], ids=[c["name"] for c in ALGEBRA["cases"]])
+def test_engine_merge_algebra_golden(case):
+    sch = case.get("schema", CARD)
+    exp = case["expect"]
+    if exp["ok"]:
+        assert merge(sch, case["P"], case["delta"]) == exp["value"]
     else:
-        raise AssertionError(kind)
+        with pytest.raises(MergeError) as ei:
+            merge(sch, case["P"], case["delta"])
+        assert (ei.value.instance_path, ei.value.message) == (exp["instancePath"], exp["message"])
 
 
-def test_golden_subset_really_covers_named_lines():
-    kinds = {c["id"].split("-")[0] for c in GOLD["cases"]}
-    assert {"U3", "K", "E", "U1"} <= kinds and len(GOLD["cases"]) == 9
+@pytest.mark.parametrize("case", TOUCHED["cases"], ids=[c["name"] for c in TOUCHED["cases"]])
+def test_engine_touched_keys_golden(case):
+    assert sorted(touched_keys(CARD, case["delta"])) == case["keys"]
+
+
+@pytest.mark.parametrize("case", TOUCHED["disjoint_pairs"], ids=[c["name"] for c in TOUCHED["disjoint_pairs"]])
+def test_engine_disjoint_pairs_golden(case):
+    inter = touched_keys(CARD, case["a"]) & touched_keys(CARD, case["b"])
+    assert (not inter) == case["disjoint"]
+
+
+@pytest.mark.parametrize("case", EMPTY["cases"], ids=[c["name"] for c in EMPTY["cases"]])
+def test_engine_empty_slots_golden(case):
+    assert empty_slots(CARD, case["args"]) == case["slots"]
+
+
+def test_engine_fixtures_cover_named_lines_cases():
+    assert any("named-lines" in c["name"] for c in ALGEBRA["cases"]) and any("named-lines" in c["name"] for c in EMPTY["cases"])
 
 
 # ───────────────────────── 整体写法不变 ─────────────────────────

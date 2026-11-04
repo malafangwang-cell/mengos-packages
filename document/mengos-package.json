@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "publisher": "mengos",
   "scope": "public",
-  "content_hash": "dd62ade9b9177f70e7203e68db69d3e274272ebe5924ccc7a40cc6e9bcb3f578",
+  "content_hash": "5313c37aaaefe90f3bd06c3ceb58adb65d75ec2a6a9ce8091eec0421a1c1df97",
   "types": [
     {
       "name": "document",
