@@ -1,4 +1,5 @@
 """生成 registration.json（只在改登记内容时运行；version 由 lock.py 写入）。"""
+import copy
 import json
 from pathlib import Path
 
@@ -30,6 +31,22 @@ PLAN_DOMAIN = (
     "pattern 名字 grid n= m= 加两个方向的间距（如 dx= dy=），共 n×m 个；mirror 名字 plane=yz|xz|xy [off=]。\n"
     "数只写数：直径写 d=25（写成 d=Φ25 也认），角度写 angle=38（写成 38° 也认），长度一律毫米（12mm 也认）；乘号 × 按 * 读，所以三个尺寸要用空格分开（box 80 50 20，不写 80×50×20）；公差不写进计划。\n"
     "不执行代码，只认上述语法；出错时按行号报错并给提示。"
+)
+# ---- cad.build 贡献型声明（2.5.0）----
+# 只有 cad.build 声明 x-mengos-base 与 plan 的 x-mengos-merge；cad.check / cad.export 的 schema 不动。
+# 行名正则恰一个捕获组、匹配包含冒号：与计划解析器认的行名一致（字母、下划线、汉字开头，后接字母数字下划线汉字与点），
+# 全角冒号解析前会转成半角，这里一并认。
+LINE_NAME = "^\\s*([A-Za-z_\\u4e00-\\u9fff][A-Za-z0-9_\\u4e00-\\u9fff.]*)\\s*[:：]"
+BASE_DESC = ("上一版产物的回执节点 id（取输入材料中标 $best:true 的那条）；"
+             "给出时只写改动的部分，引擎按标注合并")
+BASE_SLOT = {"type": "string", "x-mengos-base": True, "description": BASE_DESC}
+BUILD_CONVENTION = (
+    "\n分多次写：给 base 时，plan 只写要新增或要改的行，与上一版的计划按行合并。"
+    "带名字的行（名字: 操作 …）与上一版同名时，整行替换并留在原来的位置；名字是新的，追加在末尾。"
+    "不带名字的行（material、units、let、fillet、chamfer、pattern、mirror、shell，以及注释行、空行）一律追加在末尾，不会替换已有的行；"
+    "追加的 let 只对其后的行生效。想以后还能改的特征都写上名字。"
+    "名字后面必须有操作，不要留只有名字的空行。注释行与空行可以写，但每次追加都会留在计划里。"
+    "不给 base 时 plan 照常是完整的计划。"
 )
 FILE_ITEM = {
     "type": "object",
@@ -259,6 +276,14 @@ for u in units:
     sch["description"] = u.pop("description")
     dom = u.pop("input_domain")
     sch["properties"]["plan"] = dict(sch["properties"]["plan"], description=PLAN_DOMAIN)
+    if tid == "cad.build":
+        sch["properties"]["plan"]["description"] = PLAN_DOMAIN + BUILD_CONVENTION
+        sch["properties"]["plan"]["x-mengos-merge"] = {"mode": "named-lines", "name": LINE_NAME}
+        sch["properties"] = {"base": BASE_SLOT, **sch["properties"]}
+        sch.pop("required")
+        sch["if"] = {"required": ["base"]}
+        sch["then"] = {"required": ["base"]}
+        sch["else"] = {"required": ["plan"]}
     rest = dom[len(PLAN_DOMAIN):].strip()
     if "expect" in sch["properties"]:
         sch["properties"]["expect"] = dict(sch["properties"]["expect"], description=rest)
@@ -275,7 +300,7 @@ for u in units:
 
 reg = {
     "family": "cad",
-    "family_version": "2.4.4",
+    "family_version": "2.5.0",
     "lock_hash": "",
     "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。"
             "入参写法写在 signature.input_schema 的 description 里；选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。"
