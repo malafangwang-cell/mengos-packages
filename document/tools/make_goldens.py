@@ -168,6 +168,20 @@ CASES = [
      "doc.export", {"doc": doc(sec("A")), "name": "../x", "formats": ["md"]}, {"error.code": "BAD_INPUT", "error.where": "name"}),
 ]
 
-out = [{"id": i, "note": n, "tool": t, "payload": p, "expect": e} for i, n, t, p, e in CASES]
+NOTES = {   # 2.0.0 补 id 后，这两条的说明随之改写（期望值不变）
+    "compat_old": "无 level 的简写 {title, sections:[{id, heading, body}]}：缺省 level 1，标题前加编号",
+    "err_default_id_clash": "两节 id 相同拒收（缺省 id 与显式 id 冲突的行为见 tests/test_legacy_default_ids.py）",
+}
+
+
+def fill_ids(payload):
+    """2.0.0：doc.build 的节 id 恒必填。缺 id 的节补上工具原来会缺省出的 id（s<序号>），输出与期望值都不变。"""
+    for i, s in enumerate(payload.get("doc", {}).get("sections", []), 1):
+        s.setdefault("id", f"s{i}")
+    return payload
+
+
+out = [{"id": i, "note": NOTES.get(i, n), "tool": t, "payload": fill_ids(p) if t == "doc.build" else p, "expect": e}
+       for i, n, t, p, e in CASES]
 (ROOT / "golden_cases.json").write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 print(len(out), "cases")

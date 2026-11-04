@@ -1,0 +1,6 @@
+{
+  "_说明": "设计 r8 §3.3 完整例子 (U6 断言): 输入 args 与期望骨架串均取自设计稿原文; isBest=false 时唯一差别是 $best 标记",
+  "args": {"doc":{"title":"社区读书角运营方案","sections":[{"id":"s1","heading":"概述","body":"本方案面向老旧小区。"},{"id":"s2","heading":"开放安排"}],"tables":[{"id":"t1","caption":"排班表","rows":[["周一","张三"],["周三","李四"]]}]},"name":"reading-corner"},
+  "expected_best": "{\"$best\":true,\"doc\":{\"sections\":[{\"empty\":false,\"id\":\"s1\",\"label\":\"概述\"},{\"empty\":true,\"id\":\"s2\",\"label\":\"开放安排\"}],\"tables\":[{\"id\":\"t1\",\"label\":\"排班表\",\"rows\":{\"$count\":2}}],\"title\":{\"$size\":29}},\"name\":{\"$size\":16}}",
+  "expected_not_best": "{\"$best\":false,\"doc\":{\"sections\":[{\"empty\":false,\"id\":\"s1\",\"label\":\"概述\"},{\"empty\":true,\"id\":\"s2\",\"label\":\"开放安排\"}],\"tables\":[{\"id\":\"t1\",\"label\":\"排班表\",\"rows\":{\"$count\":2}}],\"title\":{\"$size\":29}},\"name\":{\"$size\":16}}"
+}

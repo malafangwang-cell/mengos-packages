@@ -3,6 +3,7 @@
 字段严格按 kernel-spec 17 章 TL-6。给模型看的文字（各层 description、examples、non_goals、constraints）
 只写能做出什么、解决什么问题、不做什么，不写实现（TL-16 v0.2.23 澄清）。
 """
+import copy
 import json
 from pathlib import Path
 
@@ -78,6 +79,47 @@ DOC = {"type": "object", "required": ["title", "sections"], "additionalPropertie
            "sections": {"type": "array", "minItems": 1, "maxItems": 2000, "items": SECTION},
            "figures": {"type": "array", "maxItems": 300, "items": FIGURE},
            "tables": {"type": "array", "maxItems": 500, "items": TABLE}}}
+# ---- doc.build 贡献型声明（2.0.0）----
+# 只有 doc.build 声明 x-mengos-base 与 x-mengos-merge；doc.check / doc.export 仍用上面不带标注的 DOC，不变。
+# 四个 by-id 容器（sections、tables、figures、requirements）的元素 id 恒必填，写在 if/then/else 之外：
+# 不带 id 的元素没法被后续增量定位，只会追加出重复项。这是输入契约的收紧（节的 id 原为可选），所以升大版本。
+# 元素 id 以外的原必填（heading、caption、columns、rows……）以及顶层、doc 层的必填，搬进 else 分支：
+# 不带 base 的整体写法走 else，带 base 的增量只要求 base 与各元素的 id。
+BASE_DESC = ("上一版产物的回执节点 id（取输入材料中标 $best:true 的那条）；"
+             "给出时只写改动的部分，引擎按标注合并")
+BUILD_BY_ID = {   # doc 内各 by-id 容器的标注
+    "sections": {"mode": "by-id", "id": "id", "label": "heading", "fill": "body"},
+    "tables": {"mode": "by-id", "id": "id", "label": "caption"},
+    "figures": {"mode": "by-id", "id": "id", "label": "caption"},
+    "requirements": {"mode": "by-id", "id": "id", "label": "text"},
+}
+
+
+def _build_doc_and_branches():
+    doc = copy.deepcopy(DOC)
+    d = doc["description"]
+    assert "id（可选，供引用和后续修改时定位）" in d and d.endswith("也接受只有 {title, sections:[{heading, body}]} 的简单写法。")
+    doc["description"] = (d.replace("id（可选，供引用和后续修改时定位）", "id（必填，供引用和后续修改时定位）")
+                          .removesuffix("也接受只有 {title, sections:[{heading, body}]} 的简单写法。"))
+    else_doc = {"required": doc.pop("required"), "properties": {}}
+    for field, ann in BUILD_BY_ID.items():
+        arr = doc["properties"][field]
+        arr["x-mengos-merge"] = ann
+        rest = [k for k in arr["items"].pop("required") if k != "id"]
+        arr["items"]["required"] = ["id"]
+        if rest:
+            else_doc["properties"][field] = {"items": {"required": rest}}
+    rows = doc["properties"]["tables"]["items"]["properties"]["rows"]
+    rows["x-mengos-merge"] = {"mode": "append"}
+    return doc, else_doc
+
+
+DOC_BUILD, _ELSE_DOC = _build_doc_and_branches()
+BUILD_IF = {"required": ["base"]}
+BUILD_THEN = {"required": ["base"]}
+BUILD_ELSE = {"required": ["doc"], "properties": {"doc": _ELSE_DOC}}
+BASE_SLOT = {"type": "string", "x-mengos-base": True, "description": BASE_DESC}
+
 NAME = {"type": "string", "pattern": "^[^/\\\\.:*?\"<>|\\s]{1,64}$", "description": NAME_DESC}
 
 FILE_ITEM = {
@@ -139,12 +181,14 @@ units = [
                         "rows": [["书架与桌椅", "1,200"], ["首批图书", "3,800"]]}]}},
         "signature": {
             "input_schema": {
-                "type": "object", "required": ["doc"], "additionalProperties": False,
+                "type": "object", "additionalProperties": False,
+                "if": BUILD_IF, "then": BUILD_THEN, "else": BUILD_ELSE,
                 "description": "要交付一份长文档时用。你把文档写进 doc：标题、各节正文、图表、要响应的要求；任务只给了题目时，内容由你按题目写。"
                                "本工具统一给章节、图、表编号，生成目录，把交叉引用换成可跳转的“第 2.1 节”“图 3”，列出每条要求由哪些章节响应；"
                                "交付 Word 文件（带目录与页码）、Markdown 原文，以及产出台可看、可按节定位的版本。",
                 "properties": {
-                    "doc": DOC,
+                    "base": BASE_SLOT,
+                    "doc": DOC_BUILD,
                     "name": NAME,
                     "formats": {"type": "array", "uniqueItems": True, "items": {"enum": ["docx", "html"]},
                                 "description": "除文档模型、产出台数据与 Markdown 之外，再交哪些文件：docx（Word，缺省）、html（单个网页文件，可打印）。"},
@@ -297,7 +341,7 @@ for u in units:
 
 reg = {
     "family": "document",
-    "family_version": "1.2.5",
+    "family_version": "2.0.0",
     "lock_hash": "",
     "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。"
             "选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；"
