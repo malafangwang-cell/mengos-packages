@@ -24,7 +24,7 @@ GOLDENS = ROOT / "tests" / "goldens"
 def test_registration_fields():
     assert [u["tool_id"] for u in REG["units"]].count("mathdisc.discover") == 1
     assert UNIT["trust_claim"] == "T3" and UNIT["effect"] == "none"
-    assert UNIT["executor"] == {"kind": "process", "entry": "md_tool.py", "mode": "async", "credential_ref": "DASHSCOPE_API_KEY"}
+    assert UNIT["executor"]["mode"] == "async" and UNIT["executor"]["credential_ref"] == "DASHSCOPE_API_KEY"
     assert UNIT["cost"] == {"latency": 120000, "price": 10, "timeout": 600000}
     assert UNIT["capability"]["out_types"] == ["math_relation"]
     ng = UNIT["capability"]["non_goals"]
@@ -349,3 +349,17 @@ def test_client_host_comes_only_from_lock_and_no_legacy_env():
     for rel in M["tools_lock"]["covers"]:
         if rel.endswith(".py"):
             assert "deepseek" not in (ROOT / rel).read_text(encoding="utf-8").lower(), rel
+
+
+def test_async_executor_declares_async_ops():
+    """安装器 TL-9：mode=async 必带 async_ops；discover 登记的 async_ops 字面如下，其余 executor 字段不变。"""
+    ex = UNIT["executor"]
+    assert ex["mode"] == "async"
+    assert ex["async_ops"] == {"submit": "POST /api/v1/jobs", "status": "GET /api/v1/jobs/{job_id}"}
+    assert {k: v for k, v in ex.items() if k != "async_ops"} == {
+        "kind": "process", "entry": "md_tool.py", "mode": "async", "credential_ref": "DASHSCOPE_API_KEY"}
+    for u in REG["units"]:
+        if u["executor"]["mode"] == "async":
+            assert "async_ops" in u["executor"], u["tool_id"]
+        else:
+            assert "async_ops" not in u["executor"], u["tool_id"]

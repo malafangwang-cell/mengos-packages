@@ -27,7 +27,8 @@ def test_entry_is_package_relative():
     assert (ROOT / pr["entry"]).is_file() and pr["network"] == "dashscope.aliyuncs.com"
     for u in REG["units"]:
         if u["tool_id"] == "mathdisc.discover":  # 异步、出网、带凭据名：专项见 test_discover.py
-            assert u["executor"] == {"kind": "process", "entry": pr["entry"], "mode": "async", "credential_ref": "DASHSCOPE_API_KEY"}
+            assert u["executor"] == {"kind": "process", "entry": pr["entry"], "mode": "async", "credential_ref": "DASHSCOPE_API_KEY",
+                                     "async_ops": {"submit": "POST /api/v1/jobs", "status": "GET /api/v1/jobs/{job_id}"}}
         else:
             assert u["executor"] == {"kind": "process", "entry": pr["entry"], "mode": "sync"}
 
