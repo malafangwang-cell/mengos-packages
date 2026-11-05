@@ -95,7 +95,7 @@ def test_table_build_is_contribution_tool_and_others_stay_whole():
 
 def test_annotation_declarations_on_table_build():
     t = BUILD["properties"]["table"]["properties"]
-    assert t["sheets"]["x-mengos-merge"] == {"mode": "by-id", "id": "id", "label": "name", "fill": "rows"}
+    assert t["sheets"]["x-mengos-merge"] == {"mode": "by-id", "id": "id", "label": "name"}   # 不设 fill（补裁三），与 doc.tables 同形
     assert t["sheets"]["items"]["properties"]["rows"]["x-mengos-merge"] == {"mode": "append"}
     assert t["rows"]["x-mengos-merge"] == {"mode": "append"}
     # rows 仍是数据字段（1.0.1 起），与 append 并存
@@ -214,7 +214,7 @@ def test_incremental_rows_merge_to_the_table_written_at_once(tmp_path):
     whole = {"table": {"title": "物料", "sheets": [{"id": "bom", "name": "物料", "columns": cols, "rows": rows, "totals": ["金额"]}]}}
     first = {"table": {"title": "物料", "sheets": [{"id": "bom", "name": "物料", "columns": cols, "totals": ["金额"]}]}}
     jsonschema.validate(first, BUILD)
-    assert empty_slots(BUILD, first) == ["table.sheets#bom"]
+    assert empty_slots(BUILD, first) == []          # sheets 不设 fill，没有空槽
     r0 = run("table.build", first, tmp_path, "v0")
     assert r0["ok"] and [w["code"] for w in r0["output"]["warnings"]] == ["no_rows"], r0
     d1 = {"table": {"sheets": [{"id": "bom", "rows": rows[:2]}]}}
@@ -230,18 +230,16 @@ def test_incremental_rows_merge_to_the_table_written_at_once(tmp_path):
         assert (tmp_path / "whole" / fa["path"]).read_bytes() == (tmp_path / "inc" / fb["path"]).read_bytes()
 
 
-def test_skeleton_of_table_build_names_sheets_and_counts_rows():
+def test_tb10_skeleton_of_table_build_names_sheets_and_counts_rows():
+    """TB-10（补裁三）：sheets 不设 fill，每个 sheet 的骨架为 {id, label, rows:{$count:n}}；rows 缺席的 sheet 不出 rows 键。"""
     args = {"table": {"title": "库存", "sheets": [{"id": "s1", "name": "零件", "columns": ["名称"], "rows": [["轴承"], ["齿轮"]]},
                                                   {"id": "s2", "name": "原料", "columns": ["名称"]},
                                                   {"id": "s3", "name": "备件", "columns": ["名称"], "rows": []}]}}
     sk = json.loads(skeleton(BUILD, args, True))
-    # 按引擎口径（contribution.ts skeletonNode）：by-id 元素只渲染 id、label、empty 与 fill 以外的带标注字段；
-    # rows 是 fill 字段，故各 sheet 只见 empty，不见行数（单表写法的 table.rows 不在 by-id 里，见下，有 $count）
-    assert sk["table"]["sheets"] == [{"empty": False, "id": "s1", "label": "零件"},
-                                     {"empty": True, "id": "s2", "label": "原料"},
-                                     {"empty": False, "id": "s3", "label": "备件"}]
-    # 按引擎口径，fill 字段缺席或为 "" 才算空槽；rows: [] 不算
-    assert empty_slots(BUILD, args) == ["table.sheets#s2"]
+    assert sk["table"]["sheets"] == [{"id": "s1", "label": "零件", "rows": {"$count": 2}},
+                                     {"id": "s2", "label": "原料"},
+                                     {"id": "s3", "label": "备件", "rows": {"$count": 0}}]
+    assert empty_slots(BUILD, args) == []
     assert "轴承" not in json.dumps(sk, ensure_ascii=False)
     single = json.loads(skeleton(BUILD, {"table": {"title": "T", "columns": ["a"], "rows": [["x"]]}}, False))
     assert single["table"]["rows"] == {"$count": 1} and single["$best"] is False
@@ -319,7 +317,8 @@ def test_whole_mode_schema_equals_1_0_1_schema_plus_sheet_id():
 
 def test_build_description_states_the_2_0_0_rules():
     d = BUILD["properties"]["table"]["description"]
-    for phrase in ("id 必填", "被公式或合计引用的列必须写 type", "格数等于列数", "分批追加行时请用对象行", "改了列要把已有的数组行按新列重写"):
+    for phrase in ("id 必填", "被公式或合计引用的列必须写 type", "只做 count 的列也要写 type（text 即可）", "格数等于列数",
+                   "有公式列时也可以只写非公式列，格数等于非公式列数", "分批追加行时请用对象行", "改了列要把已有的数组行按新列重写"):
         assert phrase in d, phrase
 
 
@@ -415,7 +414,7 @@ def test_array_row_length_mismatch_reports_row_number_expected_and_actual(tmp_pa
          "rows": [["1", "2", "3"], ["1", "2"]]}
     r = run("table.build", {"table": t}, tmp_path)
     assert not r["ok"] and r["error"]["code"] == "BAD_INPUT" and r["error"]["where"] == "table.rows[1]", r
-    for s in ("第 2 行", "有 2 格", "表有 3 列", "期望 3", "实际 2"):
+    for s in ("第 2 行", "有 2 格", "表有 3 列", "须等于列数 3（实际 2）"):
         assert s in r["error"]["message"], (s, r["error"]["message"])
     assert "对象行" in r["error"]["hint"]
 
@@ -427,7 +426,7 @@ def test_short_array_row_is_not_padded_with_null(tmp_path):
     for i, row in enumerate(([1], [1, 2], [1, 2, None, "x", "y"])):
         r = run("table.build", {"table": {"title": "T", "columns": cols, "rows": [row]}}, tmp_path, f"r{i}")
         assert not r["ok"] and r["error"]["where"] == "table.rows[0]", (row, r)
-        assert f"实际 {len(row)}" in r["error"]["message"] and "期望 4（或不含公式列的 3）" in r["error"]["message"]
+        assert f"须等于列数 4，或等于非公式列数 3（实际 {len(row)}）" in r["error"]["message"], r["error"]["message"]
     ok = run("table.build", {"table": {"title": "T", "columns": cols, "rows": [[1, 2, "x"], [1, 2, None, "y"]]}}, tmp_path, "ok")
     assert ok["ok"], ok   # 等于列数，或等于非公式列数（1.0.1 起的写法）
 

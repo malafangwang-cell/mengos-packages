@@ -613,8 +613,8 @@ def _row(r, where, sh, plain, t, from_model, ri):
         for j, v in zip(plain, r):
             out[j] = v
         return out
-    want = f"{n}" if len(plain) == n else f"{n}（或不含公式列的 {len(plain)}）"
-    raise BadInput(f"第 {ri + 1} 行有 {len(r)} 格，表有 {n} 列：数组行的格数须等于当前列数（期望 {want}，实际 {len(r)}）", where,
+    want = f"列数 {n}" if len(plain) == n else f"列数 {n}，或等于非公式列数 {len(plain)}"
+    raise BadInput(f"第 {ri + 1} 行有 {len(r)} 格，表有 {n} 列：数组行的格数须等于{want}（实际 {len(r)}）", where,
                    "空格子写 null；分批追加行请用对象行（列的 key 或标题 → 值）；改了列要把已有的数组行按新列重写")
 
 

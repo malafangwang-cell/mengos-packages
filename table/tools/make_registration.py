@@ -1,7 +1,7 @@
 """生成 registration.json（TL-6 登记资产）。说明文字站在调用方的观察点写（TL-16b、TL-19）。
 
 2.0.0：table.build 接入贡献型声明（17 TL-30a），入参与核对、导出分成两份定义：
-  · table.build：顶层 base 槽（x-mengos-base）；sheets 标 by-id（id 必填、label=name、fill=rows），各处 rows 标 append；
+  · table.build：顶层 base 槽（x-mengos-base）；sheets 标 by-id（id 必填、label=name，不设 fill，与 document 的 doc.tables 同形），各处 rows 标 append；
     必填改为 if {required:[base]} then {required:[base]} else {原必填}，只有 sheet 的 id 必填写在分支之外；
   · table.check、table.export：表的定义照 1.0.1（sheet id 可选），不带贡献词汇——它们收的是表对象，不参与合并。
 
@@ -67,10 +67,10 @@ TABLE_DESC_BUILD = (
     "每张 {id, name 表名（最多 31 个字符）, columns, rows, totals, caption, note}，id 必填（字母、数字、下划线，供后续修改时定位这张表）。"
     "columns 按顺序列出各列：title 列标题（必填，只写名称，单位写进 unit）、key（可选，字母、数字、下划线，公式里用它引用这一列）、"
     "type（text 文字 / integer 整数 / number 数 / money 金额 / percent 百分比 / date 日期 / bool 是否；不写时按内容推断，建议都写上；"
-    "被公式或合计引用的列必须写 type）、"
+    "被公式或合计引用的列必须写 type，只做 count 的列也要写 type（text 即可））、"
     "unit 单位（如 MPa、元/吨）、decimals 显示几位小数、formula 公式（同一行里数值列的 + - * / 与括号，可用 round、abs、min、max，"
     "用列的 key 或标题引用，例如 \"单价 * 数量\"；公式列的值由工具算，行里不用写）。列也可以只写标题字符串。"
-    "rows 每行一个数组，按列的顺序，格数等于列数，每格是字符串、数字、true/false 或 null（空格子）；有公式列时可以只写非公式列。"
+    "rows 每行一个数组，按列的顺序，格数等于列数；有公式列时也可以只写非公式列，格数等于非公式列数；每格是字符串、数字、true/false 或 null（空格子）。"
     "行也可以写成对象（列的 key 或标题 → 值），缺的格子为空；分批追加行时请用对象行，改了列要把已有的数组行按新列重写。"
     "数值写数字，不带单位；百分比写百分数（12.5 表示 12.5%）；日期写 YYYY-MM-DD。"
     "totals 加末行合计：[{column, fn}]，fn 为 sum / avg / min / max / count，只写列名时按 sum。"
@@ -90,7 +90,7 @@ def table_def(build=False):
                                             "description": "写在这里也行，并入整张表的 assumptions"}}}
     sheets = {"type": "array", "minItems": 1, "maxItems": 20, "items": sheet}
     if build:
-        sheets = {**sheets, "x-mengos-merge": {"mode": "by-id", "id": "id", "label": "name", "fill": "rows"}}
+        sheets = {**sheets, "x-mengos-merge": {"mode": "by-id", "id": "id", "label": "name"}}
     t = {"type": "object"}
     if not build:
         t["required"] = ["title"]
