@@ -338,9 +338,9 @@
   "required_type": "document",
   "expect_selected": false
  },
-  {"tool_id": "mathdisc.discover", "task": "手上有一批实验数据，想找出 y 随 x 变化的公式", "ops": ["discover"], "required_type": "math_relation", "expect_selected": true},
-  {"tool_id": "mathdisc.discover", "task": "这串数 1, 2, 6, 24, 120 背后是什么递推规律，帮我找出来", "ops": ["discover"], "required_type": "math_relation", "expect_selected": true},
-  {"tool_id": "mathdisc.discover", "task": "归纳这些测量点之间未知的经验公式", "ops": ["discover"], "required_type": "math_relation", "expect_selected": true},
+  {"tool_id": "mathdisc.discover", "task": "手上有一批实验数据，想找出 y 随 x 变化的公式", "ops": ["generate"], "required_type": "math_relation", "expect_selected": true},
+  {"tool_id": "mathdisc.discover", "task": "这串数 1, 2, 6, 24, 120 背后是什么递推规律，帮我找出来", "ops": ["generate"], "required_type": "math_relation", "expect_selected": true},
+  {"tool_id": "mathdisc.discover", "task": "归纳这些测量点之间未知的经验公式", "ops": ["generate"], "required_type": "math_relation", "expect_selected": true},
   {"tool_id": "mathdisc.discover", "task": "检验 y = c1·x**c2 能否解释这组数据", "ops": ["check"], "required_type": "verdict", "expect_selected": false, "stage": "model"},
   {"tool_id": "mathdisc.discover", "task": "求 2^10 + 3^5", "ops": ["compute"], "required_type": "number", "expect_selected": false},
   {"tool_id": "mathdisc.discover", "task": "把这份销售数据做成柱状图", "ops": ["generate"], "required_type": "chart", "expect_selected": false}

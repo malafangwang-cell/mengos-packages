@@ -161,7 +161,7 @@ DISCOVER_RECEIPT = {
 }
 
 UNITS.append(unit(
-    "mathdisc.discover", ["discover"], ["math_table", "math_sequence"], ["math_relation"],
+    "mathdisc.discover", ["generate"], ["math_table", "math_sequence"], ["math_relation"],
     {"type": "object", "additionalProperties": False, "required": ["f_task", "data"],
      "description": "你手上有一批观测数据、想找出背后的数学关系（经验公式或数列递推）、但还没有候选时用。它让模型多轮提出候选关系，每条候选都要过计算器的判定（拟合加盲测，或精确递推）才会交出；模型的话不算数。要分钟级时间，提交后取结果。交出的是候选：formula 的候选只是数据级验证（拟合加盲测），附适用范围与假设，不是证明；recurrence 的候选在给出的各项上逐项精确复现，附适用范围，给出的项之外未核验。回报四种停机状态：solved（找到）、exhausted（候选全被判不成立，不等于不存在规律）、budget（轮数用尽）、undetermined（时限内没有得出结论，不等于没有规律；此时 relations 为空）。",
      "properties": {

@@ -363,3 +363,13 @@ def test_async_executor_declares_async_ops():
             assert "async_ops" in u["executor"], u["tool_id"]
         else:
             assert "async_ops" not in u["executor"], u["tool_id"]
+
+
+def test_capability_ops_are_controlled_verbs():
+    """安装器 TL-17：capability.ops 是受控动词闭集的非空子集；discover 的 ops 逐字为 ["generate"]。"""
+    verbs = {"compute", "check", "retrieve", "execute", "generate", "convert"}
+    assert len(REG["units"]) == 7
+    for u in REG["units"]:
+        ops = u["capability"]["ops"]
+        assert ops and set(ops) <= verbs, (u["tool_id"], ops)
+    assert UNIT["capability"]["ops"] == ["generate"]
