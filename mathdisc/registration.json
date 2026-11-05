@@ -1,7 +1,7 @@
 {
   "family": "mathdisc",
   "family_version": "1.2.0",
-  "lock_hash": "56cdc3d959a49563",
+  "lock_hash": "d47f318d18c30c2d",
   "note": "mathdisc 的七件工具：六件确定性判定（零模型调用，T1）与发现循环 discover（异步、出网调用模型、T3，产物是候选）。代入求值另有计算工具承担，本包不重复登记。",
   "units": [
     {
@@ -179,7 +179,7 @@
           "verdict_eq_established"
         ]
       },
-      "version": "56cdc3d959a49563"
+      "version": "d47f318d18c30c2d"
     },
     {
       "tool_id": "mathdisc.formula",
@@ -396,7 +396,7 @@
           "verdict_eq_established"
         ]
       },
-      "version": "56cdc3d959a49563"
+      "version": "d47f318d18c30c2d"
     },
     {
       "tool_id": "mathdisc.recurrence",
@@ -578,7 +578,7 @@
           "verdict_eq_established"
         ]
       },
-      "version": "56cdc3d959a49563"
+      "version": "d47f318d18c30c2d"
     },
     {
       "tool_id": "mathdisc.reach",
@@ -742,7 +742,7 @@
           "verdict_eq_established"
         ]
       },
-      "version": "56cdc3d959a49563"
+      "version": "d47f318d18c30c2d"
     },
     {
       "tool_id": "mathdisc.counterexample",
@@ -906,7 +906,7 @@
           "verdict_eq_refuted"
         ]
       },
-      "version": "56cdc3d959a49563"
+      "version": "d47f318d18c30c2d"
     },
     {
       "tool_id": "mathdisc.solve_closed",
@@ -1033,7 +1033,7 @@
           }
         }
       },
-      "version": "56cdc3d959a49563"
+      "version": "d47f318d18c30c2d"
     },
     {
       "tool_id": "mathdisc.discover",
@@ -1082,7 +1082,7 @@
       },
       "capability": {
         "ops": [
-          "discover"
+          "generate"
         ],
         "in_types": [
           "math_table",
@@ -1317,7 +1317,7 @@
           }
         }
       },
-      "version": "56cdc3d959a49563"
+      "version": "d47f318d18c30c2d"
     }
   ]
 }
