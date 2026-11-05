@@ -4,7 +4,7 @@
 name = "mathdisc"
 version = "0.1.0"
 description = "数学发现工具族: 提边归模型,判定归计算器 (承 mathdisc设计文档v1)"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 # 核心四库 (承设计文档§2选型定案"本节即裁决"; D10随裁补入D5白名单)
 dependencies = [
     "sympy",
