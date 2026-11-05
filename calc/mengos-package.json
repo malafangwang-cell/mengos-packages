@@ -1,9 +1,15 @@
 {
   "package": "calc",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "publisher": "mengos",
   "scope": "public",
-  "content_hash": "352edcb2300d5e52d806565b30cfc70c7b0854c624cedf614d1d4599a798cc86",
+  "title": "精确计算",
+  "tool_titles": {
+    "calc.evaluate": "算式精确求值",
+    "calc.algebra": "代数与微积分运算",
+    "calc.check_equal": "判断两式是否相等"
+  },
+  "content_hash": "3e683e4fac0cd8e351a8198e6f0b90f72d2b7add17cd9b8598a63da339bc20e7",
   "types": [
     {
       "name": "math_expression",

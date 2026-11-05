@@ -1,9 +1,15 @@
 {
   "package": "cad",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "publisher": "mengos",
   "scope": "public",
-  "content_hash": "4842765c39cade4b8096e92cb041e0c4ffd1b2c6410cbdf8dd927f5bb1ca7385",
+  "title": "三维零件建模",
+  "tool_titles": {
+    "cad.build": "建三维零件模型",
+    "cad.check": "核对零件尺寸与特征",
+    "cad.export": "导出零件加工与图纸文件"
+  },
+  "content_hash": "2ab92d265031e2dc9fa8dac54790a192b6cf1ebb4c926e3f0251d0c63fe93801",
   "types": [
     {
       "name": "cad_model",

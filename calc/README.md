@@ -1,5 +1,7 @@
 # calc v2（计算工具族的替换包）
 
+> 2.2.2（mengosv2 执行令-2026-11-05-PLAN声明书与F环清单交互 支 T）：包清单加显示名 `title`「精确计算」与 `tool_titles`（`calc.evaluate`「算式精确求值」、`calc.algebra`「代数与微积分运算」、`calc.check_equal`「判断两式是否相等」）。两字段只供界面显示（声明书、商店），不进工具选择，也不进给模型看的任何文字；不在 `tools_lock.covers` 内，lock 不变（工具版本与认证继承），只有 content_hash 变。工具代码与 registration.json 未改（其中 `family_version` 仍写 2.2.1）。
+
 > 2.2.1（W-11，17 TL-16c v0.2.32）：calc.algebra 的输入类型改为“或”：`in_types: []`、`in_any: [math_expression, equation]`——它收一个式子（expr）或一组方程（exprs），二者有一即可（input_schema 只 required op）。calc.check_equal 的 `[math_expression, number]` 两边都要，不变。工具代码未改；registration 改了，lock 变（ecbbbd50de6a4d29），须重新认证。本容器无 sympy，执行类测试未跑；登记与包自检 15 项过。
 
 > 2.2.0：三件工具给模型看的说明按“这件工具是做什么的”重写，并逐件对照工具代码核准（草稿 `描述实验/`，立法者 2026-10-13 审定）。calc 是调用方的计算器，收平常的数学写法；check_equal 是判卷：给了取值按取值比，没给取值就把两式之差做符号化简来比，所以也能判恒等。说明里不再出现工具名（evaluate 的 expr、check_equal 的 bindings 原先写“由 calc.algebra 求解”“同 calc.evaluate”）。工具代码未改；registration 改了，lock 变，须重新认证。
