@@ -185,7 +185,8 @@ UNITS.append(unit(
     ["不给出证明", "exhausted 不等于不存在规律", "不核验自己手写的候选", "不做外推担保", "恒等式核验、算式等于目标值核验、素数猜想反例核验不走本件，用同步单件工具 mathdisc.identity、mathdisc.reach、mathdisc.counterexample"],
     cost={"latency": 120000, "price": 10, "timeout": 600000},
     trust="T3",
-    executor={"kind": "process", "entry": "md_tool.py", "mode": "async", "credential_ref": "DASHSCOPE_API_KEY"}))
+    executor={"kind": "process", "entry": "md_tool.py", "mode": "async", "credential_ref": "DASHSCOPE_API_KEY",
+              "async_ops": {"submit": "POST /api/v1/jobs", "status": "GET /api/v1/jobs/{job_id}"}}))
 
 TYPES_NOTE = {"math_relation": "表达式、公式、递推式或猜想的文字", "math_table": "按列给出的数据表",
               "math_sequence": "整数数列", "math_witness": "变量到整数的取值", "math_solution": "封闭求解的结果"}
