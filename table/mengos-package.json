@@ -1,0 +1,70 @@
+{
+  "package": "table",
+  "version": "1.0.1",
+  "publisher": "mengos",
+  "scope": "public",
+  "content_hash": "9d32fbe4082c6032ed5c5cff20c093dac1c4ef7f6411914242dd428a336cb64e",
+  "types": [
+    {
+      "name": "table",
+      "parent": null,
+      "kind": "deliverable",
+      "realizes": [
+        "data_table"
+      ],
+      "renderer": {
+        "full": "renderer/index.html",
+        "embed": "renderer/index.html",
+        "status": "正式渲染器，按渲染器契约 v0.1（数据经 postMessage 由宿主传入，本页不取网络数据；下载经 mengos.download 交宿主派生）"
+      },
+      "note": "数据表：清单、台账、明细、对照表、报价单等。规范形态是表模型（role table.model）；Excel、CSV、Markdown 都由它派生。码本形态 data_table 由本类型实现（TL-27）"
+    },
+    {
+      "name": "table_plan",
+      "parent": null,
+      "kind": "value",
+      "note": "表的内容（README §3），由调用方写出"
+    },
+    {
+      "name": "table_file",
+      "parent": null,
+      "kind": "value",
+      "note": "导出的文件集合，经 TL-9a 进入 ObjectStore；以通用文件卡片展示"
+    }
+  ],
+  "uses_platform_types": [
+    "verdict"
+  ],
+  "tools": "registration.json",
+  "tools_lock": {
+    "covers": [
+      "model.py",
+      "formula.py",
+      "render.py",
+      "xlsx_writer.py",
+      "checker.py",
+      "table_tool.py",
+      "pyproject.toml",
+      "uv.lock",
+      "registration.json"
+    ],
+    "note": "工具 version（lock hash）只覆盖这些文件；renderer/、samples/、tests/、tools/、README 不在其内，改它们不使认证失效（TL-25）"
+  },
+  "certification_material": {
+    "golden_cases": "golden_cases.json",
+    "selection_cases": "selection_cases.json",
+    "golden_runner": "tools/run_golden.py"
+  },
+  "runtime": {
+    "process": {
+      "lang": "python",
+      "requires": ">=3.12,<3.14",
+      "project": "pyproject.toml",
+      "lock": "uv.lock",
+      "entry": "table_tool.py",
+      "network": "none",
+      "workdir": true
+    }
+  },
+  "certification": []
+}

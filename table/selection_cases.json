@@ -1,0 +1,202 @@
+[
+  {
+    "tool_id": "table.build",
+    "task": "把 20 种常用钢材的密度、屈服强度和参考价格列成 Excel 表",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.build",
+    "task": "导出一份这台减速机的物料清单，带数量和单价",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.build",
+    "task": "排一张客服组下周的值班表，七天三班倒",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.build",
+    "task": "把斐波那契数列前 30 项列成表格",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.build",
+    "task": "写一份老旧小区充电桩加装技术方案",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "table.build",
+    "task": "画一个带孔的铝底座",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "cad_model",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "table.build",
+    "task": "求 2^10 + 3^5 的精确值",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "number",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "table.build",
+    "task": "核对物料清单的金额合计",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "table.check",
+    "task": "核对物料清单的金额合计是不是 128600 元",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.check",
+    "task": "检查员工表的工号有没有重复",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.check",
+    "task": "排班表每天三个班都要有人",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.check",
+    "task": "做一张供应商报价对比表",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "table.check",
+    "task": "把报价表导出成 Excel",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "table_file",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "table.check",
+    "task": "核对标书是否逐条响应了招标文件的要求",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false,
+    "stage": "model"
+  },
+  {
+    "tool_id": "table.check",
+    "task": "核对这个零件外形是不是 80×50×20",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false,
+    "stage": "model"
+  },
+  {
+    "tool_id": "table.export",
+    "task": "把报价表导出成 Excel",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "table_file",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.export",
+    "task": "要一份 CSV 导进 ERP",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "table_file",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.export",
+    "task": "给我这张表的 Markdown 版本贴进文档",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "table_file",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.export",
+    "task": "做一张供应商报价对比表",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "table.export",
+    "task": "核对报价表的合计",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "table.export",
+    "task": "把投标文件导出成 Word",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "doc_file",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "table.export",
+    "task": "把支架导出成 STL 给 3D 打印",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "cad_file",
+    "expect_selected": false
+  }
+]

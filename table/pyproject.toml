@@ -1,0 +1,9 @@
+[project]
+name = "mengos-table"
+version = "1.0.1"
+description = "mengos 表格包：组装（数据 → 表模型）、核对（列、行、取值与合计）、导出（Excel、CSV、Markdown）"
+requires-python = ">=3.12,<3.14"
+dependencies = ["XlsxWriter==3.3.0"]
+
+[dependency-groups]
+dev = ["pytest>=8", "jsonschema>=4", "openpyxl>=3.1"]
