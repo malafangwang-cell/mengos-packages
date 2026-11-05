@@ -257,3 +257,75 @@ def test_timeout_returns_undetermined_not_error():
     with mock.patch("mathdisc.discover.make_rho_from_env", lambda: slow):
         out = md_tool.run(env)
     assert out["ok"] is True and out["output"]["stop_reason"] == "undetermined" and out["output"]["relations"] == []
+
+
+# ---------------------------------------------------------------- 架构线补裁二：锁对齐、validity 同源、四态、最外层超时
+def test_verify_lock_passes_in_package_env():
+    """mathdisc.lock 的四库版本、文法版、prompt 版与包环境（uv sync --frozen）实际一致。"""
+    from mathdisc.lock_verify import verify_lock
+    assert verify_lock()["deps"] == LOCK["deps"]
+
+
+def test_capability_states_four_stop_reasons_and_f_task_scope():
+    text = UNIT["signature"]["input_schema"]["description"]
+    assert "四种停机状态" in text and "三种" not in text
+    assert "时限内没有得出结论，不等于没有规律" in text and "relations 为空" in text
+    assert UNIT["signature"]["input_schema"]["properties"]["f_task"]["enum"] == ["formula", "recurrence"]
+    ng = " ".join(UNIT["capability"]["non_goals"])
+    for t in ("mathdisc.identity", "mathdisc.reach", "mathdisc.counterexample"):
+        assert t in ng
+    assert UNIT["signature"]["output_schema"]["properties"]["stop_reason"]["enum"] == ["solved", "exhausted", "budget", "undetermined"]
+
+
+def _sync(tool, payload):
+    import md_tool
+    return md_tool.run({"tool": tool, "payload": payload})["output"]
+
+
+def test_validity_equals_sync_formula_validity_field_by_field():
+    """同一数据同一式子：discover 的 relation_receipts[i].validity 与同步 mathdisc.formula 回执的 validity 逐字段相同。"""
+    y = _kepler_y()
+    cols = {"x": KEPLER_X, "y": y}
+    sync = _sync("mathdisc.formula", {"form": "c1*x**c2", "columns": cols, "holdout_ratio": 0.25})
+    assert sync["verdict"] == "established"
+    out, _ = _discover({"f_task": "formula", "data": cols, "ops": ALL_OPS, "holdout": 0.25, "budget": 1}, [["c1*x**c2"]])
+    got = out["output"]["relation_receipts"][0]
+    assert got["validity"] == sync["validity"]
+    assert got["evidence"] == sync["evidence"] and got["verdict"] == sync["verdict"]
+
+
+def test_validity_equals_sync_recurrence_validity_field_by_field():
+    known, hold = [1, 2, 6, 24, 120, 720, 5040, 40320], [362880, 3628800]
+    sync = _sync("mathdisc.recurrence", {"relation": "a[n-1]*n", "known": known, "holdout": hold})
+    assert sync["verdict"] == "established"
+    out, _ = _discover({"f_task": "recurrence", "data": {"known": known, "holdout": hold}, "ops": ALL_OPS, "budget": 1}, [["a[n-1]*n"]])
+    got = out["output"]["relation_receipts"][0]
+    assert got["validity"] == sync["validity"]
+    assert got["evidence"] == sync["evidence"] and got["verdict"] == sync["verdict"]
+
+
+def test_timeout_outermost_is_undetermined_and_process_exits_cleanly():
+    """最外层：到点信号在循环深处（含吞 Exception 的重试里）触发，进程仍以退出码 0 写出一行 undetermined 回执。"""
+    driver = (
+        "import sys, time\n"
+        "sys.path.insert(0, %r)\n"
+        "from unittest import mock\n"
+        "import md_tool\n"
+        "def slow(V, T, sig, f_task, dead, n_max):\n"
+        "    while True:\n"
+        "        try:\n"
+        "            time.sleep(0.05)\n"
+        "        except Exception:\n"
+        "            pass\n"
+        "with mock.patch('mathdisc.discover.make_rho_from_env', lambda: slow):\n"
+        "    sys.exit(md_tool.main())\n" % str(ROOT)
+    )
+    env = {"tool": "mathdisc.discover", "budget": {"timeout_ms": 400},
+           "payload": {"f_task": "formula", "data": {"x": [1, 2, 3, 4, 5, 6, 7, 8], "y": [2, 4, 6, 8, 10, 12, 14, 16]}}}
+    p = subprocess.run([sys.executable, "-c", driver], input=(json.dumps(env) + "\n").encode(),
+                       capture_output=True, timeout=60, cwd=str(ROOT))
+    assert p.returncode == 0, p.stderr.decode("utf-8", "replace")[-300:]
+    lines = p.stdout.decode().strip().splitlines()
+    assert len(lines) == 1
+    out = json.loads(lines[0])
+    assert out["ok"] is True and out["output"]["stop_reason"] == "undetermined" and out["output"]["relations"] == []

@@ -13,7 +13,7 @@
     "mathdisc.solve_closed": "穷举凑出目标整数",
     "mathdisc.discover": "从数据里发现规律"
   },
-  "content_hash": "b731f920747d3389025906742361493f1ef44d75cc8dbbeef5b9ab90b109da90",
+  "content_hash": "9c9be12da3c33eec73d1de68b5ddd245e7149e85d943d36de8fd13baf2d69029",
   "types": [
     {
       "name": "math_relation",

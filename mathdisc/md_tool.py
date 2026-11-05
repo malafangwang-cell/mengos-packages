@@ -112,6 +112,16 @@ def _formula_validity(train: dict, hold_cols: dict, ev: dict, cut: int, n: int) 
     return v
 
 
+def _formula_split(cols: dict, ratio: float):
+    """formula 的训练/保留拆分：同步工具与 discover 共用同一处（检查门实际使用的拆分）。"""
+    n = len(cols["y"])
+    cut = max(1, int(n * (1 - ratio)))
+    train = {k: [float(x) for x in v[:cut]] for k, v in cols.items()}
+    hold_cols = {k: [float(x) for x in v[cut:]] for k, v in cols.items() if k != "y"}
+    hold_y = [float(x) for x in cols["y"][cut:]]
+    return cut, n, train, hold_cols, hold_y
+
+
 def _formula_assumption(v: dict) -> str:
     return (f"数据级验证：在 {_ranges(v['core'])}（{v['rows']['train']} 行）内拟合，"
             f"保留的 {v['rows']['holdout']} 行（{_ranges(v['checked'])}）核验通过；"
@@ -200,11 +210,10 @@ def _formula(p):
     ratio = p.get("holdout_ratio", 0.25)
     if not isinstance(ratio, (int, float)) or isinstance(ratio, bool) or not 0.1 <= ratio <= 0.5:
         raise BadInput("holdout_ratio 取 0.1–0.5")
-    cut = max(1, int(n * (1 - ratio)))
+    cut, n, train, hold_cols, hold_y = _formula_split(cols, ratio)
     if cut >= n:
         raise BadInput("数据行太少，留不出保留行", hint="至少 4 行")
-    train = {k: [float(x) for x in v[:cut]] for k, v in cols.items()}
-    hold = ({k: [float(x) for x in v[cut:]] for k, v in cols.items() if k != "y"}, [float(x) for x in cols["y"][cut:]])
+    hold = (hold_cols, hold_y)
     seed = p.get("seed", 0)
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise BadInput("seed 是整数")
@@ -365,11 +374,8 @@ def _discover(p):
 
 def _discover_validity(f_task, data, ratio, ev):
     if f_task == "formula":
-        n = len(data["y"])
-        cut = max(1, int(n * (1 - ratio)))
-        train = {k: v[:cut] for k, v in data.items()}
-        hold = {k: v[cut:] for k, v in data.items() if k != "y"}
-        return _formula_validity(train, hold, ev, cut, n)
+        cut, n, train, hold_cols, _ = _formula_split(data, ratio)
+        return _formula_validity(train, hold_cols, ev, cut, n)
     if f_task == "recurrence":
         return _recurrence_validity(data["known"], data["holdout"])
     return None

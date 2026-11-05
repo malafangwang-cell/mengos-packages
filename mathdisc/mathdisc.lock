@@ -4,8 +4,8 @@
   "deps": {
     "sympy": "1.14.0",
     "mpmath": "1.3.0",
-    "scipy": "1.17.1",
-    "numpy": "2.4.6"
+    "scipy": "1.18.1",
+    "numpy": "2.5.2"
   },
   "grammar_v": "g-v1",
   "prompt_v": "find_relations_v3",

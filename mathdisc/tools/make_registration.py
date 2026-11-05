@@ -163,7 +163,7 @@ DISCOVER_RECEIPT = {
 UNITS.append(unit(
     "mathdisc.discover", ["discover"], ["math_table", "math_sequence"], ["math_relation"],
     {"type": "object", "additionalProperties": False, "required": ["f_task", "data"],
-     "description": "你手上有一批观测数据、想找出背后的数学关系（经验公式或数列递推）、但还没有候选时用。它让模型多轮提出候选关系，每条候选都要过计算器的判定（拟合加盲测，或精确递推）才会交出；模型的话不算数。要分钟级时间，提交后取结果。交出的是候选：每条带适用范围与假设，都只是数据级验证，不是证明。回报三种停机：solved（找到）、exhausted（候选全被判不成立，不等于不存在规律）、budget（轮数用尽）；到点未跑完回 undetermined。",
+     "description": "你手上有一批观测数据、想找出背后的数学关系（经验公式或数列递推）、但还没有候选时用。它让模型多轮提出候选关系，每条候选都要过计算器的判定（拟合加盲测，或精确递推）才会交出；模型的话不算数。要分钟级时间，提交后取结果。交出的是候选：每条带适用范围与假设，都只是数据级验证，不是证明。回报四种停机状态：solved（找到）、exhausted（候选全被判不成立，不等于不存在规律）、budget（轮数用尽）、undetermined（时限内没有得出结论，不等于没有规律；此时 relations 为空）。",
      "properties": {
          "f_task": {"enum": ["formula", "recurrence"], "description": "f_task：要找哪一种关系。formula 是数据表里响应列 y 随变量变化的公式；recurrence 是整数数列的递推式。"},
          "data": {"description": "data：数据。formula 时是按列给出的数据表，变量列用变量名作键，响应列的键是 y，各列等长；recurrence 时是整数数列，或 {known: 已知项, holdout: 紧接其后的保留项}。",
@@ -177,12 +177,12 @@ UNITS.append(unit(
          "budget": {"type": "integer", "minimum": 1, "maximum": 24, "description": "budget：最多几轮，缺省 6。"}}},
     DISCOVER_RECEIPT,
     {"f_task": "formula", "data": {"x": [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4], "y": [0.354, 1.002, 1.844, 2.842, 3.972, 5.218, 6.566, 8.007]}, "budget": 6},
-    {"stop_reasons": ["solved", "exhausted", "budget", "undetermined"], "rows": [4, 2000], "variables": [1, 8], "budget": [1, 24],
+    {"stop_reasons": ["solved", "exhausted", "budget", "undetermined"], "f_task": ["formula", "recurrence"], "rows": [4, 2000], "variables": [1, 8], "budget": [1, 24],
      "proof_grades": ["verified_on_data", "exact"], "model_calls": "每轮一次，由模型提出候选，判定不经模型"},
     [{"input": "给一批 (x, y) 数据，找出 y 随 x 变化的公式", "output": "solved，交出通过拟合与盲测的候选公式，每条附适用范围与假设：数据级验证，未经证明"},
      {"input": "一串整数 1, 2, 6, 24, 120, 720，找出递推式", "output": "solved，交出 a[n-1]*n 一类候选，序列级验证"},
      {"input": "对一组彼此无关的随机数找规律", "output": "exhausted，候选全被判不成立，relations 为空"}],
-    ["不给出证明", "exhausted 不等于不存在规律", "不核验自己手写的候选", "不做外推担保"],
+    ["不给出证明", "exhausted 不等于不存在规律", "不核验自己手写的候选", "不做外推担保", "恒等式核验、算式等于目标值核验、素数猜想反例核验不走本件，用同步单件工具 mathdisc.identity、mathdisc.reach、mathdisc.counterexample"],
     cost={"latency": 120000, "price": 10, "timeout": 600000},
     trust="T3",
     executor={"kind": "process", "entry": "md_tool.py", "mode": "async", "credential_ref": "DASHSCOPE_API_KEY"}))
