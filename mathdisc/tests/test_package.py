@@ -24,9 +24,12 @@ def test_tool_types_are_declared():
 
 def test_entry_is_package_relative():
     pr = M["runtime"]["process"]
-    assert (ROOT / pr["entry"]).is_file() and pr["network"] == "none"
+    assert (ROOT / pr["entry"]).is_file() and pr["network"] == "dashscope.aliyuncs.com"
     for u in REG["units"]:
-        assert u["executor"] == {"kind": "process", "entry": pr["entry"], "mode": "sync"}
+        if u["tool_id"] == "mathdisc.discover":  # 异步、出网、带凭据名：专项见 test_discover.py
+            assert u["executor"] == {"kind": "process", "entry": pr["entry"], "mode": "async", "credential_ref": "DASHSCOPE_API_KEY"}
+        else:
+            assert u["executor"] == {"kind": "process", "entry": pr["entry"], "mode": "sync"}
 
 
 def test_lock_coverage_matches_lock_script():
@@ -47,6 +50,8 @@ def test_assumptions_declared_and_covered_by_goldens():
     for u in REG["units"]:
         if "assumptions" not in u["signature"]["output_schema"]["properties"]:
             continue
+        if u["tool_id"] == "mathdisc.discover":
+            continue  # 回执形状不同（T-A 投影），假设逐条在场由 test_discover.py 的回放金样核对
         mine = [c for c in CASES if c["tool"] == u["tool_id"]]
         if u["tool_id"] in NON_PROOF:
             assert any(_asserts_assumptions(c, True) for c in mine), u["tool_id"]
@@ -145,14 +150,21 @@ def test_check_units_declare_assumptions_output():
             assert {"verdict", "method_complete", "evidence", "assumptions"} <= set(props), u["tool_id"]
 
 
-def test_no_network_or_model_path_in_sources():
-    """network: none —— 执行体源码里没有出网与模型调用路径（discover 不在本包）。"""
-    bad = ["urllib", "socket", "http.client", "requests", "httpx", "llm", "rho"]
+def test_network_path_only_in_llm_client():
+    """出网只有一个出口：llm/client.py（stdlib urllib）。其余执行体源码没有出网模块；
+    出网主机只有 dashscope.aliyuncs.com（包清单的 runtime.process.network 同此）。"""
+    import re
+    bad = ["urllib", "socket", "http.client", "requests", "httpx"]
     for rel in M["tools_lock"]["covers"]:
-        if rel.endswith(".py"):
+        if rel.endswith(".py") and rel != "mathdisc/llm/client.py":
             src = (ROOT / rel).read_text(encoding="utf-8")
             for w in bad:
                 assert f"import {w}" not in src and f"from {w}" not in src and f".{w} import" not in src, (rel, w)
+    hosts = set()
+    for rel in M["tools_lock"]["covers"]:
+        if rel.endswith((".py", ".lock", ".json")) and rel != "uv.lock":
+            hosts |= set(re.findall(r"https?://([A-Za-z0-9.-]+)", (ROOT / rel).read_text(encoding="utf-8")))
+    assert hosts == {"dashscope.aliyuncs.com"}, hosts
 
 
 def test_old_ids_not_reused():

@@ -1,0 +1,18 @@
+{
+  "purpose": "真空边教训: 阴性对照进永久回归(D-3发布判据)",
+  "probes": [
+    {"id": "ln-seq", "f_task": "recurrence",
+     "data": [7, 2, 19, 3, 31, 8, 5, 23, 11, 2],
+     "note": "真随机整数列,构造上无递推",
+     "expected": {"stop": "exhausted", "relations": []}},
+    {"id": "ln-formula", "f_task": "formula",
+     "data": {"x": [1, 2, 3, 4, 5, 6, 7, 8],
+              "y": [4.7, 1.2, 8.9, 3.3, 9.1, 0.6, 5.5, 7.8]},
+     "note": "y与x独立随机",
+     "expected": {"stop": "exhausted", "relations": []}},
+    {"id": "ln-reach", "f_task": "reach",
+     "V": [1, 1, 1, 1], "T": ["+", "-"], "target": 24,
+     "note": "构造性不可达(上界4)",
+     "expected": {"stop": "exhausted", "relations": []}}
+  ]
+}

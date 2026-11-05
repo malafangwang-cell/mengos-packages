@@ -28,10 +28,11 @@ RECEIPT = {
 COST = {"latency": 500, "price": 0, "timeout": 30000}
 
 
-def unit(tool_id, ops, in_types, out_types, input_schema, output_schema, example, constraints, examples, non_goals, review=None, cost=None):
+def unit(tool_id, ops, in_types, out_types, input_schema, output_schema, example, constraints, examples, non_goals, review=None, cost=None,
+         trust="T1", executor=None):
     u = {
-        "tool_id": tool_id, "trust_claim": "T1", "effect": "none",
-        "executor": {"kind": "process", "entry": "md_tool.py", "mode": "sync"},
+        "tool_id": tool_id, "trust_claim": trust, "effect": "none",
+        "executor": executor or {"kind": "process", "entry": "md_tool.py", "mode": "sync"},
         "cost": cost or COST,
         "input_example": example,
         "capability": {"ops": ops, "in_types": in_types, "out_types": out_types,
@@ -143,12 +144,55 @@ UNITS = [
          ["不处理多于 6 个数的组合"]),
 ]
 
+DISCOVER_RECEIPT = {
+    "type": "object", "additionalProperties": False,
+    "required": ["stop_reason", "relations", "assumptions", "cost", "relation_receipts"],
+    "properties": {
+        "stop_reason": {"enum": ["solved", "exhausted", "budget", "undetermined"]},
+        "relations": {"type": "array", "items": {"type": "string"}},
+        "assumptions": {"type": "array", "items": {"type": "object", "required": ["statement", "source"],
+                                                   "properties": {"statement": {"type": "string"}, "source": {"type": "string"}}}},
+        "cost": {"type": "object", "properties": {"rounds": {"type": ["integer", "null"]}, "rho_calls": {"type": ["integer", "null"]}}},
+        "relation_receipts": {"type": "array", "items": {
+            "type": "object", "required": ["expr", "verdict", "evidence", "assumptions"],
+            "properties": {"expr": {"type": "string"}, "verdict": {"type": "string"}, "evidence": {"type": "object"},
+                           "validity": {"type": "object"}, "assumptions": {"type": "array", "items": {"type": "string"}}}}},
+    },
+}
+
+UNITS.append(unit(
+    "mathdisc.discover", ["discover"], ["math_table", "math_sequence"], ["math_relation"],
+    {"type": "object", "additionalProperties": False, "required": ["f_task", "data"],
+     "description": "你手上有一批观测数据、想找出背后的数学关系（经验公式或数列递推）、但还没有候选时用。它让模型多轮提出候选关系，每条候选都要过计算器的判定（拟合加盲测，或精确递推）才会交出；模型的话不算数。要分钟级时间，提交后取结果。交出的是候选：每条带适用范围与假设，都只是数据级验证，不是证明。回报三种停机：solved（找到）、exhausted（候选全被判不成立，不等于不存在规律）、budget（轮数用尽）；到点未跑完回 undetermined。",
+     "properties": {
+         "f_task": {"enum": ["formula", "recurrence"], "description": "f_task：要找哪一种关系。formula 是数据表里响应列 y 随变量变化的公式；recurrence 是整数数列的递推式。"},
+         "data": {"description": "data：数据。formula 时是按列给出的数据表，变量列用变量名作键，响应列的键是 y，各列等长；recurrence 时是整数数列，或 {known: 已知项, holdout: 紧接其后的保留项}。",
+                  "oneOf": [{"type": "object", "minProperties": 1, "maxProperties": 9},
+                            {"type": "array", "minItems": 3, "maxItems": 200, "items": {"type": "integer"}}]},
+         "vars": {"type": "array", "maxItems": 8, "items": {"type": "string", "minLength": 1, "maxLength": 32},
+                  "description": "vars：变量名；formula 时缺省取 data 里除 y 外的各列名。"},
+         "holdout": {"type": "number", "minimum": 0.1, "maximum": 0.5, "description": "holdout：末尾留作盲测的行所占比例，缺省 0.25。"},
+         "ops": {"type": "array", "minItems": 1, "uniqueItems": True, "items": {"enum": ["+", "-", "*", "/", "**"]}, "description": "ops：候选里允许用的运算符，缺省 + - * / ** 全用。"},
+         "n_max": {"type": "integer", "minimum": 1, "maximum": 8, "description": "n_max：每轮最多交几条候选，缺省 4。"},
+         "budget": {"type": "integer", "minimum": 1, "maximum": 24, "description": "budget：最多几轮，缺省 6。"}}},
+    DISCOVER_RECEIPT,
+    {"f_task": "formula", "data": {"x": [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4], "y": [0.354, 1.002, 1.844, 2.842, 3.972, 5.218, 6.566, 8.007]}, "budget": 6},
+    {"stop_reasons": ["solved", "exhausted", "budget", "undetermined"], "rows": [4, 2000], "variables": [1, 8], "budget": [1, 24],
+     "proof_grades": ["verified_on_data", "exact"], "model_calls": "每轮一次，由模型提出候选，判定不经模型"},
+    [{"input": "给一批 (x, y) 数据，找出 y 随 x 变化的公式", "output": "solved，交出通过拟合与盲测的候选公式，每条附适用范围与假设：数据级验证，未经证明"},
+     {"input": "一串整数 1, 2, 6, 24, 120, 720，找出递推式", "output": "solved，交出 a[n-1]*n 一类候选，序列级验证"},
+     {"input": "对一组彼此无关的随机数找规律", "output": "exhausted，候选全被判不成立，relations 为空"}],
+    ["不给出证明", "exhausted 不等于不存在规律", "不核验自己手写的候选", "不做外推担保"],
+    cost={"latency": 120000, "price": 10, "timeout": 600000},
+    trust="T3",
+    executor={"kind": "process", "entry": "md_tool.py", "mode": "async", "credential_ref": "DASHSCOPE_API_KEY"}))
+
 TYPES_NOTE = {"math_relation": "表达式、公式、递推式或猜想的文字", "math_table": "按列给出的数据表",
               "math_sequence": "整数数列", "math_witness": "变量到整数的取值", "math_solution": "封闭求解的结果"}
 
 if __name__ == "__main__":
-    reg = {"family": "mathdisc", "family_version": "1.1.0", "lock_hash": "",
-           "note": "mathdisc 的六件确定性工具（零模型调用）。代入求值另有计算工具承担，本包不重复登记。发现循环 discover 不在本包：它要异步执行体、出网调用模型与 T3 准入，这些契约面参照包尚未覆盖（17 TL-28），先补参照包，再另包交付。",
+    reg = {"family": "mathdisc", "family_version": "1.2.0", "lock_hash": "",
+           "note": "mathdisc 的七件工具：六件确定性判定（零模型调用，T1）与发现循环 discover（异步、出网调用模型、T3，产物是候选）。代入求值另有计算工具承担，本包不重复登记。",
            "units": UNITS}
     for u in reg["units"]:
         u["version"] = ""

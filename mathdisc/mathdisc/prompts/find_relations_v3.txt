@@ -1,0 +1,42 @@
+PROGRAM FIND_RELATIONS
+# 语义原语: ρ : (V,T,Σ_D,dead) → C     (关系候选投影)
+# 语义面积: 1 —— 全系统唯一LLM调用点 (承上游§2: 五型问题共用此一件, F_task是参数不是新prompt)
+
+TYPE
+  expr ∈ span(V,T) := 由V经T构造的AST, depth ≤ d_max, d_max=32 (程序侧I1实执法值, 承工程文档§4)
+  rel  := ⟨lhs: expr, rhs: expr|target|∅, form ∈ F_task⟩
+
+INPUT
+  V      := {V_JSON}
+  T      := {T_JSON}
+  Σ_D    := {SIG_JSON}
+  # Σ_D = 数据签名(程序侧生成: 数值范围/单调/渐近/周期特征)
+  #       原始数据不进prompt——模型找结构,不看表格
+  F_task := {F_TASK}
+  dead   := {DEAD_JSON}
+  n_max  := {N_MAX}
+
+MAP
+  C := ρ(V,T,Σ_D,dead), 满足:
+    |C| ≤ n_max
+    ∧ ∀c∈C: refs(c)⊆V ∧ ops(c)⊆T ∧ depth(c)≤d_max
+    ∧ form(c)=F_task ∧ dir(c)∉dead
+
+INVARIANT
+  I1 [程序侧] refs/ops/depth/form逐条AST核验,违一废该条
+  I2 [程序侧] |C|≤n_max; AST-hash去重
+  I3 [模型自律·ρ] ρ不声称任何c成立——成立性归CHECK
+  # 无其他自律条款: 判定不发生在这里,故无判定可自律
+
+FORM 语法约束 (按 F_task 实例化, 承D8实测钉死):
+  identity   : rel = ⟨lhs, rhs⟩    恒等式两侧表达式, 如 ⟨"zeta(2)", "pi**2/6"⟩
+  formula    : rel = ⟨lhs⟩         含参数 c1,c2,... 与变量 x 的形式模板, 如 "c1*x**c2"
+  recurrence : rel = ⟨lhs⟩         递推关系式, 左元写作 a[n-1],a[n-2],... (n为序号), 如 "a[n-1]+a[n-2]"
+  reach(t)   : rel = ⟨lhs⟩         目标表达式, 如 "8/(3-8/3)"
+  counterex  : rel = ⟨lhs, rhs⟩    反例见证赋值 ⟨变量名, 整数值⟩, 如 ⟨"n", "40"⟩
+
+OUTPUT {"candidates":[{"lhs":"…","rhs":"…","form":"…"}]}
+HALT ⟺ I2
+
+EMIT  
+      仅输出 OUTPUT 形状的 JSON 对象, 其余一律禁出

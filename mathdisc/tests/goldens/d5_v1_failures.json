@@ -1,0 +1,32 @@
+{
+  "purpose": "v1实测失败样本按D5转永久回归金样",
+  "cases": [
+    {"id": "g-sqrt2", "suite": "CHK-I", "origin": "v1假反驳事故",
+     "expr_lhs": "sqrt(2)**2", "expr_rhs": "2",
+     "trap": "float64冒充50位→假refuted(终局性违例)",
+     "expected": {"verdict": "established",
+                  "evidence_grade_min": "verified@50",
+                  "never": "refuted"}},
+    {"id": "g-factorial", "suite": "CHK-R", "origin": "v1验证器n替换bug",
+     "sequence": [1, 2, 6, 24, 120, 720, 5040, 40320],
+     "relation": "a[n-1]*n", "holdout": [362880, 3628800],
+     "trap": "n在串尾时replace不匹配",
+     "expected": {"verdict": "established"}},
+    {"id": "g-pendulum", "suite": "CHK-F", "origin": "v1 fitter初值失败",
+     "form": "c1*x**c2", "true_params": {"c1": 2.006, "c2": 0.5},
+     "data_gen": {"x": [0.5, 1.0, 1.5, 2.0, 2.5, 3.0],
+                  "rule": "T=2.006*sqrt(L)", "noise": 0.01,
+                  "holdout_x": [3.5, 4.0]},
+     "trap": "初值盲猜1.0对c2<1不收敛",
+     "expected": {"verdict": "established",
+                  "fitter_init_source": "forensics_slope"}},
+    {"id": "g-zeta2", "suite": "CHK-I", "origin": "v1 mpmath集成失败",
+     "expr_lhs": "zeta(2)", "expr_rhs": "pi**2/6",
+     "expected": {"verdict": "established",
+                  "evidence_grade_min": "verified@50"}},
+    {"id": "g-fermat5", "suite": "CHK-E", "origin": "v1 P5实测样本",
+     "conjecture": "isprime(2**(2**n)+1)", "counterexample_n": 5,
+     "expected": {"verdict": "refuted",
+                  "witness_factor": 641}}
+  ]
+}

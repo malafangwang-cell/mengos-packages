@@ -1,6 +1,6 @@
 {
   "package": "mathdisc",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "publisher": "mengos",
   "scope": "public",
   "title": "数学猜想核验",
@@ -10,9 +10,10 @@
     "mathdisc.recurrence": "核验数列递推式",
     "mathdisc.reach": "核验算式等于目标值",
     "mathdisc.counterexample": "核验素数猜想反例",
-    "mathdisc.solve_closed": "穷举凑出目标整数"
+    "mathdisc.solve_closed": "穷举凑出目标整数",
+    "mathdisc.discover": "从数据里发现规律"
   },
-  "content_hash": "8df618114e75797c39fa4d366004a669c9b7bbcf52162d66e4ce24b40946c65b",
+  "content_hash": "de5bcb646bab4fdee34a86e39d90da19c1250b4fc131f185a476348c07305523",
   "types": [
     {
       "name": "math_relation",
@@ -68,6 +69,16 @@
       "mathdisc/forensics/signature.py",
       "mathdisc/loop/__init__.py",
       "mathdisc/loop/solve_closed.py",
+      "mathdisc/loop/solve.py",
+      "mathdisc/loop/rho.py",
+      "mathdisc/llm/__init__.py",
+      "mathdisc/llm/client.py",
+      "mathdisc/prompts/find_relations_v3.txt",
+      "mathdisc/discover.py",
+      "mathdisc/adapter_projection.py",
+      "mathdisc/ta_projection.json",
+      "mathdisc/lock_verify.py",
+      "mathdisc.lock",
       "pyproject.toml",
       "uv.lock",
       "registration.json"
@@ -86,7 +97,7 @@
       "project": "pyproject.toml",
       "lock": "uv.lock",
       "entry": "md_tool.py",
-      "network": "none",
+      "network": "dashscope.aliyuncs.com",
       "workdir": false
     }
   },
@@ -98,14 +109,14 @@
       "check.recurrence": "mathdisc.recurrence",
       "check.reach": "mathdisc.reach",
       "check.counterexample": "mathdisc.counterexample",
-      "solve_closed": "mathdisc.solve_closed"
+      "solve_closed": "mathdisc.solve_closed",
+      "discover": "mathdisc.discover"
     },
     "moved": {
       "eval.evaluate": "calc.evaluate"
     },
     "not_replaced": {
-      "validate.grammar": "发布门内部使用，不进工具册；由施工方在引擎侧处理",
-      "discover": "异步、出网、T3，参照包未覆盖（17 TL-28）；暂留适配器，另包交付"
+      "validate.grammar": "发布门内部使用，不进工具册；由施工方在引擎侧处理"
     },
     "note": "TL-24 替换：旧 tool_id 摘册、不复用；引用旧 tool_id 的 manifest 与 agent 资产在同一次替换中改为右侧新 tool_id。eval.evaluate 与 calc.evaluate 能力相同（符号代入、精确分数），并入 calc，不在本包重复登记；math_eval agent 的工具引用随之改为 calc.evaluate"
   },

@@ -1,0 +1,23 @@
+{
+  "schema": "mathdisc.lock/v1",
+  "_comment": "承工程文档§2: 四库精确版+文法版+prompt版+ρ绑定; 改锁=升版事件; lock-hash=工具version (承设计§3)",
+  "deps": {
+    "sympy": "1.14.0",
+    "mpmath": "1.3.0",
+    "scipy": "1.17.1",
+    "numpy": "2.4.6"
+  },
+  "grammar_v": "g-v1",
+  "prompt_v": "find_relations_v3",
+  "impl_v": "i-v2",
+  "rho_model": {
+    "model_id": "qwen3.8-max-0902",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "dialect": "dashscope",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "thinking": "disabled",
+    "max_tokens": 8192,
+    "timeout_s": 300,
+    "note": "QD1 已裁(立法者 2026-08-18): 与平台主池同串(同mengos主模型); api_key 经环境变量注入, 不落盘. 2026-08-23: DeepSeek直连余额耗尽切万擎网关; 2026-09-01: 切 glm5.3(强制思考, 单ρ调用≈470s); 2026-09-07 立法者指令: 切 qwen3.8-max-0902(DashScope compatible-mode, enable_thinking=false 实测秒级, 承 engine dashscope-media.ts DASHSCOPE_VL_MAX_BINDING 同绑定); 模型版本变更 → 按 CT4 同级纪律触发金样矩阵回归"
+  }
+}
