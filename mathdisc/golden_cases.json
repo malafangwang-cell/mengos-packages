@@ -1052,5 +1052,121 @@
       "target": 1
     },
     "expect_error": "BAD_INPUT"
+  },
+  {
+    "id": "ds-mock-field-rejected",
+    "tool": "mathdisc.discover",
+    "payload": {
+      "f_task": "formula",
+      "data": {
+        "x": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "y": [
+          2,
+          4,
+          6,
+          8,
+          10,
+          12
+        ]
+      },
+      "mock": true
+    },
+    "note": "DX-4：入参不许决定走不走空 ρ；additionalProperties:false，进程不碰模型",
+    "expect_error": "BAD_INPUT"
+  },
+  {
+    "id": "ds-unknown-ftask",
+    "tool": "mathdisc.discover",
+    "payload": {
+      "f_task": "prove",
+      "data": {
+        "x": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "y": [
+          2,
+          4,
+          6,
+          8,
+          10,
+          12
+        ]
+      }
+    },
+    "expect_error": "BAD_INPUT"
+  },
+  {
+    "id": "ds-formula-no-y",
+    "tool": "mathdisc.discover",
+    "payload": {
+      "f_task": "formula",
+      "data": {
+        "x": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "z": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    "expect_error": "BAD_INPUT"
+  },
+  {
+    "id": "ds-budget-out-of-range",
+    "tool": "mathdisc.discover",
+    "payload": {
+      "f_task": "formula",
+      "data": {
+        "x": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "y": [
+          2,
+          4,
+          6,
+          8,
+          10,
+          12
+        ]
+      },
+      "budget": 99
+    },
+    "expect_error": "BAD_INPUT"
+  },
+  {
+    "id": "ds-recurrence-float-seq",
+    "tool": "mathdisc.discover",
+    "payload": {
+      "f_task": "recurrence",
+      "data": [
+        1,
+        2.5,
+        3
+      ]
+    },
+    "expect_error": "BAD_INPUT"
   }
 ]

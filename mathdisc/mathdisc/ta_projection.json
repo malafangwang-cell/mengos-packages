@@ -1,0 +1,14 @@
+{
+  "schema": "mathdisc.ta_projection/v1",
+  "_comment": "evidence.grade → assumptions 逐条映射表显式(丢一条即违例); 唯一资产真源, Python 参考实现与 TS adapter 双消费方机械读表",
+  "rules": [
+    { "match": "proven_symbolic", "assumption": null,
+      "_note": "符号完备片段证明级 —— 无需假设" },
+    { "match": "exact", "assumption": null,
+      "_note": "精确算术(fractions/枚举)证明级 —— 无需假设" },
+    { "match": "verified@", "template": "数值级验证({grade}), 未经符号证明",
+      "_note": "mpmath@N 数值级 —— verified@N 不等于 proven" },
+    { "match": "verified_on_data", "template": "数据级验证(拟合+四查), 未经证明",
+      "_note": "grade 不是证明级 ⟹ assumption 逐条透传" }
+  ]
+}

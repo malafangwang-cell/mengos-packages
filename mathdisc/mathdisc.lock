@@ -1,0 +1,23 @@
+{
+  "schema": "mathdisc.lock/v1",
+  "_comment": "四库精确版+文法版+prompt版+ρ绑定; 改锁=升版事件; lock-hash=工具version",
+  "deps": {
+    "sympy": "1.14.0",
+    "mpmath": "1.3.0",
+    "scipy": "1.18.1",
+    "numpy": "2.5.2"
+  },
+  "grammar_v": "g-v1",
+  "prompt_v": "find_relations_v3",
+  "impl_v": "i-v2",
+  "rho_model": {
+    "model_id": "qwen3.8-max-0902",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "dialect": "dashscope",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "thinking": "disabled",
+    "max_tokens": 8192,
+    "timeout_s": 300,
+    "note": "api_key 经环境变量注入, 不落盘; 模型版本变更触发金样矩阵回归"
+  }
+}

@@ -6,7 +6,8 @@ stdin 读一行 JSON，stdout 写一行 JSON：
   输出：{"ok": true, "output": {...}}
        {"ok": false, "error": {"code": "BAD_INPUT|UNSUPPORTED|RESOURCE_LIMIT|TIMEOUT|INTERNAL", "message": "...", "hint"?: "..."}}
 
-六件工具全部零模型调用、确定性。判定类回执是三值（established / refuted / undetermined，另有 rejected）；
+前六件工具零模型调用、确定性；mathdisc.discover 是第七件：异步、出网调一个模型（凭据只从环境变量读，主机只有
+dashscope.aliyuncs.com）、信任类 T3，产物是候选，不是结论。判定类回执是三值（established / refuted / undetermined，另有 rejected）；
 达不到证明级的结论在 output.assumptions 里逐条声明（17 TL-22a），
 只在有限范围内核验过的结论另带 output.validity（适用范围，产出台规范 §3）。判定类工具到点未判完，回 undetermined，不报错。
 """
@@ -19,14 +20,15 @@ import time
 from fractions import Fraction
 
 DEFAULT_TIMEOUT_MS = 30_000
+DISCOVER_TIMEOUT_MS = 600_000
 TOOLS = ("mathdisc.identity", "mathdisc.formula", "mathdisc.recurrence", "mathdisc.reach",
-         "mathdisc.counterexample", "mathdisc.solve_closed")
+         "mathdisc.counterexample", "mathdisc.solve_closed", "mathdisc.discover")
 CHECKS = {"mathdisc.identity", "mathdisc.formula", "mathdisc.recurrence", "mathdisc.reach",
           "mathdisc.counterexample"}
 
 
-class _Timeout(Exception):
-    pass
+class _Timeout(BaseException):
+    """到点信号。继承 BaseException：发现循环里的模型客户端对 Exception 做重试，不能把到点吞掉。"""
 
 
 class BadInput(Exception):
@@ -108,6 +110,16 @@ def _formula_validity(train: dict, hold_cols: dict, ev: dict, cut: int, n: int) 
     if len(names) > 1:
         v["note"] = "多个变量时只给逐变量的范围；范围框内没有数据的角落同样未经核验"
     return v
+
+
+def _formula_split(cols: dict, ratio: float):
+    """formula 的训练/保留拆分：同步工具与 discover 共用同一处（检查门实际使用的拆分）。"""
+    n = len(cols["y"])
+    cut = max(1, int(n * (1 - ratio)))
+    train = {k: [float(x) for x in v[:cut]] for k, v in cols.items()}
+    hold_cols = {k: [float(x) for x in v[cut:]] for k, v in cols.items() if k != "y"}
+    hold_y = [float(x) for x in cols["y"][cut:]]
+    return cut, n, train, hold_cols, hold_y
 
 
 def _formula_assumption(v: dict) -> str:
@@ -198,11 +210,10 @@ def _formula(p):
     ratio = p.get("holdout_ratio", 0.25)
     if not isinstance(ratio, (int, float)) or isinstance(ratio, bool) or not 0.1 <= ratio <= 0.5:
         raise BadInput("holdout_ratio 取 0.1–0.5")
-    cut = max(1, int(n * (1 - ratio)))
+    cut, n, train, hold_cols, hold_y = _formula_split(cols, ratio)
     if cut >= n:
         raise BadInput("数据行太少，留不出保留行", hint="至少 4 行")
-    train = {k: [float(x) for x in v[:cut]] for k, v in cols.items()}
-    hold = ({k: [float(x) for x in v[cut:]] for k, v in cols.items() if k != "y"}, [float(x) for x in cols["y"][cut:]])
+    hold = (hold_cols, hold_y)
     seed = p.get("seed", 0)
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise BadInput("seed 是整数")
@@ -287,10 +298,94 @@ def _solve_closed(p):
     return {"solvable": bool(r["solvable"]), "expr": r["expr"], "proof": r["proof"]}
 
 
+def _discover_data(f_task, p):
+    """discover 的 data：formula 为列字典（含响应列 y），recurrence 为整数数列或 {known, holdout}。"""
+    data = p.get("data")
+    if f_task == "formula":
+        if not isinstance(data, dict):
+            raise BadInput("formula 的 data 是数据表：变量列与响应列 y")
+        for k, v in data.items():
+            if not isinstance(v, list) or not v or not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in v):
+                raise BadInput(f"列 {k} 是非空的数字数组")
+        if "y" not in data:
+            raise BadInput("data 里要有响应列 y")
+        n = len(data["y"])
+        if n < 4 or n > 2000 or any(len(v) != n for v in data.values()):
+            raise BadInput("各列等长，行数 4–2000")
+        if not 2 <= len(data) <= 9:
+            raise BadInput("1–8 个变量列加响应列 y")
+        return {k: [float(x) for x in v] for k, v in data.items()}
+    if isinstance(data, list):
+        return {"known": _ints(data, "data", "数列 a[1], a[2], …"), "holdout": []}
+    if isinstance(data, dict):
+        _allowed(data, ("known", "holdout"))
+        return {"known": _ints(data.get("known"), "data.known", "已知项"),
+                "holdout": _ints(data.get("holdout", []), "data.holdout", "保留项", allow_empty=True)}
+    raise BadInput("recurrence 的 data 是整数数列，或 {known, holdout}")
+
+
+DISCOVER_OPS = {"+", "-", "*", "/", "**"}
+
+
+def _discover(p):
+    from mathdisc.adapter_projection import project_ta_receipt
+    from mathdisc.discover import run_solve
+    _allowed(p, ("f_task", "vars", "data", "holdout", "ops", "n_max", "budget"))
+    f_task = p.get("f_task")
+    if f_task not in ("formula", "recurrence"):
+        raise BadInput("f_task 取 formula 或 recurrence")
+    names = p.get("vars", [])
+    if not isinstance(names, list) or len(names) > 8 or not all(isinstance(x, str) and x for x in names):
+        raise BadInput("vars 是变量名数组（至多 8 个）")
+    data = _discover_data(f_task, p)
+    if f_task == "formula":
+        if not names:
+            names = sorted(k for k in data if k != "y")
+        if set(names) != {k for k in data if k != "y"}:
+            raise BadInput("vars 要与 data 里的变量列一一对应")
+    ratio = p.get("holdout", 0.25)
+    if not isinstance(ratio, (int, float)) or isinstance(ratio, bool) or not 0.1 <= ratio <= 0.5:
+        raise BadInput("holdout 取 0.1–0.5")
+    ops = p.get("ops", ["+", "-", "*", "/", "**"])
+    if not isinstance(ops, list) or not ops or not set(ops) <= DISCOVER_OPS:
+        raise BadInput("ops 取自 + - * / **")
+    n_max = p.get("n_max", 4)
+    budget = p.get("budget", 6)
+    for key, val, hi in (("n_max", n_max, 8), ("budget", budget, 24)):
+        if not isinstance(val, int) or isinstance(val, bool) or not 1 <= val <= hi:
+            raise BadInput(f"{key} 是 1–{hi} 的整数")
+    try:
+        result, _ = run_solve(f_task, names, ops, data, ratio, budget, n_max)
+    except RuntimeError as e:  # 钥匙缺席、模型调用用尽重试：如实报错，不降级、不冒充没找到
+        return _fail("INTERNAL", f"RuntimeError: {e}")
+    loop_result = {
+        "stop": result.stop,
+        "relations": [{"expr": r.expr, "receipt": {k: v for k, v in _receipt(r.receipt).items() if k != "assumptions"}}
+                      for r in result.relations],
+        "metrics": result.metrics,
+    }
+    # 适用范围：与同步判定工具同一口径，按检查门实际用的拆分与数据算；检查门回执本身不带，这里不改它
+    for rel in loop_result["relations"]:
+        v = _discover_validity(f_task, data, ratio, rel["receipt"]["evidence"])
+        if v is not None:
+            rel["validity"] = v
+    return {"ok": True, "output": _jsonable(project_ta_receipt(loop_result))}
+
+
+def _discover_validity(f_task, data, ratio, ev):
+    if f_task == "formula":
+        cut, n, train, hold_cols, _ = _formula_split(data, ratio)
+        return _formula_validity(train, hold_cols, ev, cut, n)
+    if f_task == "recurrence":
+        return _recurrence_validity(data["known"], data["holdout"])
+    return None
+
+
 HANDLERS = {
     "mathdisc.identity": _identity, "mathdisc.formula": _formula, "mathdisc.recurrence": _recurrence,
     "mathdisc.reach": _reach, "mathdisc.counterexample": _counterexample,
     "mathdisc.solve_closed": _solve_closed,
+    "mathdisc.discover": _discover,
 }
 
 
@@ -304,9 +399,10 @@ def run(env: dict) -> dict:
     if not isinstance(payload, dict):
         return _fail("BAD_INPUT", "payload 不是 JSON 对象")
     budget = env.get("budget") or {}
-    timeout_ms = budget.get("timeout_ms", DEFAULT_TIMEOUT_MS) if isinstance(budget, dict) else DEFAULT_TIMEOUT_MS
+    default_ms = DISCOVER_TIMEOUT_MS if tool == "mathdisc.discover" else DEFAULT_TIMEOUT_MS
+    timeout_ms = budget.get("timeout_ms", default_ms) if isinstance(budget, dict) else default_ms
     if not isinstance(timeout_ms, int) or timeout_ms <= 0:
-        timeout_ms = DEFAULT_TIMEOUT_MS
+        timeout_ms = default_ms
     # 判定类工具在预算的八成处停手，回 undetermined；其余到点报 TIMEOUT
     soft = max(0.2, timeout_ms * 0.8 / 1000)
     signal.signal(signal.SIGALRM, _on_alarm)
@@ -314,8 +410,15 @@ def run(env: dict) -> dict:
     t0 = time.monotonic()
     try:
         out = HANDLERS[tool](payload)
+        if tool == "mathdisc.discover":
+            return out  # _discover 自带信封（成功或结构化错误）
         return {"ok": True, "output": out}
     except _Timeout:
+        if tool == "mathdisc.discover":
+            # 到点未跑完：回 undetermined，不报错、不拿半截结果冒充三态
+            return {"ok": True, "output": {
+                "stop_reason": "undetermined", "relations": [], "assumptions": [],
+                "cost": {"rounds": None, "rho_calls": None}, "relation_receipts": []}}
         if tool in CHECKS:
             return {"ok": True, "output": _undetermined(f"到点未判完（{round(time.monotonic() - t0, 2)} 秒）")}
         return _fail("TIMEOUT", "到点未算完")
