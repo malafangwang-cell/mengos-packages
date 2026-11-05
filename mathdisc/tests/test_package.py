@@ -32,6 +32,13 @@ def test_entry_is_package_relative():
             assert u["executor"] == {"kind": "process", "entry": pr["entry"], "mode": "sync"}
 
 
+def test_manifest_requires_matches_pyproject():
+    """包清单的解释器要求与 pyproject 的 requires-python 相同，不再漂移。"""
+    import tomllib
+    py = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["requires-python"]
+    assert M["runtime"]["process"]["requires"] == py == ">=3.12"
+
+
 def test_lock_coverage_matches_lock_script():
     sys.path.insert(0, str(ROOT))
     import lock

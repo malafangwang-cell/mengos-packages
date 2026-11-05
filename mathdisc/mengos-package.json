@@ -13,7 +13,7 @@
     "mathdisc.solve_closed": "穷举凑出目标整数",
     "mathdisc.discover": "从数据里发现规律"
   },
-  "content_hash": "67c61339306a1fd9d46b9cd919dfe111b0fae131ef192a45cc65b5098fff2e2c",
+  "content_hash": "5c5f334d0670b9334d3b8729b060dd61188786c370dec941ce6225492f4fe6c9",
   "types": [
     {
       "name": "math_relation",
@@ -93,7 +93,7 @@
   "runtime": {
     "process": {
       "lang": "python",
-      "requires": ">=3.11",
+      "requires": ">=3.12",
       "project": "pyproject.toml",
       "lock": "uv.lock",
       "entry": "md_tool.py",
