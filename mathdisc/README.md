@@ -41,13 +41,13 @@ mathdisc 的七件工具，按工具包通用安装通道（17 TL-25、WP-W6 §2
 
 ## 认证材料
 
-- `golden_cases.json`：37 条，每件工具都有成立、反驳与 BAD_INPUT 用例；含 v1 事故转来的永久金样（√2²=2、`x+x` 冒充开普勒、阶乘 `n` 分词、费马数 F5）。
+- `golden_cases.json`：42 条（含 discover 的 5 条输入校验用例），每件工具都有成立、反驳与 BAD_INPUT 用例；含 v1 事故转来的永久金样（√2²=2、`x+x` 冒充开普勒、阶乘 `n` 分词、费马数 F5）。
 - `selection_cases.json`：每件 3 正 3–4 负；语义负例标 `stage: model`。
 - `tools/run_golden.py`：按与引擎相同的进程信封调用；断言写成 `{path, eq|ne|in|contains|approx(+tol)|nonempty}`。
 
-本地（无 sympy/scipy，PyPI 不可达）只能跑静态测试与纯算术三件的金样：
-`pytest tests` 19 过；`reach`、`recurrence`、`solve_closed` 金样 14/14（以占位模块代 sympy 跑）。
-`identity`、`formula`、`counterexample` 需要真库，在安装区由 certify 跑。
+本地读数（`uv sync --frozen` 装出的环境，需要 lock 里的四库，不调模型）：
+`pytest tests` 44 过；`python tools/run_golden.py` 42/42；`mathdisc.lock.verify_lock()` 通过。
+discover 的金样只含输入校验用例（不调模型）；循环的回放金样（阳性、阴性对照、超时、v1 事故）在 `tests/test_discover.py`。
 
 ## 版本
 

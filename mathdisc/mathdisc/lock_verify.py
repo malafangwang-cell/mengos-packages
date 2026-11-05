@@ -1,5 +1,7 @@
-"""mathdisc.lock 执法 (四库版本/文法版/prompt版/ρ绑定
-任一漂移 → 构造期拒; lock-hash = 工具 version)."""
+"""mathdisc.lock 核对 (四库版本/文法版/prompt版/ρ绑定
+任一漂移 → 抛 LockDriftError; lock-hash = 工具 version).
+
+verify_lock() 由调用方显式调用（包内测试、安装后自检）; md_tool 的运行路径不调用它。"""
 from __future__ import annotations
 
 import hashlib
@@ -10,12 +12,12 @@ from pathlib import Path
 LOCK_PATH = Path(__file__).parent.parent / "mathdisc.lock"
 
 # 实现版 (改动入 lock, lock-hash 即工具 version;
-# 与 grammar.GRAMMAR_V / rho.PROMPT_VERSION 同款执法形态, 漂移→构造期拒)
+# 与 grammar.GRAMMAR_V / rho.PROMPT_VERSION 同款执法形态, 漂移→LockDriftError)
 IMPL_V = "i-v2"
 
 
 class LockDriftError(Exception):
-    """lock 漂移 → 构造期拒."""
+    """lock 漂移."""
 
 
 def load_lock() -> dict:

@@ -241,9 +241,13 @@ def test_relation_receipt_evidence_is_copied_not_recomputed():
 
 
 def test_timeout_returns_undetermined_not_error():
-    """超时：回执为 undetermined，不是异常；模型客户端的重试吞不掉到点。"""
+    """超时：回执为 undetermined，不是异常；模型客户端的重试吞不掉到点。
+    先预载循环用到的重模块，保证到点发生在回放 ρ 里（而不是 import 期间），并断言 ρ 确实被调用过。"""
+    import mathdisc.discover, mathdisc.forensics.signature, mathdisc.loop.solve  # noqa: F401, E401
+    called = []
 
     def slow(V, T, sig, f_task, dead, n_max):
+        called.append(1)
         for _ in range(100):
             try:
                 time.sleep(0.05)
@@ -256,6 +260,7 @@ def test_timeout_returns_undetermined_not_error():
            "payload": {"f_task": "formula", "data": {"x": [1, 2, 3, 4, 5, 6, 7, 8], "y": [2, 4, 6, 8, 10, 12, 14, 16]}}}
     with mock.patch("mathdisc.discover.make_rho_from_env", lambda: slow):
         out = md_tool.run(env)
+    assert called, "回放 ρ 没有被调用：到点发生在循环之外"
     assert out["ok"] is True and out["output"]["stop_reason"] == "undetermined" and out["output"]["relations"] == []
 
 
@@ -305,13 +310,17 @@ def test_validity_equals_sync_recurrence_validity_field_by_field():
 
 
 def test_timeout_outermost_is_undetermined_and_process_exits_cleanly():
-    """最外层：到点信号在循环深处（含吞 Exception 的重试里）触发，进程仍以退出码 0 写出一行 undetermined 回执。"""
+    """最外层：到点信号在循环里（回放 ρ 内吞 Exception 的重试中）触发，进程仍以退出码 0 写出一行 undetermined 回执。
+    driver 先预载循环用到的重模块再进 md_tool.main()，保证到点发生在 ρ 里，而不是 import 期间；
+    ρ 被调用的证据是它先往 stderr 写一行标记，本测试断言该标记在场。"""
     driver = (
         "import sys, time\n"
         "sys.path.insert(0, %r)\n"
         "from unittest import mock\n"
+        "import mathdisc.discover, mathdisc.loop.solve, mathdisc.forensics.signature, mathdisc.adapter_projection\n"
         "import md_tool\n"
         "def slow(V, T, sig, f_task, dead, n_max):\n"
+        "    sys.stderr.write('RHO_CALLED\\n'); sys.stderr.flush()\n"
         "    while True:\n"
         "        try:\n"
         "            time.sleep(0.05)\n"
@@ -323,9 +332,20 @@ def test_timeout_outermost_is_undetermined_and_process_exits_cleanly():
     env = {"tool": "mathdisc.discover", "budget": {"timeout_ms": 400},
            "payload": {"f_task": "formula", "data": {"x": [1, 2, 3, 4, 5, 6, 7, 8], "y": [2, 4, 6, 8, 10, 12, 14, 16]}}}
     p = subprocess.run([sys.executable, "-c", driver], input=(json.dumps(env) + "\n").encode(),
-                       capture_output=True, timeout=60, cwd=str(ROOT))
+                       capture_output=True, timeout=30, cwd=str(ROOT))
     assert p.returncode == 0, p.stderr.decode("utf-8", "replace")[-300:]
+    assert b"RHO_CALLED" in p.stderr, "回放 ρ 没有被调用：到点发生在循环之外，测试没测到它声称的东西"
     lines = p.stdout.decode().strip().splitlines()
     assert len(lines) == 1
     out = json.loads(lines[0])
     assert out["ok"] is True and out["output"]["stop_reason"] == "undetermined" and out["output"]["relations"] == []
+
+
+def test_client_host_comes_only_from_lock_and_no_legacy_env():
+    """出网主机只能是 lock 里的 dashscope：环境里放任何 *_BASE_URL 都不改变 client 的 base_url。"""
+    from mathdisc.llm.client import client_from_lock
+    c = client_from_lock(env={"DASHSCOPE_API_KEY": "x", "DEEPSEEK_BASE_URL": "https://evil.example/v1", "OPENAI_BASE_URL": "https://evil.example/v1"})
+    assert c._base_url == LOCK["rho_model"]["base_url"].rstrip("/")
+    for rel in M["tools_lock"]["covers"]:
+        if rel.endswith(".py"):
+            assert "deepseek" not in (ROOT / rel).read_text(encoding="utf-8").lower(), rel

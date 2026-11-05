@@ -1,7 +1,7 @@
 {
   "family": "mathdisc",
   "family_version": "1.2.0",
-  "lock_hash": "a2e3ec4410f325cb",
+  "lock_hash": "1da2a594b404a7a7",
   "note": "mathdisc 的七件工具：六件确定性判定（零模型调用，T1）与发现循环 discover（异步、出网调用模型、T3，产物是候选）。代入求值另有计算工具承担，本包不重复登记。",
   "units": [
     {
@@ -179,7 +179,7 @@
           "verdict_eq_established"
         ]
       },
-      "version": "a2e3ec4410f325cb"
+      "version": "1da2a594b404a7a7"
     },
     {
       "tool_id": "mathdisc.formula",
@@ -396,7 +396,7 @@
           "verdict_eq_established"
         ]
       },
-      "version": "a2e3ec4410f325cb"
+      "version": "1da2a594b404a7a7"
     },
     {
       "tool_id": "mathdisc.recurrence",
@@ -578,7 +578,7 @@
           "verdict_eq_established"
         ]
       },
-      "version": "a2e3ec4410f325cb"
+      "version": "1da2a594b404a7a7"
     },
     {
       "tool_id": "mathdisc.reach",
@@ -742,7 +742,7 @@
           "verdict_eq_established"
         ]
       },
-      "version": "a2e3ec4410f325cb"
+      "version": "1da2a594b404a7a7"
     },
     {
       "tool_id": "mathdisc.counterexample",
@@ -906,7 +906,7 @@
           "verdict_eq_refuted"
         ]
       },
-      "version": "a2e3ec4410f325cb"
+      "version": "1da2a594b404a7a7"
     },
     {
       "tool_id": "mathdisc.solve_closed",
@@ -1033,7 +1033,7 @@
           }
         }
       },
-      "version": "a2e3ec4410f325cb"
+      "version": "1da2a594b404a7a7"
     },
     {
       "tool_id": "mathdisc.discover",
@@ -1119,11 +1119,11 @@
         "examples": [
           {
             "input": "给一批 (x, y) 数据，找出 y 随 x 变化的公式",
-            "output": "solved，交出通过拟合与盲测的候选公式，每条附适用范围与假设：数据级验证，未经证明"
+            "output": "solved，交出通过拟合与盲测的候选公式，每条附适用范围与假设：只是数据级验证，未经证明"
           },
           {
             "input": "一串整数 1, 2, 6, 24, 120, 720，找出递推式",
-            "output": "solved，交出 a[n-1]*n 一类候选，序列级验证"
+            "output": "solved，交出 a[n-1]*n 一类候选，在给出的各项上逐项精确复现，附适用范围：给出的项之外未核验"
           },
           {
             "input": "对一组彼此无关的随机数找规律",
@@ -1146,7 +1146,7 @@
             "f_task",
             "data"
           ],
-          "description": "你手上有一批观测数据、想找出背后的数学关系（经验公式或数列递推）、但还没有候选时用。它让模型多轮提出候选关系，每条候选都要过计算器的判定（拟合加盲测，或精确递推）才会交出；模型的话不算数。要分钟级时间，提交后取结果。交出的是候选：每条带适用范围与假设，都只是数据级验证，不是证明。回报四种停机状态：solved（找到）、exhausted（候选全被判不成立，不等于不存在规律）、budget（轮数用尽）、undetermined（时限内没有得出结论，不等于没有规律；此时 relations 为空）。",
+          "description": "你手上有一批观测数据、想找出背后的数学关系（经验公式或数列递推）、但还没有候选时用。它让模型多轮提出候选关系，每条候选都要过计算器的判定（拟合加盲测，或精确递推）才会交出；模型的话不算数。要分钟级时间，提交后取结果。交出的是候选：formula 的候选只是数据级验证（拟合加盲测），附适用范围与假设，不是证明；recurrence 的候选在给出的各项上逐项精确复现，附适用范围，给出的项之外未核验。回报四种停机状态：solved（找到）、exhausted（候选全被判不成立，不等于不存在规律）、budget（轮数用尽）、undetermined（时限内没有得出结论，不等于没有规律；此时 relations 为空）。",
           "properties": {
             "f_task": {
               "enum": [
@@ -1313,7 +1313,7 @@
           }
         }
       },
-      "version": "a2e3ec4410f325cb"
+      "version": "1da2a594b404a7a7"
     }
   ]
 }

@@ -76,8 +76,9 @@ class OpenAICompatClient:
 def client_from_lock(env: dict | None = None) -> OpenAICompatClient:
     """从 mathdisc.lock 的 ρ绑定构造客户端.
 
-    model/base_url 以 lock 为真源; api_key 经环境变量 DEEPSEEK_API_KEY 注入
-    (不落盘); key 缺席 → 显式上抛, 不静默降级 mock。
+    model 与 base_url 只取自 lock（不吃任何环境覆盖，出网主机因此只能是 lock 里写的主机）;
+    api_key 经 lock 里 api_key_env 所指的环境变量注入（不落盘）;
+    key 缺席 → 显式上抛, 不静默降级 mock。
     """
     import os
 
@@ -88,15 +89,11 @@ def client_from_lock(env: dict | None = None) -> OpenAICompatClient:
     if not model_id:
         raise RuntimeError("[mathdisc] lock ρ绑定 model_id 为空, 真ρ不可用")
     environ = os.environ if env is None else env
-    key_env = binding.get("api_key_env", "DEEPSEEK_API_KEY")
+    key_env = binding.get("api_key_env", "DASHSCOPE_API_KEY")
     key = environ.get(key_env, "")
     if not key:
         raise RuntimeError(f"[mathdisc] {key_env} 未注入 (ρ绑定纪律: key 不落盘, 不静默降级)")
-    # 方言=dashscope 时 lock 的 base_url 是唯一真源, 不吃环境覆盖
-    #   (base_url+api_key_env 均以 lock 为真源); openai 方言保留 DEEPSEEK_BASE_URL 覆盖。
-    dialect = binding.get("dialect", "openai")
-    base_url = (binding["base_url"] if dialect == "dashscope"
-                else environ.get("DEEPSEEK_BASE_URL", binding["base_url"]))
+    base_url = binding["base_url"]
     return OpenAICompatClient(
         base_url=base_url,
         api_key=key, model=model_id,
