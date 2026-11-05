@@ -340,7 +340,8 @@ SHEET_KEYS = ("id", "name", "caption", "note", "columns", "rows", "totals", "fre
 COL_KEYS = ("key", "title", "type", "unit", "decimals", "formula", "width", "align")
 
 
-def normalize(raw) -> Table:
+def normalize(raw, build=False) -> Table:
+    """build=True 只给 table.build：被引用列须写 type、无行的表给警告（2.0.0）。核对与导出收的是表对象，照 1.x 口径。"""
     if not isinstance(raw, dict):
         raise BadInput("table 应当是 JSON 对象：{title, sheets:[…]}，或单张表 {title, columns, rows}", "table")
     _allowed(raw, TABLE_KEYS, "table")
@@ -385,7 +386,7 @@ def normalize(raw) -> Table:
             s = dict(s)
             more_src += _strlist(s.pop("sources", None), f"{w}.sources", 100, 1000)
             more_asm += _strlist(s.pop("assumptions", None), f"{w}.assumptions", 100, 1000)
-        sh = _sheet(s, w, i, t, used, from_model)
+        sh = _sheet(s, w, i, t, used, from_model, build)
         total_cells += len(sh.rows) * len(sh.columns)
         if total_cells > MAX_CELLS:
             raise BadInput(f"单元格合计超过 {MAX_CELLS:,} 个", w)
@@ -450,7 +451,7 @@ def _sheet_name(name, i, used, t, where):
     return fixed
 
 
-def _sheet(s, where, i, t, used, from_model) -> Sheet:
+def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     _allowed(s, SHEET_KEYS, where)
     sh = Sheet()
     sh.formula_errors = []
@@ -483,8 +484,10 @@ def _sheet(s, where, i, t, used, from_model) -> Sheet:
     if len(set(titles)) != len(titles):
         dup = next(c.title for c in sh.columns if titles.count(_norm(c.title)) > 1)
         raise BadInput(f"列标题重复：{dup}", f"{where}.columns", "同一张表里列标题不能相同，可以加上区分的字，或用 unit 写单位")
+    if build:
+        _declared_types(s, sh, where)
     plain = [j for j, c in enumerate(sh.columns) if c.formula is None]
-    raw_rows = [_row(r, f"{where}.rows[{ri}]", sh, plain, t, from_model) for ri, r in enumerate(rows)]
+    raw_rows = [_row(r, f"{where}.rows[{ri}]", sh, plain, t, from_model, ri) for ri, r in enumerate(rows)]
     # 没写 type 的列按内容推断（公式列恒为数值）
     for j, c in enumerate(sh.columns):
         if c.type is None:
@@ -500,7 +503,48 @@ def _sheet(s, where, i, t, used, from_model) -> Sheet:
     _formulas(sh, where, t)
     sh.totals = _totals(s.get("totals"), sh, f"{where}.totals")
     sh.freeze_cols = fc
+    if build and not sh.rows:
+        t.warnings.append({"where": f"{where}.rows", "code": "no_rows",
+                           "message": f"“{sh.name}”还没有行，只交出表头" + ("，合计留空" if sh.totals else "")})
     return sh
+
+
+def _declared_types(s, sh, where):
+    """2.0.0：被公式或合计引用的列必须显式写 type。
+
+    不写 type 的列按行内容推断；行数变了（零行、分批追加）推断结果会跟着变，被引用的列因此可能时而能算、时而报错。
+    要求显式写 type，被引用列的类型就不随行数据变化。不被引用的列仍按内容推断。
+    公式写错、引用了不存在的列、合计列名不对，这里不报，留给后面的公式与合计校验报原来的错。
+    """
+    need = {}
+    for c in sh.columns:
+        if c.formula is None:
+            continue
+        found = []
+
+        def collect(name, _found=found):
+            cc = sh.find(name)
+            if cc is not None:
+                _found.append(cc)
+            return name
+        try:
+            F.parse(c.formula, collect)
+        except F.FormulaError:
+            continue
+        for cc in found:
+            need.setdefault(sh.columns.index(cc), f"公式列“{c.title}”的公式“{c.formula}”")
+    spec = s.get("totals")
+    for it in spec if isinstance(spec, list) else []:
+        name = it if isinstance(it, str) else it.get("column") if isinstance(it, dict) else None
+        cc = sh.find(name) if isinstance(name, str) else None
+        if cc is not None:
+            fn = it.get("fn", "sum") if isinstance(it, dict) else "sum"
+            need.setdefault(sh.columns.index(cc), f"合计（{fn}）")
+    for j in sorted(need):
+        c = sh.columns[j]
+        if c.type is None:
+            raise BadInput(f"“{c.title}”被{need[j]}引用，须显式写 type", f"{where}.columns[{j}].type",
+                           "被公式或合计引用的列要写 type：数值列写 integer、number、money 或 percent；只做 count 合计的列也可以写 text 等其他类型")
 
 
 def _column(c, where, j) -> Column:
@@ -539,7 +583,7 @@ def _column(c, where, j) -> Column:
     return col
 
 
-def _row(r, where, sh, plain, t, from_model):
+def _row(r, where, sh, plain, t, from_model, ri):
     n = len(sh.columns)
     if isinstance(r, dict):
         out = [None] * n
@@ -569,8 +613,9 @@ def _row(r, where, sh, plain, t, from_model):
         for j, v in zip(plain, r):
             out[j] = v
         return out
-    want = f"{n} 格" if len(plain) == n else f"{n} 格（或不含公式列的 {len(plain)} 格）"
-    raise BadInput(f"这一行有 {len(r)} 格，表有 {want}", where, "每行的格数与列数相同；空格子写 null")
+    want = f"{n}" if len(plain) == n else f"{n}（或不含公式列的 {len(plain)}）"
+    raise BadInput(f"第 {ri + 1} 行有 {len(r)} 格，表有 {n} 列：数组行的格数须等于当前列数（期望 {want}，实际 {len(r)}）", where,
+                   "空格子写 null；分批追加行请用对象行（列的 key 或标题 → 值）；改了列要把已有的数组行按新列重写")
 
 
 def _formula_given(t, where, c):

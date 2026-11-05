@@ -367,6 +367,7 @@
     "title": "库存",
     "sheets": [
      {
+      "id": "parts",
       "name": "零件/外购",
       "columns": [
        "名称",
@@ -380,6 +381,7 @@
       ]
      },
      {
+      "id": "raw",
       "name": "原料",
       "columns": [
        "名称",
@@ -570,6 +572,7 @@
      {
       "key": "r",
       "title": "商",
+      "type": "number",
       "formula": "round(a / b, 2)"
      },
      {
@@ -602,7 +605,8 @@
     "columns": [
      {
       "key": "g",
-      "title": "牌号"
+      "title": "牌号",
+      "type": "text"
      },
      {
       "key": "ys",
@@ -882,7 +886,8 @@
     "columns": [
      {
       "key": "a",
-      "title": "甲"
+      "title": "甲",
+      "type": "text"
      },
      {
       "title": "乙",
@@ -1356,6 +1361,7 @@
       "title": "库存",
       "sheets": [
        {
+        "id": "a",
         "name": "甲",
         "columns": [
          "名称",
@@ -1369,6 +1375,7 @@
         ]
        },
        {
+        "id": "b",
         "name": "乙",
         "columns": [
          "名称",
@@ -1709,6 +1716,7 @@
     "title": "季度销量",
     "sheets": [
      {
+      "id": "s1",
       "name": "季度销量",
       "columns": [
        {

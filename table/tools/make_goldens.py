@@ -1,5 +1,8 @@
 """生成 golden_cases.json（TL-12 ③ 金样）。期望值都是手算后写死的，不由工具跑出来再抄。
 
+2.0.0：#7、#28、#35 的各张表补 id（table.build 的 sheet id 必填）；b_round_fn、b_count_min_max、err_formula_text
+三条给被公式或合计引用的列补 type（取 1.0.1 原来推断或缺省的类型），期望值不变。
+
 每条：{id, note, tool, payload, expect}。expect 的键是结果里的路径（如 sheets[0].totals[0].value），
 另有几个特殊键，由 tools/run_golden.py 解释：
   md_contains / md_lacks       Markdown 文件里有 / 没有这些文字
@@ -65,8 +68,8 @@ case("b_bool", "是否列：true / \"是\" / \"否\"；中文显示是、否", "
      {"md_contains": ["| 油封 | 是 |", "| 箱体 | 否 |"], "model_contains": ['["油封",true]']})
 case("b_multisheet", "两张表；表名里的 / 换成 _；CSV 每张一份", "table.build",
      {"table": {"title": "库存", "sheets": [
-         {"name": "零件/外购", "columns": ["名称", "库存"], "rows": [["轴承", 46]]},
-         {"name": "原料", "columns": ["名称", "库存"], "rows": [["圆钢", 12], ["板材", 3]]}]}, "formats": ["xlsx", "csv"]},
+         {"id": "parts", "name": "零件/外购", "columns": ["名称", "库存"], "rows": [["轴承", 46]]},
+         {"id": "raw", "name": "原料", "columns": ["名称", "库存"], "rows": [["圆钢", 12], ["板材", 3]]}]}, "formats": ["xlsx", "csv"]},
      {"sheets[0].name": "零件_外购", "sheets[1].rows": 2, "stats.sheets": 2, "file_count": 6,
       "warnings[0].code": "sheet_name", "md_contains": ["## 零件_外购", "## 原料"]})
 case("b_dict_rows", "对象写法的行：按列名取值，缺的格子为空", "table.build",
@@ -84,11 +87,12 @@ case("b_div_zero", "除以零：格子留空并告警，xlsx 用 IFERROR 包住"
       "xlsx_contains": {"xl/worksheets/sheet1.xml": ['<f>IFERROR(A3/B3,"")</f>', '<f>IFERROR(A2/B2,"")</f><v>25</v>']}, "md_contains": ["| 100.00 | 4 | 25.00 |"]})
 case("b_round_fn", "round 与 max：round(7/3, 2) = 2.33；max(2.33, 3) = 3", "table.build",
      {"table": {"title": "函数", "columns": [{"key": "a", "title": "甲", "type": "number"}, {"key": "b", "title": "乙", "type": "number"},
-                                           {"key": "r", "title": "商", "formula": "round(a / b, 2)"}, {"title": "取大", "formula": "max(r, 3)"}],
+                                           {"key": "r", "title": "商", "type": "number", "formula": "round(a / b, 2)"}, {"title": "取大", "formula": "max(r, 3)"}],
                 "rows": [[7, 3]]}},
      {"model_contains": ['"2.33"', '["7","3","2.33","3"]']})
 case("b_count_min_max", "count 可用于文字列；min、max 用于数值列", "table.build",
-     {"table": {**STEEL, "totals": [{"column": "牌号", "fn": "count"}, {"column": "屈服强度", "fn": "max"}, {"column": "价格", "fn": "min"}]}},
+     {"table": {**STEEL, "columns": [{**STEEL["columns"][0], "type": "text"}, *STEEL["columns"][1:]],
+                "totals": [{"column": "牌号", "fn": "count"}, {"column": "屈服强度", "fn": "max"}, {"column": "价格", "fn": "min"}]}},
      {"sheets[0].totals[0].value": "4", "sheets[0].totals[1].value": "355", "sheets[0].totals[2].value": "4200",
       "md_contains": ["| **4** | **355** | **4,200.00** |"]})
 case("b_twice", "同一输入两次运行，output 与文件逐字节相同（TL-12 ②）", "table.build",
@@ -107,7 +111,7 @@ case("err_formula_ref", "公式引用不存在的列", "table.build",
      {"table": {"title": "T", "columns": [{"key": "a", "title": "甲", "type": "number"}, {"title": "乙", "formula": "a * k"}], "rows": [[1]]}},
      {"error.code": "BAD_INPUT", "error.where": "table.columns[1].formula"})
 case("err_formula_text", "公式引用文字列", "table.build",
-     {"table": {"title": "T", "columns": [{"key": "a", "title": "甲"}, {"title": "乙", "formula": "a * 2"}], "rows": [["x"]]}},
+     {"table": {"title": "T", "columns": [{"key": "a", "title": "甲", "type": "text"}, {"title": "乙", "formula": "a * 2"}], "rows": [["x"]]}},
      {"error.code": "BAD_INPUT", "error.where": "table.columns[1].formula"})
 case("err_dup_title", "同一张表里列标题重复", "table.build",
      {"table": {"title": "T", "columns": ["甲", "甲"], "rows": []}},
@@ -142,8 +146,8 @@ case("c_missing_column", "要的列不在表里", "table.check",
      {"verdict": "fail", "checks[2].where": ["密度"]})
 case("c_object", "用 object（table.build 的产出记录）核对，sheet= 指定表（行首行尾都行）", "table.check",
      {"object": {"tool": "table.build", "args": {"table": {"title": "库存", "sheets": [
-         {"name": "甲", "columns": ["名称", "库存"], "rows": [["轴承", 46]]},
-         {"name": "乙", "columns": ["名称", "库存"], "rows": [["圆钢", 12], ["板材", 3]]}]}}, "output": {}},
+         {"id": "a", "name": "甲", "columns": ["名称", "库存"], "rows": [["轴承", 46]]},
+         {"id": "b", "name": "乙", "columns": ["名称", "库存"], "rows": [["圆钢", 12], ["板材", 3]]}]}}, "output": {}},
       "expect": "rows min=2 sheet=乙\nsheet=乙 total 库存 sum=15\nsheet=乙\nunique 名称"},
      {"verdict": "pass"})
 case("err_expect", "期望清单写错：不认识的核对项", "table.check",
@@ -169,7 +173,7 @@ case("e_object", "从 object（table.build 的产出记录）导出（17 TL-9b�
      {"object": {"tool": "table.build", "args": {"table": BOM, "name": "bom"}, "output": {}}, "format": "xlsx"},
      {"name": "bom", "files[0].path": "bom.xlsx"})
 case("e_model_roundtrip", "表模型再导回：从 json 格式的表模型重新导出，sha 不变", "table.export",
-     {"object": {"schema": "mengos.table/1", "title": "季度销量", "sheets": [{"name": "季度销量", "columns": [
+     {"object": {"schema": "mengos.table/1", "title": "季度销量", "sheets": [{"id": "s1", "name": "季度销量", "columns": [
          {"key": "c1", "title": "地区", "type": "text", "align": "left"}, {"key": "c2", "title": "一季度", "type": "integer", "align": "right"}],
          "rows": [["华东", "120"]]}]}, "format": "json"},
      {"file_count": 1, "files[0].role": "table.model", "warnings": []})

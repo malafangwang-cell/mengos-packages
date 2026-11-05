@@ -1,5 +1,10 @@
 """生成 registration.json（TL-6 登记资产）。说明文字站在调用方的观察点写（TL-16b、TL-19）。
 
+2.0.0：table.build 接入贡献型声明（17 TL-30a），入参与核对、导出分成两份定义：
+  · table.build：顶层 base 槽（x-mengos-base）；sheets 标 by-id（id 必填、label=name、fill=rows），各处 rows 标 append；
+    必填改为 if {required:[base]} then {required:[base]} else {原必填}，只有 sheet 的 id 必填写在分支之外；
+  · table.check、table.export：表的定义照 1.0.1（sheet id 可选），不带贡献词汇——它们收的是表对象，不参与合并。
+
 顺序：改本文件 → python tools/make_registration.py → python lock.py → python tools/make_package.py。
 """
 import json
@@ -29,6 +34,7 @@ ROWS = {"type": "array", "maxItems": 100000, "x-mengos-data": True, "items": {"o
     {"type": "array", "maxItems": 200, "items": CELL},
     {"type": "object", "additionalProperties": CELL},
 ]}}
+ROWS_BUILD = {**ROWS, "x-mengos-merge": {"mode": "append"}}
 TOTALS = {"type": "array", "maxItems": 200, "items": {"oneOf": [
     {"type": "string", "minLength": 1},
     {"type": "object", "required": ["column"], "additionalProperties": False, "properties": {
@@ -44,11 +50,7 @@ SHEET_PROPS = {
     "note": {"type": "string", "maxLength": 2000},
     "freeze_cols": {"type": "integer", "minimum": 0, "maximum": 10},
 }
-TABLE = {
-    "type": "object",
-    "required": ["title"],
-    "additionalProperties": False,
-    "description": (
+TABLE_DESC = (
         "table：一张或几张数据表。title 标题（必填）。单张表直接写 columns 与 rows；几张表写 sheets，"
         "每张 {name 表名（最多 31 个字符）, columns, rows, totals, caption, note}。"
         "columns 按顺序列出各列：title 列标题（必填，只写名称，单位写进 unit）、key（可选，字母、数字、下划线，公式里用它引用这一列）、"
@@ -59,8 +61,42 @@ TABLE = {
         "数值写数字，不带单位；百分比写百分数（12.5 表示 12.5%）；日期写 YYYY-MM-DD。"
         "totals 加末行合计：[{column, fn}]，fn 为 sum / avg / min / max / count，只写列名时按 sum。"
         "meta：lang（zh-CN 或 en，也可直接写在 table 顶层）、author、org、date、version。sources 列数据来源，assumptions 列数据成立的前提（如价格的时点）。"
-    ),
-    "properties": {
+)
+TABLE_DESC_BUILD = (
+    "table：一张或几张数据表。title 标题。单张表直接写 columns 与 rows；几张表写 sheets，"
+    "每张 {id, name 表名（最多 31 个字符）, columns, rows, totals, caption, note}，id 必填（字母、数字、下划线，供后续修改时定位这张表）。"
+    "columns 按顺序列出各列：title 列标题（必填，只写名称，单位写进 unit）、key（可选，字母、数字、下划线，公式里用它引用这一列）、"
+    "type（text 文字 / integer 整数 / number 数 / money 金额 / percent 百分比 / date 日期 / bool 是否；不写时按内容推断，建议都写上；"
+    "被公式或合计引用的列必须写 type）、"
+    "unit 单位（如 MPa、元/吨）、decimals 显示几位小数、formula 公式（同一行里数值列的 + - * / 与括号，可用 round、abs、min、max，"
+    "用列的 key 或标题引用，例如 \"单价 * 数量\"；公式列的值由工具算，行里不用写）。列也可以只写标题字符串。"
+    "rows 每行一个数组，按列的顺序，格数等于列数，每格是字符串、数字、true/false 或 null（空格子）；有公式列时可以只写非公式列。"
+    "行也可以写成对象（列的 key 或标题 → 值），缺的格子为空；分批追加行时请用对象行，改了列要把已有的数组行按新列重写。"
+    "数值写数字，不带单位；百分比写百分数（12.5 表示 12.5%）；日期写 YYYY-MM-DD。"
+    "totals 加末行合计：[{column, fn}]，fn 为 sum / avg / min / max / count，只写列名时按 sum。"
+    "meta：lang（zh-CN 或 en，也可直接写在 table 顶层）、author、org、date、version。sources 列数据来源，assumptions 列数据成立的前提（如价格的时点）。"
+)
+
+
+def table_def(build=False):
+    """build=True：table.build 的贡献型定义；否则核对与导出用的 1.x 定义（逐键同 1.0.1）。"""
+    rows = ROWS_BUILD if build else ROWS
+    sheet_props = {**SHEET_PROPS, "rows": rows}
+    sheet = {"type": "object", "required": ["id"] if build else ["columns"], "additionalProperties": False,
+             "properties": {"id": ID, "name": {"type": "string", "maxLength": 200}, **sheet_props,
+                            "sources": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000},
+                                        "description": "写在这里也行，并入整张表的 sources"},
+                            "assumptions": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000},
+                                            "description": "写在这里也行，并入整张表的 assumptions"}}}
+    sheets = {"type": "array", "minItems": 1, "maxItems": 20, "items": sheet}
+    if build:
+        sheets = {**sheets, "x-mengos-merge": {"mode": "by-id", "id": "id", "label": "name", "fill": "rows"}}
+    t = {"type": "object"}
+    if not build:
+        t["required"] = ["title"]
+    t["additionalProperties"] = False
+    t["description"] = TABLE_DESC_BUILD if build else TABLE_DESC
+    t["properties"] = {
         "schema": {"const": "mengos.table/1"},
         "title": {"type": "string", "minLength": 1, "maxLength": 200},
         "subtitle": {"type": "string", "maxLength": 200},
@@ -72,18 +108,21 @@ TABLE = {
             "org": {"type": "string", "maxLength": 200},
             "date": {"type": "string", "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$"},
             "version": {"type": "string", "maxLength": 200}}},
-        "sheets": {"type": "array", "minItems": 1, "maxItems": 20, "items": {
-            "type": "object", "required": ["columns"], "additionalProperties": False,
-            "properties": {"id": ID, "name": {"type": "string", "maxLength": 200}, **SHEET_PROPS,
-                           "sources": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000},
-                                       "description": "写在这里也行，并入整张表的 sources"},
-                           "assumptions": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000},
-                                           "description": "写在这里也行，并入整张表的 assumptions"}}}},
-        **SHEET_PROPS,
+        "sheets": sheets,
+        **sheet_props,
         "sources": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000}},
         "assumptions": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000}},
-    },
-}
+    }
+    return t
+
+
+TABLE = table_def()
+TABLE_BUILD = table_def(build=True)
+BASE_SLOT = {"type": "string", "x-mengos-base": True,
+             "description": "上一版产物的回执节点 id（取输入材料中标 $best:true 的那条）；给出时只写改动的部分，引擎按标注合并"}
+# 不带 base 时的必填（整体写法）：与 1.0.1 相同——table 必填，table.title 必填，每张 sheet 的 columns 必填
+WHOLE_REQUIRED = {"required": ["table"], "properties": {"table": {
+    "required": ["title"], "properties": {"sheets": {"items": {"required": ["columns"]}}}}}}
 SHA = {"type": "string", "pattern": "^[0-9a-f]{64}$"}
 WARN = {"type": "array", "items": {"type": "object", "required": ["where", "code", "message"], "properties": {
     "where": {"type": "string"}, "code": {"type": "string"}, "message": {"type": "string"},
@@ -115,14 +154,16 @@ BUILD = {
         "totals": ["金额"]}},
     "signature": {
         "input_schema": {
-            "type": "object", "required": ["table"], "additionalProperties": False,
+            "type": "object", "additionalProperties": False,
+            "if": {"required": ["base"]}, "then": {"required": ["base"]}, "else": WHOLE_REQUIRED,
             "description": (
                 "要交付一张表格时用：清单、台账、明细、对照表、报价单、排班表，或要 Excel、CSV 文件。"
                 "你把数据写进 table：各列、各行的值，需要的公式列与合计；任务只给了要求时，数据由你按要求整理。"
                 "本工具统一各列的类型、单位与小数位，按公式算出公式列和合计；交付 Excel 文件（表头、冻结首行、筛选、数字格式、能重算的公式），"
                 "以及产出台上可排序查看的版本和 Markdown 原文。任务要 CSV 时，在与 table 并列的 formats 里写 [\"xlsx\", \"csv\"]。"),
             "properties": {
-                "table": TABLE,
+                "base": BASE_SLOT,
+                "table": TABLE_BUILD,
                 "name": NAME,
                 "formats": {"type": "array", "uniqueItems": True, "items": {"enum": ["xlsx", "csv"]},
                             "description": "除表模型、产出台数据与 Markdown 外还要哪些文件：xlsx（Excel，缺省）、csv。写在 table 外面、与 table 并列，例如 {\"table\": {…}, \"formats\": [\"xlsx\", \"csv\"]}。"},
@@ -275,7 +316,7 @@ EXPORT = {
 
 REG = {
     "family": "table",
-    "family_version": "1.0.1",
+    "family_version": "2.0.0",
     "lock_hash": "",
     "note": ("字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。"
              "选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。"

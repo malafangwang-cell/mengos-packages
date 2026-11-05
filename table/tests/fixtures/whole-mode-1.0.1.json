@@ -1,0 +1,390 @@
+{
+ "_说明": "TB-6 整体写法守恒金样：在 table 1.0.1（lock 0c8725745e60700f）代码上录。每条输入合 2.0.0 契约（sheet 带 id；被公式或合计引用的列写 type），不带 base。stdout 是 1.0.1 进程入口的原样输出行（含换行），file_sha256 是产出文件逐个的 sha256。测试要求 2.0.0 的输出与此逐字节相同。",
+ "recorded_on": {
+  "package": "table",
+  "version": "1.0.1",
+  "lock": "0c8725745e60700f",
+  "content_hash": "9d32fbe4082c6032ed5c5cff20c093dac1c4ef7f6411914242dd428a336cb64e"
+ },
+ "cases": [
+  {
+   "id": "bom_formula_totals",
+   "note": "公式列与合计，被引用列都写了 type",
+   "payload": {
+    "table": {
+     "title": "减速机物料清单",
+     "columns": [
+      {
+       "key": "part",
+       "title": "零件"
+      },
+      {
+       "key": "qty",
+       "title": "数量",
+       "type": "integer"
+      },
+      {
+       "key": "price",
+       "title": "单价",
+       "type": "money",
+       "unit": "元"
+      },
+      {
+       "key": "amount",
+       "title": "金额",
+       "type": "money",
+       "unit": "元",
+       "formula": "qty * price"
+      }
+     ],
+     "rows": [
+      [
+       "输入轴",
+       1,
+       860
+      ],
+      [
+       "齿轮",
+       2,
+       1250.5
+      ],
+      [
+       "轴承 6208",
+       4,
+       95
+      ]
+     ],
+     "totals": [
+      "金额"
+     ]
+    }
+   },
+   "stdout": "{\"ok\":true,\"output\":{\"files\":[{\"bytes\":934,\"format\":\"json\",\"media_type\":\"application/json\",\"path\":\"减速机物料清单.table.json\",\"role\":\"table.model\",\"sha256\":\"f326aea199efbc89f78de2a8adea1cb5aadc698defd95d38cc883e516594cc4d\"},{\"bytes\":1536,\"format\":\"view\",\"media_type\":\"application/json\",\"path\":\"减速机物料清单.view.json\",\"role\":\"table.view\",\"sha256\":\"85dfd3afcaadc8c030a9b65bd439ff94b1df38c88f0c76c73bdfb65c82a9533f\"},{\"bytes\":289,\"format\":\"md\",\"media_type\":\"text/markdown; charset=utf-8\",\"path\":\"减速机物料清单.md\",\"role\":\"table.text\",\"sha256\":\"8da3ccfc12b15d9683c98648a77b78b49daf087fd488eaf68756104b6605e730\"},{\"bytes\":6776,\"format\":\"xlsx\",\"media_type\":\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"path\":\"减速机物料清单.xlsx\",\"role\":\"table.excel\",\"sha256\":\"bf2ead472cc00b9e57d689cb022766252437f0918347d2f937dfe2061127abb1\"}],\"name\":\"减速机物料清单\",\"sheets\":[{\"columns\":[\"零件\",\"数量\",\"单价\",\"金额\"],\"name\":\"减速机物料清单\",\"rows\":3,\"totals\":[{\"column\":\"金额\",\"fn\":\"sum\",\"value\":\"3741\"}]}],\"stats\":{\"cells\":12,\"columns\":4,\"empty_cells\":0,\"formula_columns\":1,\"rows\":3,\"sheets\":1,\"warnings\":0},\"table_sha256\":\"8d6331568b26cea8a72a99741f6ef50f78eb5cb7a41c6fe6279a3ce34cec2053\",\"title\":\"减速机物料清单\",\"warnings\":[]}}\n",
+   "file_sha256": {
+    "减速机物料清单.table.json": "f326aea199efbc89f78de2a8adea1cb5aadc698defd95d38cc883e516594cc4d",
+    "减速机物料清单.view.json": "85dfd3afcaadc8c030a9b65bd439ff94b1df38c88f0c76c73bdfb65c82a9533f",
+    "减速机物料清单.md": "8da3ccfc12b15d9683c98648a77b78b49daf087fd488eaf68756104b6605e730",
+    "减速机物料清单.xlsx": "bf2ead472cc00b9e57d689cb022766252437f0918347d2f937dfe2061127abb1"
+   }
+  },
+  {
+   "id": "multisheet_noncanonical",
+   "note": "两张表带 id；标题与表名带首尾空白，键序打乱，数字写法 4 / 4.0 / \"1,200\" / \"¥95\"，meta 带空白，CSV 每张一份",
+   "payload": {
+    "formats": [
+     "csv",
+     "xlsx"
+    ],
+    "table": {
+     "sheets": [
+      {
+       "rows": [
+        [
+         "轴承 ",
+         4.0,
+         "1,200"
+        ],
+        [
+         " 齿轮",
+         4,
+         "¥95"
+        ]
+       ],
+       "id": "s1",
+       "name": " 零件/外购 ",
+       "columns": [
+        "名称",
+        {
+         "type": "integer",
+         "title": "数量"
+        },
+        {
+         "title": "单价",
+         "type": "money",
+         "unit": "元"
+        },
+        {
+         "formula": "数量*单价",
+         "title": "金额",
+         "type": "money"
+        }
+       ],
+       "totals": [
+        {
+         "fn": "sum",
+         "column": "金额"
+        },
+        {
+         "column": "数量",
+         "fn": "max"
+        }
+       ]
+      },
+      {
+       "name": "原料",
+       "id": "raw",
+       "columns": [
+        "名称",
+        "库存"
+       ],
+       "rows": [
+        [
+         "圆钢",
+         12
+        ],
+        [
+         "板材",
+         3.0
+        ]
+       ],
+       "caption": "  月底盘点  "
+      }
+     ],
+     "title": "  库存  ",
+     "meta": {
+      "org": " 装配车间 ",
+      "date": "2026-10-05"
+     }
+    }
+   },
+   "stdout": "{\"ok\":true,\"output\":{\"files\":[{\"bytes\":1345,\"format\":\"json\",\"media_type\":\"application/json\",\"path\":\"库存.table.json\",\"role\":\"table.model\",\"sha256\":\"e29ad203ed9403d51336b84a7d40e481282031f408f9101643e394c1410f69bb\"},{\"bytes\":1923,\"format\":\"view\",\"media_type\":\"application/json\",\"path\":\"库存.view.json\",\"role\":\"table.view\",\"sha256\":\"45a8210adc816db1938d5640e494e95f8db152b828a443c8e1b82f5fe9a9b5b5\"},{\"bytes\":381,\"format\":\"md\",\"media_type\":\"text/markdown; charset=utf-8\",\"path\":\"库存.md\",\"role\":\"table.text\",\"sha256\":\"3796c792c4df16e608484223ed2d3097704f6c714d557175674309e02c99108f\"},{\"bytes\":92,\"format\":\"csv\",\"media_type\":\"text/csv; charset=utf-8\",\"path\":\"库存-1.csv\",\"role\":\"table.csv\",\"sha256\":\"bcb4c70e704dc51a2eff0cd406063e388f422b5252e9e5233cb1b18aba75efe4\"},{\"bytes\":39,\"format\":\"csv\",\"media_type\":\"text/csv; charset=utf-8\",\"path\":\"库存-2.csv\",\"role\":\"table.csv\",\"sha256\":\"236122fa7850d6b8921b5c0f6991aa057db882b0a1ce2259e215cac7d99f4eb9\"},{\"bytes\":7498,\"format\":\"xlsx\",\"media_type\":\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"path\":\"库存.xlsx\",\"role\":\"table.excel\",\"sha256\":\"31342b0454dee582690eb8dc5f403ad395e9d641c59e0c958384b1d205ee929b\"}],\"name\":\"库存\",\"sheets\":[{\"columns\":[\"名称\",\"数量\",\"单价\",\"金额\"],\"name\":\"零件_外购\",\"rows\":2,\"totals\":[{\"column\":\"数量\",\"fn\":\"max\",\"value\":\"4\"},{\"column\":\"金额\",\"fn\":\"sum\",\"value\":\"5180\"}]},{\"columns\":[\"名称\",\"库存\"],\"name\":\"原料\",\"rows\":2}],\"stats\":{\"cells\":12,\"columns\":6,\"empty_cells\":0,\"formula_columns\":1,\"rows\":4,\"sheets\":2,\"warnings\":1},\"table_sha256\":\"770c5a308d97b12926537aa0831eeb347f1b6a980da2f20242ef5b02799d9bed\",\"title\":\"库存\",\"warnings\":[{\"code\":\"sheet_name\",\"message\":\"表名改成了“零件_外购”（Excel 表名最多 31 个字符，不能有 [ ] : * ? / \\\\，不能重复）\",\"where\":\"table.sheets[0].name\"}]}}\n",
+   "file_sha256": {
+    "库存.table.json": "e29ad203ed9403d51336b84a7d40e481282031f408f9101643e394c1410f69bb",
+    "库存.view.json": "45a8210adc816db1938d5640e494e95f8db152b828a443c8e1b82f5fe9a9b5b5",
+    "库存.md": "3796c792c4df16e608484223ed2d3097704f6c714d557175674309e02c99108f",
+    "库存-1.csv": "bcb4c70e704dc51a2eff0cd406063e388f422b5252e9e5233cb1b18aba75efe4",
+    "库存-2.csv": "236122fa7850d6b8921b5c0f6991aa057db882b0a1ce2259e215cac7d99f4eb9",
+    "库存.xlsx": "31342b0454dee582690eb8dc5f403ad395e9d641c59e0c958384b1d205ee929b"
+   }
+  },
+  {
+   "id": "dict_and_short_rows",
+   "note": "对象行（键用 key 或标题）与只写非公式列的短数组行；被引用列写 type",
+   "payload": {
+    "table": {
+     "title": "面积",
+     "columns": [
+      {
+       "key": "w",
+       "title": "宽",
+       "type": "number"
+      },
+      {
+       "key": "h",
+       "title": "高",
+       "type": "number"
+      },
+      {
+       "title": "面积",
+       "formula": "w*h",
+       "decimals": 2,
+       "type": "number"
+      },
+      "备注"
+     ],
+     "rows": [
+      [
+       1.5,
+       2,
+       null
+      ],
+      {
+       "w": 0.3,
+       "高": 0.7,
+       "备注": "样件"
+      },
+      {
+       "h": "2",
+       "宽": "1.25"
+      }
+     ],
+     "totals": [
+      {
+       "column": "面积",
+       "fn": "avg"
+      }
+     ]
+    }
+   },
+   "stdout": "{\"ok\":true,\"output\":{\"files\":[{\"bytes\":837,\"format\":\"json\",\"media_type\":\"application/json\",\"path\":\"面积.table.json\",\"role\":\"table.model\",\"sha256\":\"f03986a995919f9497030227cc9f3d18846888d0660a6df070566e0be937da55\"},{\"bytes\":1345,\"format\":\"view\",\"media_type\":\"application/json\",\"path\":\"面积.view.json\",\"role\":\"table.view\",\"sha256\":\"e673104b8a35582c0f9891834cf07e340c638c5e8263aeeeace58f4557fc83aa\"},{\"bytes\":205,\"format\":\"md\",\"media_type\":\"text/markdown; charset=utf-8\",\"path\":\"面积.md\",\"role\":\"table.text\",\"sha256\":\"2ca641587815595ab1dcc46577323c6674beb30b42323a59267a2cb7791f5e21\"},{\"bytes\":6595,\"format\":\"xlsx\",\"media_type\":\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"path\":\"面积.xlsx\",\"role\":\"table.excel\",\"sha256\":\"32aff88c7103170ded3c78eeae4352f486f4128b8b557a8c17eed2407548b1c3\"}],\"name\":\"面积\",\"sheets\":[{\"columns\":[\"宽\",\"高\",\"面积\",\"备注\"],\"name\":\"面积\",\"rows\":3,\"totals\":[{\"column\":\"面积\",\"fn\":\"avg\",\"value\":\"1.9\"}]}],\"stats\":{\"cells\":12,\"columns\":4,\"empty_cells\":2,\"formula_columns\":1,\"rows\":3,\"sheets\":1,\"warnings\":0},\"table_sha256\":\"0369e8ba75cafe7eb6a6dcca3f63ea51b6f74b6263ee54e2d99ccd89c1c19cf6\",\"title\":\"面积\",\"warnings\":[]}}\n",
+   "file_sha256": {
+    "面积.table.json": "f03986a995919f9497030227cc9f3d18846888d0660a6df070566e0be937da55",
+    "面积.view.json": "e673104b8a35582c0f9891834cf07e340c638c5e8263aeeeace58f4557fc83aa",
+    "面积.md": "2ca641587815595ab1dcc46577323c6674beb30b42323a59267a2cb7791f5e21",
+    "面积.xlsx": "32aff88c7103170ded3c78eeae4352f486f4128b8b557a8c17eed2407548b1c3"
+   }
+  },
+  {
+   "id": "inferred_unreferenced",
+   "note": "不被引用的列照旧推断：百分比字符串、日期、是否、千分位",
+   "payload": {
+    "table": {
+     "title": "检验记录",
+     "lang": "zh-CN",
+     "columns": [
+      "批次",
+      "日期",
+      "合格",
+      "合格率",
+      "数量"
+     ],
+     "rows": [
+      [
+       "A-1",
+       "2026-10-05",
+       "是",
+       "98.5%",
+       "1,002"
+      ],
+      [
+       "A-2",
+       "2026-10-06",
+       "否",
+       "87%",
+       980
+      ],
+      [
+       "A-3",
+       null,
+       true,
+       "-",
+       "12"
+      ]
+     ]
+    }
+   },
+   "stdout": "{\"ok\":true,\"output\":{\"files\":[{\"bytes\":902,\"format\":\"json\",\"media_type\":\"application/json\",\"path\":\"检验记录.table.json\",\"role\":\"table.model\",\"sha256\":\"53dd21d9e0cede3ff5c221f8ab1a33694dbeb9bcde1d9c098d6c217457864193\"},{\"bytes\":1519,\"format\":\"view\",\"media_type\":\"application/json\",\"path\":\"检验记录.view.json\",\"role\":\"table.view\",\"sha256\":\"ac637e72287aa156bebef87076f78c850b4a1048aedb32f5d32e8fca2ca9ea12\"},{\"bytes\":206,\"format\":\"md\",\"media_type\":\"text/markdown; charset=utf-8\",\"path\":\"检验记录.md\",\"role\":\"table.text\",\"sha256\":\"f461eeedbf33484d0f4a6d457f9c2067fd48bb29a4b9c90ef921beb0b08256ed\"},{\"bytes\":6065,\"format\":\"xlsx\",\"media_type\":\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"path\":\"检验记录.xlsx\",\"role\":\"table.excel\",\"sha256\":\"3e446128694617557d062d67b5dce9905e7d63facc8df678833f3d487bf79562\"}],\"name\":\"检验记录\",\"sheets\":[{\"columns\":[\"批次\",\"日期\",\"合格\",\"合格率\",\"数量\"],\"name\":\"检验记录\",\"rows\":3}],\"stats\":{\"cells\":15,\"columns\":5,\"empty_cells\":1,\"formula_columns\":0,\"rows\":3,\"sheets\":1,\"warnings\":0},\"table_sha256\":\"9444c5ddab4d621888413a81b8f69df1c79d1b0a7276c6bfaa9d5a0baf1284ed\",\"title\":\"检验记录\",\"warnings\":[]}}\n",
+   "file_sha256": {
+    "检验记录.table.json": "53dd21d9e0cede3ff5c221f8ab1a33694dbeb9bcde1d9c098d6c217457864193",
+    "检验记录.view.json": "ac637e72287aa156bebef87076f78c850b4a1048aedb32f5d32e8fca2ca9ea12",
+    "检验记录.md": "f461eeedbf33484d0f4a6d457f9c2067fd48bb29a4b9c90ef921beb0b08256ed",
+    "检验记录.xlsx": "3e446128694617557d062d67b5dce9905e7d63facc8df678833f3d487bf79562"
+   }
+  },
+  {
+   "id": "div_zero_and_percent",
+   "note": "除零留空、百分比列；被引用列写 type",
+   "payload": {
+    "table": {
+     "title": "比率",
+     "columns": [
+      {
+       "key": "a",
+       "title": "分子",
+       "type": "number"
+      },
+      {
+       "key": "b",
+       "title": "分母",
+       "type": "number"
+      },
+      {
+       "key": "r",
+       "title": "比",
+       "type": "percent",
+       "formula": "a/b*100",
+       "decimals": 1
+      }
+     ],
+     "rows": [
+      [
+       1,
+       4
+      ],
+      [
+       3,
+       0
+      ],
+      [
+       2.5,
+       10
+      ]
+     ],
+     "totals": [
+      {
+       "column": "比",
+       "fn": "max"
+      },
+      {
+       "column": "分子",
+       "fn": "count"
+      }
+     ]
+    },
+    "name": "ratio",
+    "formats": [
+     "xlsx",
+     "csv"
+    ]
+   },
+   "stdout": "{\"ok\":true,\"output\":{\"files\":[{\"bytes\":771,\"format\":\"json\",\"media_type\":\"application/json\",\"path\":\"ratio.table.json\",\"role\":\"table.model\",\"sha256\":\"deb22f8c80192185ce0e7d98fd99541acb62e67b115d0063037a6c8524f55d92\"},{\"bytes\":1163,\"format\":\"view\",\"media_type\":\"application/json\",\"path\":\"ratio.view.json\",\"role\":\"table.view\",\"sha256\":\"ddbd5db6cd23d92913e709c065179ca60454dbdd2490da006c6d690e68324e83\"},{\"bytes\":179,\"format\":\"md\",\"media_type\":\"text/markdown; charset=utf-8\",\"path\":\"ratio.md\",\"role\":\"table.text\",\"sha256\":\"f23af2e9727cb026784245b80f2220f8a6e0dab9b4d8b36ffe7ccaa9953bc564\"},{\"bytes\":6598,\"format\":\"xlsx\",\"media_type\":\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"path\":\"ratio.xlsx\",\"role\":\"table.excel\",\"sha256\":\"4d681370f487f7c4be475b1be4c29f509002120c19cb794a0f6fa76019315bf7\"},{\"bytes\":58,\"format\":\"csv\",\"media_type\":\"text/csv; charset=utf-8\",\"path\":\"ratio.csv\",\"role\":\"table.csv\",\"sha256\":\"b14dc0c9b08a018fad5eed40e358d6eac8e97e1b352b018315b40863ba2e5ff5\"}],\"name\":\"ratio\",\"sheets\":[{\"columns\":[\"分子\",\"分母\",\"比\"],\"name\":\"比率\",\"rows\":3,\"totals\":[{\"column\":\"分子\",\"fn\":\"count\",\"value\":\"3\"},{\"column\":\"比\",\"fn\":\"max\",\"value\":\"25\"}]}],\"stats\":{\"cells\":9,\"columns\":3,\"empty_cells\":1,\"formula_columns\":1,\"rows\":3,\"sheets\":1,\"warnings\":1},\"table_sha256\":\"e29ffa3f8d1bb6c8258efd00a79eb8d350ff3b2e880911f8cb9e17799fb0df7c\",\"title\":\"比率\",\"warnings\":[{\"code\":\"div_zero\",\"message\":\"“比”有 1 行除以零，这些格子留空\",\"where\":\"table.columns[2].formula\"}]}}\n",
+   "file_sha256": {
+    "ratio.table.json": "deb22f8c80192185ce0e7d98fd99541acb62e67b115d0063037a6c8524f55d92",
+    "ratio.view.json": "ddbd5db6cd23d92913e709c065179ca60454dbdd2490da006c6d690e68324e83",
+    "ratio.md": "f23af2e9727cb026784245b80f2220f8a6e0dab9b4d8b36ffe7ccaa9953bc564",
+    "ratio.xlsx": "4d681370f487f7c4be475b1be4c29f509002120c19cb794a0f6fa76019315bf7",
+    "ratio.csv": "b14dc0c9b08a018fad5eed40e358d6eac8e97e1b352b018315b40863ba2e5ff5"
+   }
+  },
+  {
+   "id": "en_assumptions",
+   "note": "英文、来源与前提并入、freeze_cols",
+   "payload": {
+    "table": {
+     "title": "Steel",
+     "meta": {
+      "lang": "en",
+      "author": "QA"
+     },
+     "freeze_cols": 1,
+     "columns": [
+      {
+       "key": "g",
+       "title": "Grade"
+      },
+      {
+       "key": "ys",
+       "title": "Yield",
+       "unit": "MPa",
+       "type": "integer"
+      },
+      {
+       "key": "p",
+       "title": "Price",
+       "type": "money",
+       "unit": "CNY/t"
+      }
+     ],
+     "rows": [
+      [
+       "Q235",
+       235,
+       4200
+      ],
+      [
+       "304",
+       205,
+       "15,800.00"
+      ]
+     ],
+     "totals": [
+      "Price"
+     ],
+     "sources": [
+      "vendor list"
+     ],
+     "assumptions": [
+      "prices as of 2026-10"
+     ]
+    }
+   },
+   "stdout": "{\"ok\":true,\"output\":{\"assumptions\":[\"prices as of 2026-10\"],\"files\":[{\"bytes\":811,\"format\":\"json\",\"media_type\":\"application/json\",\"path\":\"Steel.table.json\",\"role\":\"table.model\",\"sha256\":\"b2e3e44c9052eab7d85db62426a680e7adb631ea622d7203aa25d1c8e2908415\"},{\"bytes\":1227,\"format\":\"view\",\"media_type\":\"application/json\",\"path\":\"Steel.view.json\",\"role\":\"table.view\",\"sha256\":\"b330fed1ebfd74836018d20e96ae7499fd7ba6c1749404ad80572dc6c2b83042\"},{\"bytes\":221,\"format\":\"md\",\"media_type\":\"text/markdown; charset=utf-8\",\"path\":\"Steel.md\",\"role\":\"table.text\",\"sha256\":\"7e8e31b56daf3260bee020eacb322a553f9b224517fee16216683d68cac50de1\"},{\"bytes\":6600,\"format\":\"xlsx\",\"media_type\":\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"path\":\"Steel.xlsx\",\"role\":\"table.excel\",\"sha256\":\"9b1a4a7e96b5895004c8201d8332dceb95795f0f20045ecc0160fd0478bb4be0\"}],\"name\":\"Steel\",\"sheets\":[{\"columns\":[\"Grade\",\"Yield\",\"Price\"],\"name\":\"Steel\",\"rows\":2,\"totals\":[{\"column\":\"Price\",\"fn\":\"sum\",\"value\":\"20000\"}]}],\"stats\":{\"cells\":6,\"columns\":3,\"empty_cells\":0,\"formula_columns\":0,\"rows\":2,\"sheets\":1,\"warnings\":0},\"table_sha256\":\"9247620f5bfaab91303ad7c8ab1fe76a3febfc18ed5170bc0b2c4685ede5def6\",\"title\":\"Steel\",\"warnings\":[]}}\n",
+   "file_sha256": {
+    "Steel.table.json": "b2e3e44c9052eab7d85db62426a680e7adb631ea622d7203aa25d1c8e2908415",
+    "Steel.view.json": "b330fed1ebfd74836018d20e96ae7499fd7ba6c1749404ad80572dc6c2b83042",
+    "Steel.md": "7e8e31b56daf3260bee020eacb322a553f9b224517fee16216683d68cac50de1",
+    "Steel.xlsx": "9b1a4a7e96b5895004c8201d8332dceb95795f0f20045ecc0160fd0478bb4be0"
+   }
+  }
+ ]
+}

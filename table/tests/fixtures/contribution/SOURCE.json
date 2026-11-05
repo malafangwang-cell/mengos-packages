@@ -1,0 +1,40 @@
+{
+  "_说明": "本目录夹具来源与校验值：逐字节拷贝自 mengosv2 的 tests/projection/fixtures/contribution/（拷贝时的主干 commit 见 origin_commit），sha256 与 document 包 tests/fixtures/contribution/SOURCE.json 所记一致。tests/test_contribution.py 会重算本目录文件的 sha256，与此处不符即失败。引擎夹具 merge-table-rows-data.json（rows 上 x-mengos-data 与 append 并存）待 mengosv2 table-platform 支合入主干后再拷入。merge-path-remap.json 属引擎内部，包预检不用，未拷贝。",
+  "origin_repo": "malafangwang-cell/mengosv2",
+  "origin_commit": "945523c70ee95e3600c1d459d90c8286403816ef",
+  "files": {
+    "card.json": {
+      "origin": "tests/projection/fixtures/contribution/card.json",
+      "copy": "verbatim",
+      "sha256": "98e01315629e56afea13b0264121d06956cf3933828f880613c5ebd0ae553c96"
+    },
+    "skeleton-doc.json": {
+      "origin": "tests/projection/fixtures/contribution/skeleton-doc.json",
+      "copy": "verbatim",
+      "sha256": "b2b2de287e170bac84347650b9eccab01839686a8387ac1037a86f19e4af51ae"
+    },
+    "merge-algebra.json": {
+      "origin": "tests/projection/fixtures/contribution/merge-algebra.json",
+      "copy": "verbatim",
+      "sha256": "09673e8febc339dd11f45abdc8ecd04fc3479baa49a937cfbe5a75ab41611776"
+    },
+    "merge-touched-keys.json": {
+      "origin": "tests/projection/fixtures/contribution/merge-touched-keys.json",
+      "copy": "verbatim",
+      "sha256": "e67f978cd9b62d4fede049c089cdbc66641c2c9df74acb1ed49d33162c36d760"
+    },
+    "merge-empty-slots.json": {
+      "origin": "tests/projection/fixtures/contribution/merge-empty-slots.json",
+      "copy": "verbatim",
+      "sha256": "2f17e9eaf00d657861b9a72e594a80fb150f68da0201ab94e13bd883c377eaaa"
+    }
+  },
+  "engine_reference": {
+    "file": "engine/projection/shapes/contribution.ts",
+    "note": "tests/contribution_ref.py 是它的 Python 对照实现，靠上面的金样验证忠实度；包侧没有运行引擎代码"
+  },
+  "shared_with_other_package": {
+    "tests/contribution_ref.py": "35274c6b981aa99befc5d1f6b36b487d2ceae02cd79edf3f6060f8f0bd6c691b",
+    "_说明": "与 document、cad 包的 tests/contribution_ref.py 逐字节相同"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "_说明": "触及键集 K(Δ') 金样 (设计 r8 §三.2 步骤 1b + kernel-spec v0.2.62 17 TL-30a)。card=card.json 的 args_schema。keys 为升序排列后的全集, 便于逐条比对。期望值由施工方按设计写定, 不从实现生成。不含任何提示词文本 (包仓库会引用本夹具)。",
+  "card": "card.json",
+  "cases": [
+    { "name": "无标注叶子 = 点路径", "delta": { "name": "x", "doc": { "title": "t" } }, "keys": ["doc.title", "name"] },
+    { "name": "by-id 元素作前缀, id 键不进 K", "delta": { "doc": { "sections": [{ "id": "s2", "body": "b" }] } }, "keys": ["doc.sections#s2.body"] },
+    { "name": "label 是普通叶子 (写了就产生键)", "delta": { "doc": { "sections": [{ "id": "s2", "heading": "h", "body": "b" }] } }, "keys": ["doc.sections#s2.body", "doc.sections#s2.heading"] },
+    { "name": "只含 id 的元素产生 路径#id. (带尾点)", "delta": { "doc": { "sections": [{ "id": "s2" }] } }, "keys": ["doc.sections#s2."] },
+    { "name": "缺 id 的元素不产生任何键", "delta": { "doc": { "sections": [{ "heading": "无 id" }] } }, "keys": [] },
+    { "name": "append 整字段一个键", "delta": { "doc": { "tables": [{ "id": "t1", "rows": [["a"], ["b"]] }] } }, "keys": ["doc.tables#t1.rows+"] },
+    { "name": "append 即使为空数组也产生键", "delta": { "doc": { "tables": [{ "id": "t1", "rows": [] }] } }, "keys": ["doc.tables#t1.rows+"] },
+    { "name": "named-lines 按行名, 不匹配行出 @+ (嵌套带前缀)", "delta": { "doc": { "tables": [{ "id": "t1", "plan": "h1: 1\nh2: 2\n随笔" }] } }, "keys": ["doc.tables#t1.plan@+", "doc.tables#t1.plan@h1", "doc.tables#t1.plan@h2"] },
+    { "name": "named-lines 任何不匹配行 (含空白行) 都出 @+", "delta": { "doc": { "tables": [{ "id": "t1", "plan": "h1: 1\n\n" }] } }, "keys": ["doc.tables#t1.plan@+", "doc.tables#t1.plan@h1"] },
+    { "name": "named-lines 空串没有行 ⟹ 无键", "delta": { "doc": { "tables": [{ "id": "t1", "plan": "" }] } }, "keys": [] }
+  ],
+  "disjoint_pairs": [
+    {
+      "name": "嵌套: 一件改 caption、另一件追加 rows ⟹ 互不相交",
+      "a": { "doc": { "tables": [{ "id": "t1", "caption": "新" }] } },
+      "b": { "doc": { "tables": [{ "id": "t1", "rows": [["x"]] }] } },
+      "disjoint": true
+    },
+    {
+      "name": "两件都追加同一 append 字段 ⟹ 相交 (键 doc.tables#t1.rows+)",
+      "a": { "doc": { "tables": [{ "id": "t1", "rows": [["a"]] }] } },
+      "b": { "doc": { "tables": [{ "id": "t1", "rows": [["b"]] }] } },
+      "disjoint": false
+    },
+    {
+      "name": "两件都写同一无标注叶子 ⟹ 相交 (键 doc.title)",
+      "a": { "doc": { "title": "甲" } },
+      "b": { "doc": { "title": "乙" } },
+      "disjoint": false
+    },
+    {
+      "name": "两件都给同 id 空元素 ⟹ 相交 (键 doc.sections#s2.)",
+      "a": { "doc": { "sections": [{ "id": "s2" }] } },
+      "b": { "doc": { "sections": [{ "id": "s2" }] } },
+      "disjoint": false
+    }
+  ]
+}

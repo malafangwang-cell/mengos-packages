@@ -78,11 +78,11 @@ def _allowed(payload, keys):
         raise BadInput(f"不认识的字段：{', '.join(sorted(extra))}（可用：{', '.join(keys)}）", sorted(extra)[0])
 
 
-def _table(payload):
+def _table(payload, build=False):
     from model import BadInput, normalize
     if "table" not in payload:
         raise BadInput("缺少 table（表的内容）", "table")
-    return normalize(payload["table"])
+    return normalize(payload["table"], build)
 
 
 def slug(title: str) -> str:
@@ -186,7 +186,7 @@ def _sheets(t):
 def table_build(payload, workdir=None):
     """数据 → 表：规范各列的类型与单位，算公式列和合计；交付表模型、产出台数据、Markdown，以及 Excel（缺省）。"""
     _allowed(payload, ["table", "name", "formats"])
-    t = _table(payload)
+    t = _table(payload, build=True)
     name = _name(payload, t)
     extra = _formats(payload, BUILD_EXTRA, ["xlsx"])
     out = {"title": t.title, "table_sha256": t.sha, "name": name, "sheets": _sheets(t), "stats": t.stats(),

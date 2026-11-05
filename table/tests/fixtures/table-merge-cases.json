@@ -1,0 +1,742 @@
+{
+ "_说明": "table.build 专属合并金样（执行令-2026-11-05-table包2.0.0 T7）。期望值手写：value 是按引擎合并代数（设计 r8 §三.2）合并后的整体写法，touched_keys 是触及键（排序），build 是合并结果交给 table.build 的结果摘要（sheets 同输出的 sheets，warning_codes 是警告码序列）。测试对每例：合并 → 合并结果过 table.build 的 input_schema（不带 base，走整体写法）→ 进程入口跑 table.build。delta 前加 base 后也须过 input_schema。",
+ "cases": [
+  {
+   "name": "按 id 加 sheet：新 id 追加在末尾，原表不动",
+   "P": {
+    "table": {
+     "title": "库存",
+     "sheets": [
+      {
+       "id": "s1",
+       "name": "零件",
+       "columns": [
+        {
+         "key": "name",
+         "title": "名称"
+        },
+        {
+         "key": "qty",
+         "title": "数量",
+         "type": "integer"
+        }
+       ],
+       "rows": [
+        [
+         "轴承",
+         46
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "delta": {
+    "table": {
+     "sheets": [
+      {
+       "id": "s2",
+       "name": "原料",
+       "columns": [
+        {
+         "key": "name",
+         "title": "名称"
+        },
+        {
+         "key": "stock",
+         "title": "库存",
+         "type": "integer"
+        }
+       ],
+       "rows": [
+        [
+         "圆钢",
+         12
+        ],
+        [
+         "板材",
+         3
+        ]
+       ],
+       "totals": [
+        "库存"
+       ]
+      }
+     ]
+    }
+   },
+   "expect": {
+    "ok": true,
+    "value": {
+     "table": {
+      "title": "库存",
+      "sheets": [
+       {
+        "id": "s1",
+        "name": "零件",
+        "columns": [
+         {
+          "key": "name",
+          "title": "名称"
+         },
+         {
+          "key": "qty",
+          "title": "数量",
+          "type": "integer"
+         }
+        ],
+        "rows": [
+         [
+          "轴承",
+          46
+         ]
+        ]
+       },
+       {
+        "id": "s2",
+        "name": "原料",
+        "columns": [
+         {
+          "key": "name",
+          "title": "名称"
+         },
+         {
+          "key": "stock",
+          "title": "库存",
+          "type": "integer"
+         }
+        ],
+        "rows": [
+         [
+          "圆钢",
+          12
+         ],
+         [
+          "板材",
+          3
+         ]
+        ],
+        "totals": [
+         "库存"
+        ]
+       }
+      ]
+     }
+    },
+    "touched_keys": [
+     "table.sheets#s2.columns",
+     "table.sheets#s2.name",
+     "table.sheets#s2.rows+",
+     "table.sheets#s2.totals"
+    ],
+    "build": {
+     "ok": true,
+     "sheets": [
+      {
+       "name": "零件",
+       "rows": 1,
+       "columns": [
+        "名称",
+        "数量"
+       ]
+      },
+      {
+       "name": "原料",
+       "rows": 2,
+       "columns": [
+        "名称",
+        "库存"
+       ],
+       "totals": [
+        {
+         "column": "库存",
+         "fn": "sum",
+         "value": "15"
+        }
+       ]
+      }
+     ],
+     "warning_codes": []
+    }
+   }
+  },
+  {
+   "name": "按 id 改 caption 与 name：只改给出的键，行不动",
+   "P": {
+    "table": {
+     "title": "库存",
+     "sheets": [
+      {
+       "id": "s1",
+       "name": "零件",
+       "columns": [
+        {
+         "key": "name",
+         "title": "名称"
+        },
+        {
+         "key": "qty",
+         "title": "数量",
+         "type": "integer"
+        }
+       ],
+       "rows": [
+        [
+         "轴承",
+         46
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "delta": {
+    "table": {
+     "sheets": [
+      {
+       "id": "s1",
+       "name": "外购件",
+       "caption": "十月盘点"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "ok": true,
+    "value": {
+     "table": {
+      "title": "库存",
+      "sheets": [
+       {
+        "id": "s1",
+        "name": "外购件",
+        "columns": [
+         {
+          "key": "name",
+          "title": "名称"
+         },
+         {
+          "key": "qty",
+          "title": "数量",
+          "type": "integer"
+         }
+        ],
+        "rows": [
+         [
+          "轴承",
+          46
+         ]
+        ],
+        "caption": "十月盘点"
+       }
+      ]
+     }
+    },
+    "touched_keys": [
+     "table.sheets#s1.caption",
+     "table.sheets#s1.name"
+    ],
+    "build": {
+     "ok": true,
+     "sheets": [
+      {
+       "name": "外购件",
+       "rows": 1,
+       "columns": [
+        "名称",
+        "数量"
+       ]
+      }
+     ],
+     "warning_codes": []
+    }
+   }
+  },
+  {
+   "name": "单表写法追加 rows：数组行与对象行都接在原行之后，触及键 table.rows+",
+   "P": {
+    "table": {
+     "title": "值班",
+     "columns": [
+      {
+       "key": "d",
+       "title": "日期",
+       "type": "date"
+      },
+      {
+       "key": "p",
+       "title": "值班人",
+       "type": "text"
+      }
+     ],
+     "rows": [
+      [
+       "2026-11-02",
+       "张三"
+      ]
+     ]
+    }
+   },
+   "delta": {
+    "table": {
+     "rows": [
+      [
+       "2026-11-03",
+       "李四"
+      ],
+      {
+       "日期": "2026-11-04",
+       "p": "王五"
+      }
+     ]
+    }
+   },
+   "expect": {
+    "ok": true,
+    "value": {
+     "table": {
+      "title": "值班",
+      "columns": [
+       {
+        "key": "d",
+        "title": "日期",
+        "type": "date"
+       },
+       {
+        "key": "p",
+        "title": "值班人",
+        "type": "text"
+       }
+      ],
+      "rows": [
+       [
+        "2026-11-02",
+        "张三"
+       ],
+       [
+        "2026-11-03",
+        "李四"
+       ],
+       {
+        "日期": "2026-11-04",
+        "p": "王五"
+       }
+      ]
+     }
+    },
+    "touched_keys": [
+     "table.rows+"
+    ],
+    "build": {
+     "ok": true,
+     "sheets": [
+      {
+       "name": "值班",
+       "rows": 3,
+       "columns": [
+        "日期",
+        "值班人"
+       ]
+      }
+     ],
+     "warning_codes": []
+    }
+   }
+  },
+  {
+   "name": "sheet 内追加 rows：触及键 table.sheets#s1.rows+，不去重",
+   "P": {
+    "table": {
+     "title": "库存",
+     "sheets": [
+      {
+       "id": "s1",
+       "name": "零件",
+       "columns": [
+        {
+         "key": "name",
+         "title": "名称"
+        },
+        {
+         "key": "qty",
+         "title": "数量",
+         "type": "integer"
+        }
+       ],
+       "rows": [
+        [
+         "轴承",
+         46
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "delta": {
+    "table": {
+     "sheets": [
+      {
+       "id": "s1",
+       "rows": [
+        {
+         "name": "齿轮",
+         "qty": 2
+        },
+        [
+         "轴承",
+         46
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "expect": {
+    "ok": true,
+    "value": {
+     "table": {
+      "title": "库存",
+      "sheets": [
+       {
+        "id": "s1",
+        "name": "零件",
+        "columns": [
+         {
+          "key": "name",
+          "title": "名称"
+         },
+         {
+          "key": "qty",
+          "title": "数量",
+          "type": "integer"
+         }
+        ],
+        "rows": [
+         [
+          "轴承",
+          46
+         ],
+         {
+          "name": "齿轮",
+          "qty": 2
+         },
+         [
+          "轴承",
+          46
+         ]
+        ]
+       }
+      ]
+     }
+    },
+    "touched_keys": [
+     "table.sheets#s1.rows+"
+    ],
+    "build": {
+     "ok": true,
+     "sheets": [
+      {
+       "name": "零件",
+       "rows": 3,
+       "columns": [
+        "名称",
+        "数量"
+       ]
+      }
+     ],
+     "warning_codes": []
+    }
+   }
+  },
+  {
+   "name": "columns 整替（中间插一列）配合对象行：对象行按 key 对上新列，新行追加",
+   "P": {
+    "table": {
+     "title": "库存",
+     "sheets": [
+      {
+       "id": "s1",
+       "name": "零件",
+       "columns": [
+        {
+         "key": "name",
+         "title": "名称"
+        },
+        {
+         "key": "qty",
+         "title": "数量",
+         "type": "integer"
+        }
+       ],
+       "rows": [
+        {
+         "name": "轴承",
+         "qty": 46
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "delta": {
+    "table": {
+     "sheets": [
+      {
+       "id": "s1",
+       "columns": [
+        {
+         "key": "name",
+         "title": "名称"
+        },
+        {
+         "key": "spec",
+         "title": "规格"
+        },
+        {
+         "key": "qty",
+         "title": "数量",
+         "type": "integer"
+        }
+       ],
+       "rows": [
+        {
+         "name": "齿轮",
+         "spec": "m2 z40",
+         "qty": 2
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "expect": {
+    "ok": true,
+    "value": {
+     "table": {
+      "title": "库存",
+      "sheets": [
+       {
+        "id": "s1",
+        "name": "零件",
+        "columns": [
+         {
+          "key": "name",
+          "title": "名称"
+         },
+         {
+          "key": "spec",
+          "title": "规格"
+         },
+         {
+          "key": "qty",
+          "title": "数量",
+          "type": "integer"
+         }
+        ],
+        "rows": [
+         {
+          "name": "轴承",
+          "qty": 46
+         },
+         {
+          "name": "齿轮",
+          "spec": "m2 z40",
+          "qty": 2
+         }
+        ]
+       }
+      ]
+     }
+    },
+    "touched_keys": [
+     "table.sheets#s1.columns",
+     "table.sheets#s1.rows+"
+    ],
+    "build": {
+     "ok": true,
+     "sheets": [
+      {
+       "name": "零件",
+       "rows": 2,
+       "columns": [
+        "名称",
+        "规格",
+        "数量"
+       ]
+      }
+     ],
+     "warning_codes": [],
+     "empty_cells": 1
+    }
+   }
+  },
+  {
+   "name": "columns 整替（中间插一列）而原有的是数组行：合并成立，build 严格失败并报行号与格数（不补 null）",
+   "P": {
+    "table": {
+     "title": "库存",
+     "sheets": [
+      {
+       "id": "s1",
+       "name": "零件",
+       "columns": [
+        {
+         "key": "name",
+         "title": "名称"
+        },
+        {
+         "key": "qty",
+         "title": "数量",
+         "type": "integer"
+        }
+       ],
+       "rows": [
+        [
+         "轴承",
+         46
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "delta": {
+    "table": {
+     "sheets": [
+      {
+       "id": "s1",
+       "columns": [
+        {
+         "key": "name",
+         "title": "名称"
+        },
+        {
+         "key": "spec",
+         "title": "规格"
+        },
+        {
+         "key": "qty",
+         "title": "数量",
+         "type": "integer"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "expect": {
+    "ok": true,
+    "value": {
+     "table": {
+      "title": "库存",
+      "sheets": [
+       {
+        "id": "s1",
+        "name": "零件",
+        "columns": [
+         {
+          "key": "name",
+          "title": "名称"
+         },
+         {
+          "key": "spec",
+          "title": "规格"
+         },
+         {
+          "key": "qty",
+          "title": "数量",
+          "type": "integer"
+         }
+        ],
+        "rows": [
+         [
+          "轴承",
+          46
+         ]
+        ]
+       }
+      ]
+     }
+    },
+    "touched_keys": [
+     "table.sheets#s1.columns"
+    ],
+    "build": {
+     "ok": false,
+     "code": "BAD_INPUT",
+     "where": "table.sheets[0].rows[0]",
+     "message_contains": [
+      "第 1 行有 2 格",
+      "表有 3 列",
+      "期望 3",
+      "实际 2"
+     ]
+    }
+   }
+  },
+  {
+   "name": "Δ 里的 sheet 缺 id ⟹ 合并报错",
+   "P": {
+    "table": {
+     "title": "库存",
+     "sheets": [
+      {
+       "id": "s1",
+       "name": "零件",
+       "columns": [
+        {
+         "key": "name",
+         "title": "名称"
+        },
+        {
+         "key": "qty",
+         "title": "数量",
+         "type": "integer"
+        }
+       ],
+       "rows": [
+        [
+         "轴承",
+         46
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "delta": {
+    "table": {
+     "sheets": [
+      {
+       "name": "原料",
+       "columns": [
+        {
+         "key": "name",
+         "title": "名称"
+        },
+        {
+         "key": "stock",
+         "title": "库存",
+         "type": "integer"
+        }
+       ],
+       "rows": [
+        [
+         "圆钢",
+         12
+        ]
+       ]
+      }
+     ]
+    }
+   },
+   "expect": {
+    "ok": false,
+    "instancePath": "/table/sheets",
+    "message": "by-id 元素缺 id",
+    "touched_keys": []
+   }
+  }
+ ]
+}
