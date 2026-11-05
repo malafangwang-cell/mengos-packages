@@ -8,7 +8,7 @@
 | # | 变异（改的位置） | 红的用例（不含上述两条） |
 |---|---|---|
 | MTB-1 | registration.json：去掉 table.build 的 `sheets` by-id 标注 | `test_annotation_declarations_on_table_build`、`test_tb10_skeleton_of_table_build…`、`test_incremental_rows_merge…`、TB-5 合并金样 6 例（按 id 加 sheet、改 caption 与 name、sheet 内追加、columns 整替两例、sheet 缺 id）（9 红） |
-| MTB-2 | registration.json：table.build 两处 `rows` 去掉 append 标注 | `test_annotation_declarations_on_table_build`、`test_tb10_skeleton_of_table_build…`、`test_incremental_rows_merge…`、TB-5 合并金样 4 例（单表追加、sheet 内追加、按 id 加 sheet、columns 整替配合对象行）（7 红） |
+| MTB-2 | registration.json：table.build 两处 `rows` 去掉 append 标注 | `test_annotation_declarations_on_table_build`、`test_tb10_skeleton_of_table_build…`、`test_incremental_rows_merge…`、TB-5 合并金样 4 例（单表追加、sheet 内追加、按 id 加 sheet、columns 整替配合对象行）、`test_table_rows_data_golden_under_the_real_build_schema`（引擎夹具 merge-table-rows-data 换本包 schema）（8 红） |
 | MTB-3 | model.py `_row`：比列数短的数组行补 null | `test_array_row_length_mismatch_reports…`、`test_short_array_row_is_not_padded_with_null`、TB-5「columns 整替而原有的是数组行」（3 红） |
 | MTB-4 | registration.json：table.check 也带贡献词汇（base 槽与 sheets by-id） | `test_check_and_export_input_schemas_have_no_contribution_vocabulary`、`…_equal_1_0_1`、`test_exactly_one_base_slot…`、`test_table_build_is_contribution_tool…`（4 红） |
 | MTB-5 | model.py `_sheet`：被引用列不要求 type（去掉 `_declared_types` 调用） | `test_referenced_column_without_type_is_bad_input_naming_it` 4 例、`test_referenced_column_rule_also_in_sheets`（5 红） |
@@ -18,3 +18,5 @@
 | M6c | 守恒变异：2.0.0 的 build 口径对核对、导出也生效 | `test_check_and_export_keep_1_x_typing_rules`（1 红） |
 
 TB-6 的金样（`fixtures/whole-mode-1.0.1.json`）在 table 1.0.1 代码上录（lock 0c8725745e60700f），输入带非规范形：首尾空白、键序打乱、数字写法 `4` / `4.0` / `"1,200"` / `"¥95"`、对象行与只写非公式列的短数组行。
+
+拷入引擎夹具 merge-table-rows-data（P1 合入后的 mengosv2 主干 3761132）后又全部重跑一遍：新增的两条用例里，换本包 schema 的那条在 MTB-2 与 M6b 下变红；按夹具自带 schema 跑的那条不读本包任何文件，各变异下都保持绿，这是预期的。其余读数与上表相同。

@@ -154,6 +154,45 @@ def test_engine_skeleton_golden():
     assert skeleton(CARD, g["args"], False) == g["expected_not_best"]
 
 
+ROWS_DATA = _fx("merge-table-rows-data.json")
+
+
+def _ptr(doc, pointer):
+    for seg in pointer.split("/")[1:]:
+        doc = doc[int(seg)] if isinstance(doc, list) else doc[seg]
+    return doc
+
+
+@pytest.mark.parametrize("case", ROWS_DATA["cases"], ids=[c["name"] for c in ROWS_DATA["cases"]])
+def test_engine_table_rows_data_golden(case):
+    """引擎夹具 merge-table-rows-data（P1 TB-1）：rows 上 x-mengos-data 与 append 并存。按夹具自带的 schema 跑。"""
+    sch, P, D, exp = case["schema"], case["P"], case["delta"], case["expect"]
+    assert merge(sch, P, D) == exp["value"]
+    assert sorted(touched_keys(sch, D)) == exp["keys"]
+    assert skeleton(sch, P, True) == exp["skeleton_P"]
+    assert skeleton(sch, exp["value"], True) == exp["skeleton_merged"]
+    # 证件账定位：append 元素 ↦ P 的长度 + 增量内下标，两处取到的是同一个值
+    src, dst = exp["remap"]["path"], exp["remap"]["merged_path"]
+    i, j = int(src.split("/")[3]), int(dst.split("/")[3])
+    assert j == len(P["table"]["rows"]) + i
+    assert _ptr(D, src) == _ptr(exp["value"], dst)
+
+
+@pytest.mark.parametrize("case", ROWS_DATA["cases"], ids=[c["name"] for c in ROWS_DATA["cases"]])
+def test_table_rows_data_golden_under_the_real_build_schema(case, tmp_path):
+    """同一 P、Δ 换成本包 table.build 的真实 schema：合并、触及键、骨架与夹具期望相同，合并结果交 build 可用。"""
+    P, D, exp = case["P"], case["delta"], case["expect"]
+    assert VB.is_valid(P) and VB.is_valid({"base": "v-1", **D})
+    merged = merge(BUILD, P, D)
+    assert merged == exp["value"]
+    assert sorted(touched_keys(BUILD, D)) == exp["keys"]
+    assert skeleton(BUILD, P, True) == exp["skeleton_P"]
+    assert skeleton(BUILD, merged, True) == exp["skeleton_merged"]
+    jsonschema.validate(merged, BUILD)
+    r = run("table.build", merged, tmp_path)
+    assert r["ok"] and r["output"]["sheets"][0]["rows"] == len(exp["value"]["table"]["rows"]), r
+
+
 def test_engine_merge_does_not_mutate_inputs():
     P = {"table": {"title": "T", "sheets": [{"id": "s1", "columns": ["a"], "rows": [["x"]]}]}}
     D = {"table": {"sheets": [{"id": "s1", "rows": [["y"]]}]}}

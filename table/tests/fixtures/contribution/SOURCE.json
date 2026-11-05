@@ -1,7 +1,7 @@
 {
-  "_说明": "本目录夹具来源与校验值：逐字节拷贝自 mengosv2 的 tests/projection/fixtures/contribution/（拷贝时的主干 commit 见 origin_commit），sha256 与 document 包 tests/fixtures/contribution/SOURCE.json 所记一致。tests/test_contribution.py 会重算本目录文件的 sha256，与此处不符即失败。引擎夹具 merge-table-rows-data.json（rows 上 x-mengos-data 与 append 并存）待 mengosv2 table-platform 支合入主干后再拷入。merge-path-remap.json 属引擎内部，包预检不用，未拷贝。",
+  "_说明": "本目录夹具来源与校验值：逐字节拷贝自 mengosv2 的 tests/projection/fixtures/contribution/（拷贝时的主干 commit 见 origin_commit）。card、skeleton-doc、merge-algebra、merge-touched-keys、merge-empty-slots 五件的 sha256 与 document 包 SOURCE.json 所记一致（945523c 与 3761132 两个主干上相同）；merge-table-rows-data.json 是 P1（mengosv2 #359 table-platform）合入后新增的，原样保留，其中自带的最小 schema 在 sheets 上留有 fill，只用于该夹具自身的单表写法用例，不是本包的注册件（本包 sheets 不设 fill，见执行令补裁三 §5：合并不看 fill，该夹具照旧）。tests/test_contribution.py 会重算本目录文件的 sha256，与此处不符即失败。merge-path-remap.json 属引擎内部，包预检不用，未拷贝。",
   "origin_repo": "malafangwang-cell/mengosv2",
-  "origin_commit": "945523c70ee95e3600c1d459d90c8286403816ef",
+  "origin_commit": "376113275d10f87b12f0a4fd786a7fd94cda09c1",
   "files": {
     "card.json": {
       "origin": "tests/projection/fixtures/contribution/card.json",
@@ -27,6 +27,11 @@
       "origin": "tests/projection/fixtures/contribution/merge-empty-slots.json",
       "copy": "verbatim",
       "sha256": "2f17e9eaf00d657861b9a72e594a80fb150f68da0201ab94e13bd883c377eaaa"
+    },
+    "merge-table-rows-data.json": {
+      "origin": "tests/projection/fixtures/contribution/merge-table-rows-data.json",
+      "copy": "verbatim",
+      "sha256": "bd8b0bbe06eb3d26c115052a4723b6c3d82163f26587e514819e9a0f9d02f748"
     }
   },
   "engine_reference": {
