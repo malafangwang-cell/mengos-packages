@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>表格产出台</title>
+<style>
+/* 版式：顶栏（标题 | 下载；宿主画外框时隐去）→ 说明行 → 表页签 → 搜索与行数 → 表格（表头与合计行固定）。只读。 */
+:root {
+  --bg: #FBFBFA; --panel: #F4F4F2; --ink: #1A1A19; --ink-2: #4A4A47; --mute: #7D7D79; --line: #E4E4E1; --line-2: #EDEDEA;
+  --hover: #F0F0ED; --on: #E3E3DF; --menu: #FFFFFF; --cell: #FFFFFF; --stripe: #FAFAF8; --accent: #2F5BD3; --hit: #FFF3BF;
+  --shadow: 0 10px 30px rgba(20, 20, 18, .12);
+  --sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #161615; --panel: #1C1C1B; --ink: #ECECE8; --ink-2: #C8C8C3; --mute: #95958F; --line: #2E2E2C; --line-2: #262624;
+  --hover: #242422; --on: #30302D; --menu: #232321; --cell: #191918; --stripe: #1D1D1C; --accent: #8AA8FF; --hit: #4A4220;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #161615; --panel: #1C1C1B; --ink: #ECECE8; --ink-2: #C8C8C3; --mute: #95958F; --line: #2E2E2C; --line-2: #262624;
+  --hover: #242422; --on: #30302D; --menu: #232321; --cell: #191918; --stripe: #1D1D1C; --accent: #8AA8FF; --hit: #4A4220;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+.shell { height: 100%; display: flex; flex-direction: column; }
+.shell > * { flex: none; }
+.shell > .grid { flex: 1 1 auto; min-height: 0; }
+.bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.bar .name { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root[data-chrome="host"] .bar { display: none; }
+.dl { position: relative; }
+.dl > button { border: 1px solid var(--line); background: var(--menu); border-radius: 8px; padding: 6px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.dl > button:hover { background: var(--hover); }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); width: min(300px, calc(100vw - 32px)); background: var(--menu); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; z-index: 20; }
+.menu button { width: 100%; text-align: left; border: none; background: transparent; border-radius: 8px; padding: 9px 10px; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; }
+.menu button:hover, .menu button:focus-visible { background: var(--hover); }
+.menu .t { font-weight: 500; } .menu .x { font-size: 12px; color: var(--mute); align-self: center; }
+.menu .d { grid-column: 1 / -1; font-size: 12.5px; color: var(--mute); }
+.toast { font-size: 12px; color: var(--mute); }
+
+.head { padding: 12px 16px 8px; display: grid; gap: 2px; }
+:root[data-chrome="host"] .head { padding-top: 8px; }
+.head:empty { display: none; }
+.head h1 { margin: 0; font-size: 18px; line-height: 1.35; font-weight: 600; text-wrap: balance; }
+:root[data-chrome="host"] .head h1 { display: none; }
+.head .sub { color: var(--ink-2); }
+.head .meta { color: var(--mute); font-size: 12.5px; }
+
+.tabs { display: flex; gap: 4px; padding: 0 12px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: thin; }
+.tabs button { border: none; background: transparent; padding: 8px 10px 9px; cursor: pointer; color: var(--ink-2); border-bottom: 2px solid transparent; white-space: nowrap; }
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 500; }
+.tabs button .n { color: var(--mute); font-size: 12px; margin-left: 4px; }
+
+.tools { display: flex; align-items: center; gap: 10px; padding: 8px 16px; flex-wrap: wrap; }
+.tools .cap { font-weight: 500; flex: 1 1 auto; min-width: 0; }
+.search { position: relative; flex: 0 1 240px; min-width: 140px; }
+.search input { width: 100%; border: 1px solid var(--line); background: var(--cell); border-radius: 8px; padding: 5px 10px 5px 28px; }
+.search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--mute); }
+.count { color: var(--mute); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.grid { overflow: auto; border-top: 1px solid var(--line); background: var(--cell); }
+table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; min-width: 100%; }
+th, td { padding: 6px 12px; border-bottom: 1px solid var(--line-2); border-right: 1px solid var(--line-2); white-space: nowrap; max-width: 28em; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+td.wrap { white-space: normal; min-width: 12em; }
+thead th { position: sticky; top: 0; z-index: 2; background: var(--panel); font-weight: 500; border-bottom: 1px solid var(--line); vertical-align: bottom; }
+thead th button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; }
+thead th button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+thead th .u { color: var(--mute); font-weight: 400; }
+thead th .f { font: italic 600 11px/1 var(--mono); color: var(--accent); }
+thead th .s { width: 10px; color: var(--mute); font-size: 11px; }
+tbody tr:nth-child(even) td { background: var(--stripe); }
+tbody tr:hover td { background: var(--hover); }
+td.r, th.r { text-align: right; } td.c, th.c { text-align: center; }
+th.r button { justify-content: flex-end; width: 100%; }
+th.c button { justify-content: center; width: 100%; }
+td.e::after { content: "—"; color: var(--line); }
+td.idx, th.idx { color: var(--mute); text-align: right; font-size: 12px; position: sticky; left: 0; z-index: 1; background: var(--panel); min-width: 3em; }
+thead th.idx { z-index: 3; }
+td.fz, th.fz { position: sticky; z-index: 1; background: var(--cell); }
+thead th.fz { z-index: 3; background: var(--panel); }
+tfoot td { position: sticky; bottom: 0; background: var(--panel); font-weight: 600; border-top: 1px solid var(--line); z-index: 2; }
+tfoot td.idx { z-index: 3; }
+mark { background: var(--hit); color: inherit; border-radius: 2px; }
+.more { padding: 12px 16px; text-align: center; }
+.more button { border: 1px solid var(--line); background: var(--menu); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+.empty { padding: 32px 16px; color: var(--mute); text-align: center; }
+.foot { max-height: 32%; overflow: auto; padding: 10px 16px 16px; color: var(--ink-2); font-size: 12.5px; display: grid; gap: 6px; border-top: 1px solid var(--line); }
+.foot:empty { display: none; }
+.foot b { font-weight: 500; color: var(--ink); }
+.foot ul { margin: 2px 0 0; padding-left: 1.3em; }
+
+/* 嵌入视图：一张卡片 */
+.embed { display: grid; gap: 8px; padding: 14px 16px; }
+.embed .t { font-weight: 600; font-size: 15px; }
+.embed .m { color: var(--mute); font-size: 12.5px; }
+.embed .mini { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; }
+.embed table { min-width: 0; width: 100%; font-size: 12.5px; table-layout: fixed; }
+.embed th, .embed td { padding: 4px 8px; max-width: none; }
+.embed thead th { position: static; }
+.embed tr:last-child td { border-bottom: none; }
+.embed th:last-child, .embed td:last-child { border-right: none; }
+.embed .rest { color: var(--mute); font-size: 12px; }
+html.embed-view, html.embed-view body { height: auto; }
+
+@media (max-width: 640px) {
+  .tools .cap { flex-basis: 100%; }
+  .search { flex: 1 1 auto; }
+  th, td { padding: 6px 9px; }
+}
+</style>
+</head>
+<body>
+<div class="embed" id="embed" hidden></div>
+<div class="shell" id="shell" hidden>
+  <div class="bar">
+    <div class="name" id="name">…</div>
+    <span class="toast" id="toast" role="status" aria-live="polite"></span>
+    <div class="dl">
+      <button id="dlbtn" aria-haspopup="menu" aria-expanded="false">下载
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+      </button>
+      <div class="menu" id="menu" role="menu" hidden></div>
+    </div>
+  </div>
+  <div class="head" id="head"></div>
+  <div class="tabs" id="tabs" role="tablist" hidden></div>
+  <div class="tools" id="tools"></div>
+  <div class="grid" id="grid"></div>
+  <div class="foot" id="foot"></div>
+</div>
+<script>
+/* table 渲染器（渲染器契约 v0.1）：宿主经 postMessage 送来 mengos.render，
+   object 是 table.build 的产出记录（含 output.files 的 path 与 role），files 是文件字节。
+   完整视图：表页签 + 搜索 + 可排序表格 + 合计行；嵌入视图：标题、规模与前几行。
+   下载交给宿主：发 mengos.download {format}，由宿主走派生下载。 */
+const C = "0.1";
+const PAGE = 500;
+const post = (m) => parent.postMessage(Object.assign({ contract: C }, m), "*");
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const FORMATS = {
+  xlsx: { t: "Excel", x: ".xlsx", d: "可以直接编辑，公式能重算。" },
+  csv: { t: "CSV", x: ".csv", d: "每张表一个文件，导入其他系统用。" },
+  md: { t: "Markdown", x: ".md", d: "原文格式，可贴进文档。" },
+  json: { t: "表模型", x: ".json", d: "规范对象，供程序读取。" },
+};
+const ALIGN = { right: "r", center: "c", left: "" };
+const st = { view: null, sheet: 0, sort: null, q: "", shown: PAGE, formats: [] };
+
+function viewOf(m) {
+  const out = (m.object && m.object.output) || {};
+  const listed = (out.files || []).find((f) => f.role === "table.view");
+  const files = Array.isArray(m.files) ? m.files : [];
+  const f = listed ? files.find((x) => x.path === listed.path) : files.find((x) => x.role === "table.view" || /\.view\.json$/.test(x.path || ""));
+  if (!f) throw new Error("没有 role 为 table.view 的文件");
+  if (!(f.bytes instanceof ArrayBuffer)) return null;   // 过大未随来字节，走下载
+  const v = JSON.parse(new TextDecoder().decode(f.bytes));
+  if (!v || !Array.isArray(v.sheets)) throw new Error("table.view 文件格式不对");
+  return v;
+}
+
+const n = (x) => Number(x).toLocaleString("zh-CN");
+function scaleText(v) {
+  const s = v.stats || {};
+  const parts = [];
+  if (v.sheets.length > 1) parts.push(`${v.sheets.length} 张表`);
+  parts.push(`${n(s.rows ?? v.sheets.reduce((a, x) => a + x.rows.length, 0))} 行`);
+  if (v.sheets.length === 1) parts.push(`${v.sheets[0].columns.length} 列`);
+  return parts.join(" · ");
+}
+
+// ---------------------------------------------------------------- 完整视图
+function renderFull(v) {
+  $("#name").textContent = v.title;
+  const m = v.meta || {};
+  const meta = [m.org, m.author, m.date, m.version && "版本 " + m.version].filter(Boolean);
+  $("#head").innerHTML = `<h1>${esc(v.title)}</h1>${v.subtitle ? `<div class="sub">${esc(v.subtitle)}</div>` : ""}`
+    + `<div class="meta">${esc([scaleText(v), ...meta].join(" · "))}</div>`;
+  const tabs = $("#tabs");
+  tabs.hidden = v.sheets.length < 2;
+  tabs.innerHTML = v.sheets.map((s, i) => `<button role="tab" data-i="${i}" aria-selected="${i === st.sheet}">${esc(s.name)}<span class="n">${n(s.rows.length)}</span></button>`).join("");
+  const foot = [];
+  if (v.sources?.length) foot.push(`<div><b>来源</b><ul>${v.sources.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></div>`);
+  if (v.assumptions?.length) foot.push(`<div><b>假设</b><ul>${v.assumptions.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></div>`);
+  st.footCommon = foot.join("");
+  renderMenu();
+  renderSheet();
+}
+
+function rowsOf(s) {
+  let idx = s.rows.map((_, i) => i);
+  const q = st.q.trim().toLowerCase();
+  if (q) idx = idx.filter((i) => s.rows[i].some((c) => String(c).toLowerCase().includes(q)));
+  if (st.sort) {
+    const { col, dir } = st.sort;
+    const k = (i) => s.keys[i][col];
+    idx.sort((a, b) => {
+      const x = k(a), y = k(b);
+      if (x === null && y === null) return a - b;
+      if (x === null) return 1;            // 空格子总在最后
+      if (y === null) return -1;
+      const c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y), "zh-CN", { numeric: true });
+      return c === 0 ? a - b : c * dir;
+    });
+  }
+  return idx;
+}
+
+function hl(text) {
+  const q = st.q.trim();
+  if (!q) return esc(text);
+  const t = String(text), lo = t.toLowerCase(), ql = q.toLowerCase();
+  let out = "", i = 0, j;
+  while ((j = lo.indexOf(ql, i)) >= 0) { out += esc(t.slice(i, j)) + "<mark>" + esc(t.slice(j, j + q.length)) + "</mark>"; i = j + q.length; }
+  return out + esc(t.slice(i));
+}
+
+function renderSheet() {
+  const v = st.view, s = v.sheets[st.sheet];
+  const idx = rowsOf(s);
+  const fz = s.freeze_cols || 0;
+  const cls = (c, j) => [ALIGN[c.align] || "", j < fz ? "fz" : "", c.type === "text" && s.rows.some((r) => String(r[j]).length > 40) ? "wrap" : ""].filter(Boolean).join(" ");
+  const head = s.columns.map((c, j) => {
+    const arrow = st.sort && st.sort.col === j ? (st.sort.dir > 0 ? "▲" : "▼") : "";
+    const fx = c.formula_display || c.formula;
+    const label = `${c.formula ? `<span class="f" title="公式：${esc(fx)}">ƒ</span>` : ""}${esc(c.title)}${c.unit ? `<span class="u">${esc(c.unit)}</span>` : ""}`;
+    const sortName = st.sort && st.sort.col === j ? (st.sort.dir > 0 ? "ascending" : "descending") : "none";
+    return `<th class="${cls(c, j)}" aria-sort="${sortName}"><button data-col="${j}" title="${esc(c.formula ? c.header + " = " + (c.formula_display || c.formula) : c.header)}（点击排序）">${label}<span class="s">${arrow}</span></button></th>`;
+  }).join("");
+  const shown = idx.slice(0, st.shown);
+  const body = shown.map((i) => `<tr><td class="idx">${i + 1}</td>${s.columns.map((c, j) => {
+    const t = s.rows[i][j];
+    return `<td class="${[cls(c, j), t === "" ? "e" : ""].filter(Boolean).join(" ")}">${t === "" ? "" : hl(t)}</td>`;
+  }).join("")}</tr>`).join("");
+  const foot = s.totals ? `<tfoot><tr><td class="idx"></td>${s.totals.map((t, j) => `<td class="${cls(s.columns[j], j)}">${esc(t)}</td>`).join("")}</tr></tfoot>` : "";
+  const toolbar = `<div class="cap">${esc(s.caption || (v.sheets.length > 1 ? s.name : ""))}</div>`
+    + `<label class="search"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M9.2 9.2L12.5 12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`
+    + `<input id="q" type="search" placeholder="在这张表里找" aria-label="在这张表里找" value="${esc(st.q)}"></label>`
+    + `<span class="count">${st.q ? `找到 ${n(idx.length)} / ${n(s.rows.length)} 行` : `${n(s.rows.length)} 行 × ${s.columns.length} 列`}</span>`;
+  const more = idx.length > shown.length ? `<div class="more"><button id="more">再显示 ${n(Math.min(PAGE, idx.length - shown.length))} 行（还有 ${n(idx.length - shown.length)} 行）</button></div>` : "";
+  const empty = !s.rows.length ? `<div class="empty">这张表还没有数据行。</div>` : !idx.length ? `<div class="empty">没有找到“${esc(st.q)}”。</div>` : "";
+  const grid = $("#grid");
+  const hadFocus = document.activeElement && document.activeElement.id === "q";
+  const caret = hadFocus ? document.activeElement.selectionStart : null;
+  grid.innerHTML = `<table><thead><tr><th class="idx" aria-label="行号">#</th>${head}</tr></thead><tbody>${body}</tbody>${foot}</table>${empty}${more}`;
+  $("#tools").innerHTML = toolbar;
+  if (hadFocus) { const q = $("#q"); q.focus(); if (caret !== null) q.setSelectionRange(caret, caret); }
+  stickLeft(fz);
+  const notes = [];
+  if (s.note) notes.push(`<div>${esc(s.note)}</div>`);
+  const fs = s.columns.filter((c) => c.formula);
+  if (fs.length) notes.push(`<div><b>公式</b> ${fs.map((c) => `${esc(c.title)} = ${esc(c.formula_display || c.formula)}`).join("；")}</div>`);
+  $("#foot").innerHTML = notes.join("") + (st.footCommon || "");
+}
+
+function stickLeft(fz) {
+  if (!fz) return;
+  const rows = document.querySelectorAll("#grid tr");
+  const first = rows[0]; if (!first) return;
+  const cells = [...first.children];
+  let left = cells[0].getBoundingClientRect().width;
+  const offs = [];
+  for (let j = 1; j <= fz && j < cells.length; j++) { offs.push(left); left += cells[j].getBoundingClientRect().width; }
+  for (const r of rows) offs.forEach((x, j) => { const c = r.children[j + 1]; if (c) c.style.left = x + "px"; });
+}
+
+$("#tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-i]"); if (!b) return;
+  st.sheet = Number(b.dataset.i); st.sort = null; st.q = ""; st.shown = PAGE;
+  for (const x of document.querySelectorAll("#tabs button")) x.setAttribute("aria-selected", String(x === b));
+  renderSheet();
+});
+$("#tabs").addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const bs = [...document.querySelectorAll("#tabs button")];
+  const i = (st.sheet + (e.key === "ArrowRight" ? 1 : bs.length - 1)) % bs.length;
+  bs[i].click(); bs[i].focus(); e.preventDefault();
+});
+$("#grid").addEventListener("click", (e) => {
+  const h = e.target.closest("[data-col]");
+  if (h) {
+    const col = Number(h.dataset.col);
+    st.sort = !st.sort || st.sort.col !== col ? { col, dir: 1 } : st.sort.dir > 0 ? { col, dir: -1 } : null;
+    renderSheet();
+    return;
+  }
+  if (e.target.closest("#more")) { st.shown += PAGE; renderSheet(); }
+});
+let qTimer = 0;
+document.addEventListener("input", (e) => {
+  if (e.target.id !== "q") return;
+  clearTimeout(qTimer);
+  const val = e.target.value;
+  qTimer = setTimeout(() => { st.q = val; st.shown = PAGE; renderSheet(); }, 120);
+});
+
+function renderMenu() {
+  const items = st.formats.filter((k) => FORMATS[k]).map((k) => {
+    const f = FORMATS[k];
+    return `<button role="menuitem" data-dl="${k}"><span class="t">${f.t}</span><span class="x">${f.x}</span><span class="d">${f.d}</span></button>`;
+  });
+  $("#menu").innerHTML = items.length ? items.join("") : `<div class="d" style="padding:8px 10px;color:var(--mute)">这张表没有可下载的格式。</div>`;
+  $("#dlbtn").disabled = !items.length;
+}
+function setMenu(open) { $("#menu").hidden = !open; $("#dlbtn").setAttribute("aria-expanded", String(open)); if (open) $("#menu button")?.focus(); }
+$("#dlbtn").addEventListener("click", (e) => { e.stopPropagation(); setMenu($("#menu").hidden); });
+document.addEventListener("click", (e) => { if (!e.target.closest(".dl")) setMenu(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
+$("#menu").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-dl]"); if (!b) return;
+  setMenu(false);
+  post({ type: "mengos.download", format: b.dataset.dl });
+  $("#toast").textContent = `已请求下载 ${FORMATS[b.dataset.dl].t}`;
+});
+
+// ---------------------------------------------------------------- 嵌入视图
+function renderEmbed(v) {
+  const s = v.sheets[0];
+  const cols = s.columns.slice(0, 6);
+  const rows = s.rows.slice(0, 5);
+  const more = s.columns.length > cols.length;
+  const head = cols.map((c) => `<th class="${ALIGN[c.align] || ""}">${esc(c.title)}</th>`).join("") + (more ? "<th>…</th>" : "");
+  const body = rows.map((r) => `<tr>${cols.map((c, j) => `<td class="${ALIGN[c.align] || ""}">${esc(r[j])}</td>`).join("")}${more ? "<td></td>" : ""}</tr>`).join("");
+  const rest = s.rows.length - rows.length;
+  $("#embed").innerHTML = `<div class="t">${esc(v.title)}</div><div class="m">表格 · ${esc(scaleText(v))}</div>`
+    + (rows.length ? `<div class="mini"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>` : "")
+    + (rest > 0 ? `<div class="rest">还有 ${n(rest)} 行${v.sheets.length > 1 ? `，另有 ${v.sheets.length - 1} 张表` : ""}</div>` : v.sheets.length > 1 ? `<div class="rest">另有 ${v.sheets.length - 1} 张表</div>` : "");
+}
+
+let lastH = 0;
+function sendHeight() { const h = Math.ceil($("#embed").getBoundingClientRect().height); if (h && h !== lastH) { lastH = h; post({ type: "mengos.resize", height: h }); } }
+
+function render(m) {
+  if (m.theme === "light" || m.theme === "dark") document.documentElement.dataset.theme = m.theme;
+  if (m.chrome === "host") document.documentElement.dataset.chrome = "host";
+  st.formats = Array.isArray(m.formats) ? m.formats : [];
+  const v = viewOf(m);
+  const embed = m.view === "embed";
+  document.documentElement.classList.toggle("embed-view", embed);
+  $("#embed").hidden = !embed;
+  $("#shell").hidden = embed;
+  st.view = v; st.sheet = 0; st.sort = null; st.q = ""; st.shown = PAGE;
+  if (!v) {
+    const msg = `<div class="empty">表较大，没有随来数据。可以从下载菜单取得文件。</div>`;
+    if (embed) $("#embed").innerHTML = msg; else { $("#grid").innerHTML = msg; renderMenu(); }
+  } else if (embed) renderEmbed(v); else renderFull(v);
+  if (embed) { new ResizeObserver(sendHeight).observe($("#embed")); sendHeight(); }
+}
+
+addEventListener("message", (e) => {
+  const m = e.data || {};
+  if (m.type === "mengos.render") { try { render(m); } catch (err) { post({ type: "mengos.error", message: "table 渲染器：" + (err && err.message || err) }); } }
+  if (m.type === "mengos.theme" && (m.theme === "light" || m.theme === "dark")) document.documentElement.dataset.theme = m.theme;
+});
+addEventListener("resize", () => { if (st.view && !$("#shell").hidden) stickLeft(st.view.sheets[st.sheet].freeze_cols || 0); });
+post({ type: "mengos.ready", views: ["full", "embed"] });
+</script>
+</body>
+</html>

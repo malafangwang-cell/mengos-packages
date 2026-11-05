@@ -1,0 +1,1988 @@
+[
+ {
+  "id": "b_simple",
+  "note": "最简写法：列只写标题，类型按内容推断",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "季度销量",
+    "columns": [
+     "地区",
+     "一季度",
+     "二季度"
+    ],
+    "rows": [
+     [
+      "华东",
+      120,
+      135
+     ],
+     [
+      "华南",
+      98,
+      110.5
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "sheets[0].name": "季度销量",
+   "sheets[0].rows": 2,
+   "sheets[0].columns": [
+    "地区",
+    "一季度",
+    "二季度"
+   ],
+   "stats.cells": 6,
+   "stats.empty_cells": 0,
+   "file_count": 4,
+   "model_contains": [
+    "\"type\":\"integer\"",
+    "\"type\":\"number\"",
+    "\"110.5\""
+   ],
+   "md_contains": [
+    "| 地区 | 一季度 | 二季度 |",
+    "| 华南 | 98 | 110.5 |"
+   ]
+  }
+ },
+ {
+  "id": "b_formula_totals",
+  "note": "公式列（数量 × 单价）与金额合计：860 + 2501 + 380 = 3741",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "减速机物料清单",
+    "columns": [
+     {
+      "key": "part",
+      "title": "零件"
+     },
+     {
+      "key": "qty",
+      "title": "数量",
+      "type": "integer"
+     },
+     {
+      "key": "price",
+      "title": "单价",
+      "type": "money",
+      "unit": "元"
+     },
+     {
+      "key": "amount",
+      "title": "金额",
+      "type": "money",
+      "unit": "元",
+      "formula": "qty * price"
+     }
+    ],
+    "rows": [
+     [
+      "输入轴",
+      1,
+      860
+     ],
+     [
+      "齿轮",
+      2,
+      1250.5
+     ],
+     [
+      "轴承 6208",
+      4,
+      95
+     ]
+    ],
+    "totals": [
+     "金额"
+    ]
+   }
+  },
+  "expect": {
+   "sheets[0].totals[0].column": "金额",
+   "sheets[0].totals[0].fn": "sum",
+   "sheets[0].totals[0].value": "3741",
+   "stats.formula_columns": 1,
+   "md_contains": [
+    "| 齿轮 | 2 | 1,250.50 | 2,501.00 |",
+    "| **合计** |  |  | **3,741.00** |",
+    "公式：金额 = 数量 × 单价"
+   ]
+  }
+ },
+ {
+  "id": "b_formula_excel",
+  "note": "xlsx 里公式列写成 Excel 公式并带缓存值，合计写成 SUM",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "减速机物料清单",
+    "columns": [
+     {
+      "key": "part",
+      "title": "零件"
+     },
+     {
+      "key": "qty",
+      "title": "数量",
+      "type": "integer"
+     },
+     {
+      "key": "price",
+      "title": "单价",
+      "type": "money",
+      "unit": "元"
+     },
+     {
+      "key": "amount",
+      "title": "金额",
+      "type": "money",
+      "unit": "元",
+      "formula": "qty * price"
+     }
+    ],
+    "rows": [
+     [
+      "输入轴",
+      1,
+      860
+     ],
+     [
+      "齿轮",
+      2,
+      1250.5
+     ],
+     [
+      "轴承 6208",
+      4,
+      95
+     ]
+    ],
+    "totals": [
+     "金额"
+    ]
+   }
+  },
+  "expect": {
+   "xlsx_contains": {
+    "xl/worksheets/sheet1.xml": [
+     "<f>B3*C3</f><v>2501</v>",
+     "<f>SUM(D2:D4)</f><v>3741</v>"
+    ]
+   }
+  }
+ },
+ {
+  "id": "b_percent",
+  "note": "百分比列写百分数：12.5 与 \"8%\" 都按百分数，存为小数；平均 (12.5+8+(-3.25))/3=5.75%，按 1 位小数记为 5.8%",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "增长率",
+    "columns": [
+     {
+      "title": "部门"
+     },
+     {
+      "title": "增长",
+      "type": "percent",
+      "decimals": 1
+     }
+    ],
+    "rows": [
+     [
+      "甲",
+      12.5
+     ],
+     [
+      "乙",
+      "8%"
+     ],
+     [
+      "丙",
+      -3.25
+     ]
+    ],
+    "totals": [
+     {
+      "column": "增长",
+      "fn": "avg"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "sheets[0].totals[0].value": "0.058",
+   "model_contains": [
+    "\"0.125\"",
+    "\"0.08\"",
+    "\"-0.0325\""
+   ],
+   "md_contains": [
+    "| 甲 | 12.5% |",
+    "| 丙 | -3.3% |",
+    "| **平均** | **5.8%** |"
+   ]
+  }
+ },
+ {
+  "id": "b_money_strings",
+  "note": "金额列认千分位与货币符号：\"¥15,800\" → 15800；平均 (4200+15800)/2 = 10000",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "价",
+    "columns": [
+     {
+      "title": "品名"
+     },
+     {
+      "title": "单价",
+      "type": "money"
+     }
+    ],
+    "rows": [
+     [
+      "甲",
+      "4,200"
+     ],
+     [
+      "乙",
+      "¥15,800"
+     ]
+    ],
+    "totals": [
+     {
+      "column": "单价",
+      "fn": "avg"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "sheets[0].totals[0].value": "10000",
+   "md_contains": [
+    "| 乙 | 15,800.00 |",
+    "| **平均** | **10,000.00** |"
+   ]
+  }
+ },
+ {
+  "id": "b_dates",
+  "note": "日期列认 2026/10/5、2026年10月6日，规范成 YYYY-MM-DD",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "到货",
+    "columns": [
+     {
+      "title": "批次"
+     },
+     {
+      "title": "到货日期",
+      "type": "date"
+     }
+    ],
+    "rows": [
+     [
+      "A",
+      "2026-10-04"
+     ],
+     [
+      "B",
+      "2026/10/5"
+     ],
+     [
+      "C",
+      "2026年10月6日"
+     ],
+     [
+      "D",
+      null
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "stats.empty_cells": 1,
+   "model_contains": [
+    "\"2026-10-05\"",
+    "\"2026-10-06\""
+   ],
+   "md_contains": [
+    "| C | 2026-10-06 |"
+   ]
+  }
+ },
+ {
+  "id": "b_bool",
+  "note": "是否列：true / \"是\" / \"否\"；中文显示是、否",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "外购",
+    "columns": [
+     {
+      "title": "件"
+     },
+     {
+      "title": "外购",
+      "type": "bool"
+     }
+    ],
+    "rows": [
+     [
+      "轴承",
+      true
+     ],
+     [
+      "油封",
+      "是"
+     ],
+     [
+      "箱体",
+      "否"
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "md_contains": [
+    "| 油封 | 是 |",
+    "| 箱体 | 否 |"
+   ],
+   "model_contains": [
+    "[\"油封\",true]"
+   ]
+  }
+ },
+ {
+  "id": "b_multisheet",
+  "note": "两张表；表名里的 / 换成 _；CSV 每张一份",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "库存",
+    "sheets": [
+     {
+      "id": "parts",
+      "name": "零件/外购",
+      "columns": [
+       "名称",
+       "库存"
+      ],
+      "rows": [
+       [
+        "轴承",
+        46
+       ]
+      ]
+     },
+     {
+      "id": "raw",
+      "name": "原料",
+      "columns": [
+       "名称",
+       "库存"
+      ],
+      "rows": [
+       [
+        "圆钢",
+        12
+       ],
+       [
+        "板材",
+        3
+       ]
+      ]
+     }
+    ]
+   },
+   "formats": [
+    "xlsx",
+    "csv"
+   ]
+  },
+  "expect": {
+   "sheets[0].name": "零件_外购",
+   "sheets[1].rows": 2,
+   "stats.sheets": 2,
+   "file_count": 6,
+   "warnings[0].code": "sheet_name",
+   "md_contains": [
+    "## 零件_外购",
+    "## 原料"
+   ]
+  }
+ },
+ {
+  "id": "b_dict_rows",
+  "note": "对象写法的行：按列名取值，缺的格子为空",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "人员",
+    "columns": [
+     {
+      "key": "name",
+      "title": "姓名"
+     },
+     {
+      "key": "dept",
+      "title": "部门"
+     },
+     {
+      "title": "工号",
+      "type": "integer"
+     }
+    ],
+    "rows": [
+     {
+      "name": "张敏",
+      "部门": "质检",
+      "工号": 1001
+     },
+     {
+      "name": "王强",
+      "工号": 1002
+     }
+    ]
+   }
+  },
+  "expect": {
+   "stats.empty_cells": 1,
+   "md_contains": [
+    "| 王强 |  | 1,002 |"
+   ]
+  }
+ },
+ {
+  "id": "b_short_rows",
+  "note": "有公式列时行里可以只写非公式列",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "面积",
+    "columns": [
+     {
+      "key": "w",
+      "title": "宽",
+      "type": "number"
+     },
+     {
+      "key": "h",
+      "title": "高",
+      "type": "number"
+     },
+     {
+      "title": "面积",
+      "formula": "w*h",
+      "decimals": 2
+     }
+    ],
+    "rows": [
+     [
+      1.5,
+      2
+     ],
+     [
+      0.3,
+      0.7
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "md_contains": [
+    "| 1.5 | 2 | 3.00 |",
+    "| 0.3 | 0.7 | 0.21 |"
+   ]
+  }
+ },
+ {
+  "id": "b_div_zero",
+  "note": "除以零：格子留空并告警，xlsx 用 IFERROR 包住",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "单价",
+    "columns": [
+     {
+      "key": "a",
+      "title": "金额",
+      "type": "money"
+     },
+     {
+      "key": "q",
+      "title": "数量",
+      "type": "integer"
+     },
+     {
+      "title": "单价",
+      "type": "money",
+      "formula": "a / q"
+     }
+    ],
+    "rows": [
+     [
+      100,
+      4
+     ],
+     [
+      50,
+      0
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "warnings[0].code": "div_zero",
+   "stats.empty_cells": 1,
+   "xlsx_contains": {
+    "xl/worksheets/sheet1.xml": [
+     "<f>IFERROR(A3/B3,\"\")</f>",
+     "<f>IFERROR(A2/B2,\"\")</f><v>25</v>"
+    ]
+   },
+   "md_contains": [
+    "| 100.00 | 4 | 25.00 |"
+   ]
+  }
+ },
+ {
+  "id": "b_round_fn",
+  "note": "round 与 max：round(7/3, 2) = 2.33；max(2.33, 3) = 3",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "函数",
+    "columns": [
+     {
+      "key": "a",
+      "title": "甲",
+      "type": "number"
+     },
+     {
+      "key": "b",
+      "title": "乙",
+      "type": "number"
+     },
+     {
+      "key": "r",
+      "title": "商",
+      "type": "number",
+      "formula": "round(a / b, 2)"
+     },
+     {
+      "title": "取大",
+      "formula": "max(r, 3)"
+     }
+    ],
+    "rows": [
+     [
+      7,
+      3
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "model_contains": [
+    "\"2.33\"",
+    "[\"7\",\"3\",\"2.33\",\"3\"]"
+   ]
+  }
+ },
+ {
+  "id": "b_count_min_max",
+  "note": "count 可用于文字列；min、max 用于数值列",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号",
+      "type": "text"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ],
+    "totals": [
+     {
+      "column": "牌号",
+      "fn": "count"
+     },
+     {
+      "column": "屈服强度",
+      "fn": "max"
+     },
+     {
+      "column": "价格",
+      "fn": "min"
+     }
+    ]
+   }
+  },
+  "expect": {
+   "sheets[0].totals[0].value": "4",
+   "sheets[0].totals[1].value": "355",
+   "sheets[0].totals[2].value": "4200",
+   "md_contains": [
+    "| **4** | **355** | **4,200.00** |"
+   ]
+  }
+ },
+ {
+  "id": "b_twice",
+  "note": "同一输入两次运行，output 与文件逐字节相同（TL-12 ②）",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "减速机物料清单",
+    "columns": [
+     {
+      "key": "part",
+      "title": "零件"
+     },
+     {
+      "key": "qty",
+      "title": "数量",
+      "type": "integer"
+     },
+     {
+      "key": "price",
+      "title": "单价",
+      "type": "money",
+      "unit": "元"
+     },
+     {
+      "key": "amount",
+      "title": "金额",
+      "type": "money",
+      "unit": "元",
+      "formula": "qty * price"
+     }
+    ],
+    "rows": [
+     [
+      "输入轴",
+      1,
+      860
+     ],
+     [
+      "齿轮",
+      2,
+      1250.5
+     ],
+     [
+      "轴承 6208",
+      4,
+      95
+     ]
+    ],
+    "totals": [
+     "金额"
+    ],
+    "meta": {
+     "date": "2026-10-24",
+     "org": "传动部"
+    }
+   },
+   "formats": [
+    "xlsx",
+    "csv"
+   ]
+  },
+  "expect": {
+   "twice": true,
+   "file_count": 5
+  }
+ },
+ {
+  "id": "b_assumptions",
+  "note": "assumptions 原样带出（TL-22a）",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ],
+    "assumptions": [
+     "价格为 2026 年 10 月华东市场均价"
+    ]
+   }
+  },
+  "expect": {
+   "assumptions": [
+    "价格为 2026 年 10 月华东市场均价"
+   ],
+   "md_contains": [
+    "假设：",
+    "- 价格为 2026 年 10 月华东市场均价"
+   ]
+  }
+ },
+ {
+  "id": "err_cell_type",
+  "note": "整数列写了小数：拒收并指明格子",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "T",
+    "columns": [
+     {
+      "title": "数量",
+      "type": "integer"
+     }
+    ],
+    "rows": [
+     [
+      2.5
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "table.rows[0][0]"
+  }
+ },
+ {
+  "id": "err_row_len",
+  "note": "格数与列数不符",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "T",
+    "columns": [
+     "甲",
+     "乙"
+    ],
+    "rows": [
+     [
+      "1",
+      "2",
+      "3"
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "table.rows[0]"
+  }
+ },
+ {
+  "id": "err_formula_ref",
+  "note": "公式引用不存在的列",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "T",
+    "columns": [
+     {
+      "key": "a",
+      "title": "甲",
+      "type": "number"
+     },
+     {
+      "title": "乙",
+      "formula": "a * k"
+     }
+    ],
+    "rows": [
+     [
+      1
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "table.columns[1].formula"
+  }
+ },
+ {
+  "id": "err_formula_text",
+  "note": "公式引用文字列",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "T",
+    "columns": [
+     {
+      "key": "a",
+      "title": "甲",
+      "type": "text"
+     },
+     {
+      "title": "乙",
+      "formula": "a * 2"
+     }
+    ],
+    "rows": [
+     [
+      "x"
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "table.columns[1].formula"
+  }
+ },
+ {
+  "id": "err_dup_title",
+  "note": "同一张表里列标题重复",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "T",
+    "columns": [
+     "甲",
+     "甲"
+    ],
+    "rows": []
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "table.columns"
+  }
+ },
+ {
+  "id": "c_pass",
+  "note": "列、唯一、非空、合计、行数全过",
+  "tool": "table.check",
+  "payload": {
+   "table": {
+    "title": "减速机物料清单",
+    "columns": [
+     {
+      "key": "part",
+      "title": "零件"
+     },
+     {
+      "key": "qty",
+      "title": "数量",
+      "type": "integer"
+     },
+     {
+      "key": "price",
+      "title": "单价",
+      "type": "money",
+      "unit": "元"
+     },
+     {
+      "key": "amount",
+      "title": "金额",
+      "type": "money",
+      "unit": "元",
+      "formula": "qty * price"
+     }
+    ],
+    "rows": [
+     [
+      "输入轴",
+      1,
+      860
+     ],
+     [
+      "齿轮",
+      2,
+      1250.5
+     ],
+     [
+      "轴承 6208",
+      4,
+      95
+     ]
+    ],
+    "totals": [
+     "金额"
+    ]
+   },
+   "expect": "columns 零件 数量 单价 金额\nunique 零件\nnonempty *\ntotal 金额 sum=3741\nrows min=3 max=3"
+  },
+  "expect": {
+   "verdict": "pass",
+   "covered": true,
+   "checks[5].kind": "total",
+   "checks[5].actual": "3741"
+  }
+ },
+ {
+  "id": "c_total_fail",
+  "note": "合计不符：给 3700，实际 3741",
+  "tool": "table.check",
+  "payload": {
+   "table": {
+    "title": "减速机物料清单",
+    "columns": [
+     {
+      "key": "part",
+      "title": "零件"
+     },
+     {
+      "key": "qty",
+      "title": "数量",
+      "type": "integer"
+     },
+     {
+      "key": "price",
+      "title": "单价",
+      "type": "money",
+      "unit": "元"
+     },
+     {
+      "key": "amount",
+      "title": "金额",
+      "type": "money",
+      "unit": "元",
+      "formula": "qty * price"
+     }
+    ],
+    "rows": [
+     [
+      "输入轴",
+      1,
+      860
+     ],
+     [
+      "齿轮",
+      2,
+      1250.5
+     ],
+     [
+      "轴承 6208",
+      4,
+      95
+     ]
+    ],
+    "totals": [
+     "金额"
+    ]
+   },
+   "expect": "total 金额 sum=3700"
+  },
+  "expect": {
+   "verdict": "fail",
+   "checks[2].verdict": "fail",
+   "checks[2].actual": "3741",
+   "checks[2].expected": "3700"
+  }
+ },
+ {
+  "id": "c_total_tol",
+  "note": "带误差：3741 与 3740 差 1，tol=1 判过",
+  "tool": "table.check",
+  "payload": {
+   "table": {
+    "title": "减速机物料清单",
+    "columns": [
+     {
+      "key": "part",
+      "title": "零件"
+     },
+     {
+      "key": "qty",
+      "title": "数量",
+      "type": "integer"
+     },
+     {
+      "key": "price",
+      "title": "单价",
+      "type": "money",
+      "unit": "元"
+     },
+     {
+      "key": "amount",
+      "title": "金额",
+      "type": "money",
+      "unit": "元",
+      "formula": "qty * price"
+     }
+    ],
+    "rows": [
+     [
+      "输入轴",
+      1,
+      860
+     ],
+     [
+      "齿轮",
+      2,
+      1250.5
+     ],
+     [
+      "轴承 6208",
+      4,
+      95
+     ]
+    ],
+    "totals": [
+     "金额"
+    ]
+   },
+   "expect": "total 金额 sum=3740 tol=1"
+  },
+  "expect": {
+   "verdict": "pass"
+  }
+ },
+ {
+  "id": "c_unique_fail",
+  "note": "主键重复：第 3 行与第 1 行同名，位置 钢材!A4",
+  "tool": "table.check",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "Q235",
+      240,
+      4300
+     ]
+    ]
+   },
+   "expect": "unique 牌号"
+  },
+  "expect": {
+   "verdict": "fail",
+   "checks[2].where": [
+    "钢材!A4"
+   ]
+  }
+ },
+ {
+  "id": "c_nonempty_fail",
+  "note": "空格子：列出位置",
+  "tool": "table.check",
+  "payload": {
+   "table": {
+    "title": "排班",
+    "columns": [
+     "日期",
+     "早班",
+     "晚班"
+    ],
+    "rows": [
+     [
+      "10-27",
+      "张敏",
+      null
+     ],
+     [
+      "10-28",
+      null,
+      "王强"
+     ]
+    ]
+   },
+   "expect": "nonempty 早班 晚班"
+  },
+  "expect": {
+   "verdict": "fail",
+   "checks[2].where": [
+    "排班!C2",
+    "排班!B3"
+   ]
+  }
+ },
+ {
+  "id": "c_range_sorted",
+  "note": "范围与排序：屈服强度都在 200–400 内；价格升序；屈服强度不是降序",
+  "tool": "table.check",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ]
+   },
+   "expect": "range 屈服强度 min=200 max=400\nsorted 价格 asc\nsorted 屈服强度 desc"
+  },
+  "expect": {
+   "verdict": "fail",
+   "checks[2].verdict": "pass",
+   "checks[3].verdict": "pass",
+   "checks[4].verdict": "fail",
+   "checks[4].where": [
+    "钢材!B3"
+   ]
+  }
+ },
+ {
+  "id": "c_builtin_placeholder",
+  "note": "内置核对：“待补”占位与整列为空",
+  "tool": "table.check",
+  "payload": {
+   "table": {
+    "title": "报价",
+    "columns": [
+     "项目",
+     "报价",
+     "备注"
+    ],
+    "rows": [
+     [
+      "安装",
+      "待补",
+      null
+     ],
+     [
+      "调试",
+      "TBD",
+      null
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "verdict": "fail",
+   "checks[0].kind": "empty_column",
+   "checks[0].verdict": "fail",
+   "checks[0].where": [
+    "备注"
+   ],
+   "checks[1].kind": "placeholder",
+   "checks[1].where": [
+    "报价!B2",
+    "报价!B3"
+   ]
+  }
+ },
+ {
+  "id": "c_missing_column",
+  "note": "要的列不在表里",
+  "tool": "table.check",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ]
+   },
+   "expect": "columns 牌号 密度"
+  },
+  "expect": {
+   "verdict": "fail",
+   "checks[2].where": [
+    "密度"
+   ]
+  }
+ },
+ {
+  "id": "c_object",
+  "note": "用 object（table.build 的产出记录）核对，sheet= 指定表（行首行尾都行）",
+  "tool": "table.check",
+  "payload": {
+   "object": {
+    "tool": "table.build",
+    "args": {
+     "table": {
+      "title": "库存",
+      "sheets": [
+       {
+        "id": "a",
+        "name": "甲",
+        "columns": [
+         "名称",
+         "库存"
+        ],
+        "rows": [
+         [
+          "轴承",
+          46
+         ]
+        ]
+       },
+       {
+        "id": "b",
+        "name": "乙",
+        "columns": [
+         "名称",
+         "库存"
+        ],
+        "rows": [
+         [
+          "圆钢",
+          12
+         ],
+         [
+          "板材",
+          3
+         ]
+        ]
+       }
+      ]
+     }
+    },
+    "output": {}
+   },
+   "expect": "rows min=2 sheet=乙\nsheet=乙 total 库存 sum=15\nsheet=乙\nunique 名称"
+  },
+  "expect": {
+   "verdict": "pass"
+  }
+ },
+ {
+  "id": "err_expect",
+  "note": "期望清单写错：不认识的核对项",
+  "tool": "table.check",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ]
+   },
+   "expect": "has 牌号"
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "expect",
+   "error.line": 1
+  }
+ },
+ {
+  "id": "e_xlsx",
+  "note": "导出 Excel：冻结首行、筛选、表头",
+  "tool": "table.export",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ]
+   },
+   "formats": [
+    "xlsx"
+   ]
+  },
+  "expect": {
+   "file_count": 1,
+   "files[0].format": "xlsx",
+   "files[0].role": "table.excel",
+   "xlsx_contains": {
+    "xl/worksheets/sheet1.xml": [
+     "<pane ySplit=\"1\"",
+     "<autoFilter ref=\"A1:C5\"/>"
+    ],
+    "xl/sharedStrings.xml": [
+     "屈服强度（MPa）"
+    ]
+   }
+  }
+ },
+ {
+  "id": "e_csv",
+  "note": "CSV：UTF-8 BOM、CRLF、原值不加千分位、表头带单位",
+  "tool": "table.export",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ]
+   },
+   "format": "csv"
+  },
+  "expect": {
+   "csv_bom": true,
+   "csv_contains": [
+    "牌号,屈服强度（MPa）,价格（元/吨）\r\n",
+    "304,205,15800.00\r\n"
+   ]
+  }
+ },
+ {
+  "id": "e_csv_inject",
+  "note": "CSV 注入防护：以 = 开头的文字前加单引号",
+  "tool": "table.export",
+  "payload": {
+   "table": {
+    "title": "T",
+    "columns": [
+     "说明"
+    ],
+    "rows": [
+     [
+      "=1+1"
+     ],
+     [
+      "正常"
+     ]
+    ]
+   },
+   "formats": [
+    "csv"
+   ]
+  },
+  "expect": {
+   "csv_contains": [
+    "'=1+1\r\n"
+   ]
+  }
+ },
+ {
+  "id": "e_md",
+  "note": "Markdown：竖线转义",
+  "tool": "table.export",
+  "payload": {
+   "table": {
+    "title": "T",
+    "columns": [
+     "a|b"
+    ],
+    "rows": [
+     [
+      "x|y"
+     ]
+    ]
+   },
+   "formats": [
+    "md"
+   ]
+  },
+  "expect": {
+   "md_contains": [
+    "| a\\|b |",
+    "| x\\|y |"
+   ]
+  }
+ },
+ {
+  "id": "e_object",
+  "note": "从 object（table.build 的产出记录）导出（17 TL-9b），名字沿用 args.name",
+  "tool": "table.export",
+  "payload": {
+   "object": {
+    "tool": "table.build",
+    "args": {
+     "table": {
+      "title": "减速机物料清单",
+      "columns": [
+       {
+        "key": "part",
+        "title": "零件"
+       },
+       {
+        "key": "qty",
+        "title": "数量",
+        "type": "integer"
+       },
+       {
+        "key": "price",
+        "title": "单价",
+        "type": "money",
+        "unit": "元"
+       },
+       {
+        "key": "amount",
+        "title": "金额",
+        "type": "money",
+        "unit": "元",
+        "formula": "qty * price"
+       }
+      ],
+      "rows": [
+       [
+        "输入轴",
+        1,
+        860
+       ],
+       [
+        "齿轮",
+        2,
+        1250.5
+       ],
+       [
+        "轴承 6208",
+        4,
+        95
+       ]
+      ],
+      "totals": [
+       "金额"
+      ]
+     },
+     "name": "bom"
+    },
+    "output": {}
+   },
+   "format": "xlsx"
+  },
+  "expect": {
+   "name": "bom",
+   "files[0].path": "bom.xlsx"
+  }
+ },
+ {
+  "id": "e_model_roundtrip",
+  "note": "表模型再导回：从 json 格式的表模型重新导出，sha 不变",
+  "tool": "table.export",
+  "payload": {
+   "object": {
+    "schema": "mengos.table/1",
+    "title": "季度销量",
+    "sheets": [
+     {
+      "id": "s1",
+      "name": "季度销量",
+      "columns": [
+       {
+        "key": "c1",
+        "title": "地区",
+        "type": "text",
+        "align": "left"
+       },
+       {
+        "key": "c2",
+        "title": "一季度",
+        "type": "integer",
+        "align": "right"
+       }
+      ],
+      "rows": [
+       [
+        "华东",
+        "120"
+       ]
+      ]
+     }
+    ]
+   },
+   "format": "json"
+  },
+  "expect": {
+   "file_count": 1,
+   "files[0].role": "table.model",
+   "warnings": []
+  }
+ },
+ {
+  "id": "e_twice",
+  "note": "导出两次逐字节相同",
+  "tool": "table.export",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ],
+    "meta": {
+     "author": "工艺部"
+    }
+   },
+   "formats": [
+    "xlsx",
+    "csv",
+    "md",
+    "json"
+   ]
+  },
+  "expect": {
+   "twice": true,
+   "file_count": 4
+  }
+ },
+ {
+  "id": "err_both",
+  "note": "table 与 object 同时给",
+  "tool": "table.export",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ]
+   },
+   "object": {},
+   "formats": [
+    "xlsx"
+   ]
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "table"
+  }
+ },
+ {
+  "id": "err_format",
+  "note": "不支持的格式",
+  "tool": "table.export",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ]
+   },
+   "formats": [
+    "pdf"
+   ]
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "formats"
+  }
+ },
+ {
+  "id": "err_name",
+  "note": "文件名带路径拒收",
+  "tool": "table.export",
+  "payload": {
+   "table": {
+    "title": "钢材",
+    "columns": [
+     {
+      "key": "g",
+      "title": "牌号"
+     },
+     {
+      "key": "ys",
+      "title": "屈服强度",
+      "unit": "MPa",
+      "type": "integer"
+     },
+     {
+      "key": "p",
+      "title": "价格",
+      "type": "money",
+      "unit": "元/吨"
+     }
+    ],
+    "rows": [
+     [
+      "Q235",
+      235,
+      4200
+     ],
+     [
+      "Q355",
+      355,
+      4550
+     ],
+     [
+      "45",
+      355,
+      5100
+     ],
+     [
+      "304",
+      205,
+      15800
+     ]
+    ]
+   },
+   "name": "../x",
+   "formats": [
+    "md"
+   ]
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "name"
+  }
+ }
+]

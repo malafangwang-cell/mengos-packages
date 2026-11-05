@@ -1,0 +1,90 @@
+{
+  "signature": "doc.build",
+  "out_types": [
+    "doc"
+  ],
+  "trust": "T1",
+  "args_schema": {
+    "type": "object",
+    "properties": {
+      "base": {
+        "type": "string",
+        "x-mengos-base": true
+      },
+      "name": {
+        "type": "string"
+      },
+      "doc": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "sections": {
+            "type": "array",
+            "x-mengos-merge": {
+              "mode": "by-id",
+              "label": "heading",
+              "fill": "body"
+            },
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "heading": {
+                  "type": "string"
+                },
+                "body": {
+                  "type": "string"
+                },
+                "qty": {
+                  "type": "number",
+                  "x-mengos-data": true
+                }
+              }
+            }
+          },
+          "tables": {
+            "type": "array",
+            "x-mengos-merge": {
+              "mode": "by-id",
+              "label": "caption"
+            },
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "caption": {
+                  "type": "string"
+                },
+                "rows": {
+                  "type": "array",
+                  "x-mengos-merge": {
+                    "mode": "append"
+                  },
+                  "items": {
+                    "type": "array"
+                  }
+                },
+                "plan": {
+                  "type": "string",
+                  "x-mengos-merge": {
+                    "mode": "named-lines",
+                    "name": "^\\s*([A-Za-z_][\\w-]*):"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": [
+      "name"
+    ]
+  }
+}

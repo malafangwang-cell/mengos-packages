@@ -1,0 +1,57 @@
+{
+  "_说明": "TB-1 (执行令-2026-11-05-table包2.0.0 P1「引擎组合用例」): rows 上 x-mengos-data 与 x-mengos-merge(append) 并存——合并 (原行后接新行)、触及键 (…rows+)、骨架 ($count)、证件账定位 (append 元素 ↦ P 长度 + 增量内下标)。schema 是按令 T1 写的单表写法最小形 (rows 带数据标记与 append、items 为 oneOf 数组行或对象行; sheets 按 id 合并), 不是包的注册件原文。delta 是剥去 base 后的增量 Δ'。期望值由施工方按设计 r8 §三.2/§三.3 写定。不含任何提示词文本 (包仓库会引用本夹具)。",
+  "cases": [
+    {
+      "name": "单表写法: P 两行 (数据字段), Δ 追加一条数组行 + 一条对象行 ⟹ 原行后接新行, K={table.rows+}, $count 2→4",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "base": { "type": "string", "x-mengos-base": true },
+          "name": { "type": "string" },
+          "table": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "columns": { "type": "array", "items": { "oneOf": [{ "type": "string" }, { "type": "object" }] } },
+              "rows": {
+                "type": "array",
+                "x-mengos-data": true,
+                "x-mengos-merge": { "mode": "append" },
+                "maxItems": 100000,
+                "items": { "oneOf": [{ "type": "array" }, { "type": "object" }] }
+              },
+              "sheets": {
+                "type": "array",
+                "x-mengos-merge": { "mode": "by-id", "id": "id", "label": "name", "fill": "rows" },
+                "items": {
+                  "type": "object",
+                  "required": ["id"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "columns": { "type": "array", "items": { "oneOf": [{ "type": "string" }, { "type": "object" }] } },
+                    "rows": {
+                      "type": "array",
+                      "x-mengos-data": true,
+                      "x-mengos-merge": { "mode": "append" },
+                      "items": { "oneOf": [{ "type": "array" }, { "type": "object" }] }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "P": { "name": "pop", "table": { "title": "人口", "columns": ["城市", "人口"], "rows": [["甲", 120], ["乙", 85]] } },
+      "delta": { "table": { "rows": [["丙", 64], { "城市": "丁", "人口": 42 }] } },
+      "expect": {
+        "value": { "name": "pop", "table": { "title": "人口", "columns": ["城市", "人口"], "rows": [["甲", 120], ["乙", 85], ["丙", 64], { "城市": "丁", "人口": 42 }] } },
+        "keys": ["table.rows+"],
+        "skeleton_P": "{\"$best\":true,\"name\":{\"$size\":5},\"table\":{\"columns\":{\"$size\":19},\"rows\":{\"$count\":2},\"title\":{\"$size\":8}}}",
+        "skeleton_merged": "{\"$best\":true,\"name\":{\"$size\":5},\"table\":{\"columns\":{\"$size\":19},\"rows\":{\"$count\":4},\"title\":{\"$size\":8}}}",
+        "remap": { "path": "/table/rows/1/人口", "merged_path": "/table/rows/3/人口" }
+      }
+    }
+  ]
+}
