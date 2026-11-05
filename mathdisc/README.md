@@ -1,4 +1,6 @@
-# mathdisc 1.1.0 · 数学核对工具包
+# mathdisc 1.1.1 · 数学核对工具包
+
+> 1.1.1（mengosv2 执行令-2026-11-05-PLAN声明书与F环清单交互 支 T）：包清单加显示名 `title`「数学猜想核验」与 `tool_titles`（`mathdisc.identity`「核验两式恒等」、`mathdisc.formula`「拟合并盲测数据公式」、`mathdisc.recurrence`「核验数列递推式」、`mathdisc.reach`「核验算式等于目标值」、`mathdisc.counterexample`「核验素数猜想反例」、`mathdisc.solve_closed`「穷举凑出目标整数」）。两字段只供界面显示（声明书、商店），不进工具选择，也不进给模型看的任何文字；不在 `tools_lock.covers` 内，lock 不变（工具版本与认证继承），只有 content_hash 变。工具代码与 registration.json 未改（其中 `family_version` 仍写 1.1.0）。
 
 > 1.1.0：六件工具给模型看的说明按“这件工具是做什么的”重写，并逐件对照工具代码核准（草稿 `描述实验/`，立法者 2026-10-13 审定）。mathdisc 是数学结论的裁判：结论由调用方提出，工具不经模型判定，回执是这条结论的证据。改正了与代码不符之处：恒等式的数值路只在一处取值比对（原写“多处”）；递推只收整数与 + − × ÷；凑数核对只收整数，可用 factorial 与完全平方数的 sqrt；反例只认“总是素数”一种猜想；恒等式第三条场景例的证据等级。工具代码未改；registration 改了，lock 变，须重新认证。
 

@@ -1,9 +1,18 @@
 {
   "package": "mathdisc",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "mengos",
   "scope": "public",
-  "content_hash": "3ac2112452196af029346c98f7dd12579da58128326f8eda69085a20fc608c73",
+  "title": "数学猜想核验",
+  "tool_titles": {
+    "mathdisc.identity": "核验两式恒等",
+    "mathdisc.formula": "拟合并盲测数据公式",
+    "mathdisc.recurrence": "核验数列递推式",
+    "mathdisc.reach": "核验算式等于目标值",
+    "mathdisc.counterexample": "核验素数猜想反例",
+    "mathdisc.solve_closed": "穷举凑出目标整数"
+  },
+  "content_hash": "8df618114e75797c39fa4d366004a669c9b7bbcf52162d66e4ce24b40946c65b",
   "types": [
     {
       "name": "math_relation",

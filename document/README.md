@@ -1,4 +1,6 @@
-# document · 通用长文包 2.0.0
+# document · 通用长文包 2.0.1
+
+> 2.0.1（mengosv2 执行令-2026-11-05-PLAN声明书与F环清单交互 支 T）：包清单加显示名 `title`「长文档编排」与 `tool_titles`（`doc.build`「编排并交付长文档」、`doc.check`「核对长文档交付要求」、`doc.export`「导出长文档文件」）。两字段只供界面显示（声明书、商店），不进工具选择，也不进给模型看的任何文字；不在 `tools_lock.covers` 内，lock 不变（工具版本与认证继承），只有 content_hash 变。工具代码与 registration.json 未改（其中 `family_version` 仍写 2.0.0）。
 
 > 2.0.0（产出规则 支 B，第一单；17 TL-30a）：doc.build 接入贡献型声明，让长文可以分多次写、由引擎累积，不再要求模型一次输出整份文档。**输入契约收紧，所以升大版本**；工具代码未改，只改登记（input_schema）：
 > - **破坏性变更：doc.build 的节 id 由可选改为必填。** 同时 tables、figures、requirements 的元素本来就要 id。四个容器的元素 `required:["id"]` 写在 if/then/else 之外，恒生效。原因：不带 id 的节没法被后续增量定位，增量会静默追加出重复的节。这是契约变更，不是迁就实现：旧契约 `{title, sections:[{heading, body}]}` 在 doc.build 上不再是合法输入（doc.check、doc.export 仍原样接受）；金样、样例里缺 id 的节补上 id（取工具原来会缺省出的 `s<序号>`，输出与期望值不变）。

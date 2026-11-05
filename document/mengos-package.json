@@ -1,9 +1,15 @@
 {
   "package": "document",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "publisher": "mengos",
   "scope": "public",
-  "content_hash": "5313c37aaaefe90f3bd06c3ceb58adb65d75ec2a6a9ce8091eec0421a1c1df97",
+  "title": "长文档编排",
+  "tool_titles": {
+    "doc.build": "编排并交付长文档",
+    "doc.check": "核对长文档交付要求",
+    "doc.export": "导出长文档文件"
+  },
+  "content_hash": "6ac6628d00ba634ba807be4a92e0df99191ded3535c2429add237c5490baa53a",
   "types": [
     {
       "name": "document",

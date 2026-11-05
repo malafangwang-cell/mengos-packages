@@ -1,5 +1,7 @@
 # cad v2（W3 的 CAD 工具包）
 
+> 2.5.1（mengosv2 执行令-2026-11-05-PLAN声明书与F环清单交互 支 T）：包清单加显示名 `title`「三维零件建模」与 `tool_titles`（`cad.build`「建三维零件模型」、`cad.check`「核对零件尺寸与特征」、`cad.export`「导出零件加工与图纸文件」）。两字段只供界面显示（声明书、商店），不进工具选择，也不进给模型看的任何文字；不在 `tools_lock.covers` 内，lock 不变（工具版本与认证继承），只有 content_hash 变。工具代码与 registration.json 未改（其中 `family_version` 仍写 2.5.0）。
+
 > 2.5.0（产出规则 支 B，第二单；17 TL-30a v0.2.62，设计 `产出不受模型输出长度限制` r8 §五）：cad.build 接入贡献型声明，让零件计划可以分多次写、由引擎按行合并，不再要求模型一次输出整份计划。**只放宽、不收紧**，所以升小版本；只改登记（input_schema 与说明），**工具代码未改**：
 > - cad.build 顶层加 base 槽（`x-mengos-base`）；`plan` 标 `x-mengos-merge`，mode 为 named-lines，行名正则 `^\s*([A-Za-z_\u4e00-\u9fff][A-Za-z0-9_\u4e00-\u9fff.]*)\s*[:：]`（恰一个捕获组，与计划解析器认的行名一致，全角冒号也认）。cad.check、cad.export 的 schema 不动。
 > - 必填放宽：`if {required:[base]} then {required:[base]} else {required:[plan]}`。不带 base 时与 2.4.4 的校验口径逐键相同（`tests/test_contribution.py` 比对 2.4.4 schema 的 sha256），带 base 时 plan 只写改动的行。
