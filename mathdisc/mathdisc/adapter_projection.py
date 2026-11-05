@@ -1,11 +1,9 @@
-# 承: mathdisc工程文档v1§2 adapter-I1/§3 · 层: 工具·环0 · 版本: mathdisc-adapter-projection/v0.1.0
-"""T-A 投影参考实现 (承工程文档§3: discover 回执投影).
+"""T-A 投影参考实现.
 
-evidence.grade → assumptions 逐条透传 (承 adapter-I1: 丢一条 = A8 违例)。
+evidence.grade → assumptions 逐条透传。
 映射表唯一资产真源 = ta_projection.json; 本模块是其 Python 消费方,
-TS adapter 读同一 JSON 机械翻译 (双消费方单真源, 承 adapter-I1 映射表显式)。
+TS adapter 读同一 JSON 机械翻译 (双消费方单真源, 映射表显式)。
 """
-# impl: mathdisc-D7 | 承mathdisc工程文档v1§2 adapter-I1 + §3
 from __future__ import annotations
 
 import json
@@ -16,8 +14,7 @@ _TA_TABLE = json.loads(
 
 
 def _grade_to_assumption(grade: str) -> str | None:
-    """grade → assumption 文案 (查表, 承 ST2; 未命中 = 表缺档, 显式上抛非静默)."""
-    # impl: mathdisc-D7 | 承工程文档§2 adapter-I1
+    """grade → assumption 文案 (查表; 未命中 = 表缺档, 显式上抛非静默)."""
     for rule in _TA_TABLE:
         if grade == rule["match"] or grade.startswith(rule["match"]):
             tpl = rule.get("template")
@@ -26,11 +23,10 @@ def _grade_to_assumption(grade: str) -> str | None:
 
 
 def project_ta_receipt(loop_result: dict) -> dict:
-    """discover 循环结果 → T-A 回执 (承工程文档§3):
+    """discover 循环结果 → T-A 回执:
     relations→output_ref 形状; evidence.grade 逐条→assumptions;
     三态→stop_reason 原样; 轮数与ρ调用数→cost 明细。
     """
-    # impl: mathdisc-D7 | 承mathdisc工程文档v1§3 (回执投影)
     assumptions: list[dict] = []
     relation_receipts: list[dict] = []
     for rel in loop_result.get("relations", []):
@@ -41,7 +37,7 @@ def project_ta_receipt(loop_result: dict) -> dict:
         if note is not None:
             assumptions.append({"statement": note, "source": rel["expr"]})
             mine.append(note)
-        # 补裁一(2026-11-05): 每条关系的逐条回执, 只增不删; 字段取自该候选的检查门回执原样,
+        # 每条关系的逐条回执, 只增不删; 字段取自该候选的检查门回执原样,
         # validity 回执/调用方带了才带, 不带不伪造; assumptions 与总表 source=expr 的各条一致
         item = {"expr": rel["expr"], "verdict": receipt["verdict"],
                 "evidence": receipt["evidence"], "assumptions": mine}

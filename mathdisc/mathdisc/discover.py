@@ -1,4 +1,3 @@
-# 承: mathdisc工程文档v1§1/§3 · 层: 工具·环0 · 版本: mathdisc-discover/v0.1.0
 """discover 作业体 (自主仓库 mathdisc/cli.py 的 run-solve 路径摘出; 其余同步单元走各自入口).
 
 与 run-solve 的差别只在宿主形态: 包内不落盘 (workdir=false), 循环结果直接返回给 md_tool 投影;
@@ -6,7 +5,6 @@
 MATHDISC_RHO_MOCK=1 时为空 ρ, 供管道自检用 (空 ρ 不产能力数据, 发布档由平台拒启该变量)。
 入参不决定走不走 mock。
 """
-# impl: mathdisc-D7 | 承mathdisc工程文档v1§3 + cli.py run-solve
 from __future__ import annotations
 
 import os
