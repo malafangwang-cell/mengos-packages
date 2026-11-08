@@ -1,4 +1,6 @@
-# document · 通用长文包 2.0.1
+# document · 通用长文包 2.0.2
+
+> 2.0.2（立法者 2026-11-08 同意；只改渲染器，依据渲染器契约 v0.1 §4.2，认证继承 TL-25）：宿主发 `chrome:"host"` 时整条顶栏连同“下载 ▾”隐去（2.0.1 只隐了标题）；窄屏只保留目录按钮（目录在抽屉里），与 cad 2.5.1、table 2.0.0 一致。独立打开（不发 chrome:"host"）时顶栏与下载不变。工具代码、registration.json、schema、金样均未改，lock 仍为 `219a4dd622f9cda7`，只有 content_hash 变。
 
 > 2.0.1（mengosv2 执行令-2026-11-05-PLAN声明书与F环清单交互 支 T）：包清单加显示名 `title`「长文档编排」与 `tool_titles`（`doc.build`「编排并交付长文档」、`doc.check`「核对长文档交付要求」、`doc.export`「导出长文档文件」）。两字段只供界面显示（声明书、商店），不进工具选择，也不进给模型看的任何文字；不在 `tools_lock.covers` 内，lock 不变（工具版本与认证继承），只有 content_hash 变。工具代码与 registration.json 未改（其中 `family_version` 仍写 2.0.0）。
 
