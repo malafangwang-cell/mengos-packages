@@ -94,8 +94,9 @@ main { overflow: auto; scroll-behavior: smooth; }
   .doc header h1 { font-size: 23px; }
   .toast { display: none; }
 }
-/* 渲染器契约 v0.1：宿主绘制外框时隐藏本页顶栏的标题；嵌入视图是一张卡片 */
-:root[data-chrome="host"] .bar .name { visibility: hidden; }
+/* 渲染器契约 v0.1 §4.2：宿主绘制外框时整条顶栏（标题、下载）隐去；窄屏只留目录按钮；嵌入视图是一张卡片 */
+:root[data-chrome="host"] .bar { display: none; }
+@media (max-width: 820px) { :root[data-chrome="host"] .bar { display: flex; padding-block: calc(env(safe-area-inset-top, 0px) + 6px) 6px; border-bottom: 0; } :root[data-chrome="host"] .bar :is(.name, .toast, .dl) { display: none; } }
 .embed { display: grid; gap: 6px; padding: 14px 16px; font: 14px/1.55 var(--sans); }
 .embed .t { font-weight: 700; font-size: 15px; }
 .embed .m { color: var(--mute); font-size: 12.5px; }
