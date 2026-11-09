@@ -3,7 +3,8 @@ name = "mengos-document"
 version = "1.1.0"
 description = "mengos 通用长文包：组装（内容 → 文档模型）、核对（结构与要求追溯）、导出（Markdown、Word、网页）"
 requires-python = ">=3.12,<3.14"
-dependencies = ["python-docx==1.2.0", "markdown-it-py==4.0.0"]
+dependencies = ["python-docx==1.2.0", "markdown-it-py==4.0.0", "Pillow==12.3.0",
+                "reportlab==5.1.0", "svglib==1.5.1"]
 
 [dependency-groups]
-dev = ["pytest>=8", "jsonschema>=4"]
+dev = ["pytest>=8", "jsonschema>=4", "pypdf==6.17.0", "fonttools==4.68.0"]

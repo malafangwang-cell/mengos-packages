@@ -23,8 +23,12 @@ def _meta_line(a: Assembled) -> str:
     return ("　" if zh else " · ").join(parts)
 
 
+ROLE_FIG_ORIG = "document.figure_original"
+
+
 def figure_filename(name: str, fig) -> str:
-    return f"{name}.f-{fig.id}{EXT[fig.media_type]}"
+    """Markdown 里图的文件名：位图指向原图产出文件 figures/<id>.<ext>（同一字节、同一对象，不另存一份）；SVG 仍随 Markdown 附一个文件。"""
+    return fig.orig_path if fig.orig_path else f"{name}.f-{fig.id}{EXT[fig.media_type]}"
 
 
 # ---------------------------------------------------------------- Markdown
@@ -97,7 +101,7 @@ def _md_table(columns, rows, align) -> list[str]:
 
 
 def to_markdown(a: Assembled, name: str):
-    """返回 (Markdown 文本, [(文件名, 字节, media_type)])：图以同名前缀的文件交付。"""
+    """返回 (Markdown 文本, [(文件名, 字节, media_type)])：SVG 以同名前缀的文件交付；位图引用 figures/ 下的原图文件。"""
     d, W, zh = a.doc, a.words, a.doc.meta["lang"] == "zh-CN"
     figs, tabs = a.figures, a.tables
     out = [f"# {md_escape(d.title)}", ""]
@@ -126,7 +130,8 @@ def to_markdown(a: Assembled, name: str):
                 cap = a.fig_caption(f)
                 out += [f'<a id="fig-{f.id}"></a>', ""]
                 fn = figure_filename(name, f)
-                files.append((fn, f.data, f.media_type))
+                if not f.orig_path:                      # SVG：附图文件；位图：引用原图产出文件，不在这里再出一份
+                    files.append((fn, f.data, f.media_type))
                 out += [f"![{md_escape(cap)}]({fn})", "", f"*{md_escape(cap)}*", ""]
             else:
                 t = tabs[sg.ref]
@@ -186,7 +191,7 @@ def inline_alt(tok) -> str:
 
 
 def data_uri(f) -> str:
-    return f"data:{f.media_type};base64," + base64.b64encode(f.data).decode("ascii")
+    return f"data:{f.view_type};base64," + base64.b64encode(f.view_data).decode("ascii")
 
 
 def figure_html(a: Assembled, f) -> str:
@@ -317,9 +322,8 @@ pre{background:var(--soft);padding:10px 12px;border-radius:6px;overflow-x:auto;f
 code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.92em}
 blockquote{margin:12px 0;padding:2px 14px;border-left:3px solid var(--line);color:var(--muted)}
 .omitted{color:var(--muted);font-size:14px}
-.print-hint{font:13px/1.5 "Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--muted);background:var(--soft);border-radius:6px;padding:8px 12px;margin:0 0 24px}
 @page{size:A4;margin:25mm 22mm}
-@media print{.print-hint{display:none}body{font-size:11.5pt;background:#fff;color:#000}main{max-width:none;padding:0}nav.toc{background:none;border:1px solid #ccc}
+@media print{body{font-size:11.5pt;background:#fff;color:#000}main{max-width:none;padding:0}nav.toc{background:none;border:1px solid #ccc}
 h2.h,h3.h,h4.h{break-after:avoid}a{color:inherit;text-decoration:none}}
 """
 
@@ -338,10 +342,6 @@ def to_html(a: Assembled) -> str:
     if ml:
         out.append(f'<p class="meta">{html.escape(ml)}</p>\n')
     out.append("</header>\n")
-    out.append('<p class="print-hint">' + ("需要 PDF：在浏览器里打印（Ctrl+P，Mac 上 ⌘P），目标选“另存为 PDF”。这条提示不会印出来。"
-               if d.meta["lang"] == "zh-CN" else
-               "Need a PDF? Print this page from your browser (Ctrl+P, or ⌘P on a Mac) and choose “Save as PDF”. "
-               "This note does not print.") + "</p>\n")
     if d.meta["toc"]:
         out.append(f'<nav class="toc"><b>{html.escape(W["toc"])}</b>\n')
         for o in a.sections:

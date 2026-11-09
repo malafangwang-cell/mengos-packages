@@ -142,8 +142,9 @@ const state = { view: null, formats: [] };
 
 const FORMATS = {
   docx: { t: "Word 文档", x: ".docx", d: "可以直接编辑，带目录和页码。" },
+  pdf: { t: "PDF", x: ".pdf", d: "版式固定，适合发送与打印。" },
   md: { t: "Markdown", x: ".md", d: "原文格式。" },
-  html: { t: "网页", x: ".html", d: "下载后用浏览器打开；需要 PDF 时在浏览器里打印，选“另存为 PDF”。" },
+  html: { t: "网页", x: ".html", d: "下载后用浏览器打开。" },
   json: { t: "文档模型", x: ".json", d: "规范对象，供程序读取。" },
 };
 

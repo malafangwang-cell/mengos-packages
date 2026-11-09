@@ -60,7 +60,7 @@ def test_object_errors(tmp_path):
         ({"object": {"tool": "cad.build", "args": {"plan": "box 1 1 1"}}, "formats": ["docx"]}, "不是文档"),
         ({"object": {"tool": "doc.build", "args": {}}, "formats": ["docx"]}, "没有文档内容"),
         ({"object": rec, "format": "docx", "formats": ["docx"]}, "二选一"),
-        ({"object": rec, "format": "pdf"}, "不支持的格式"),
+        ({"object": rec, "format": "odt"}, "不支持的格式"),      # 2.2.0 起 pdf 已支持，改用仍不支持的 odt
     ]
     for payload, words in cases:
         r = _export(payload, tmp_path)

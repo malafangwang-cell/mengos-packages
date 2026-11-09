@@ -578,8 +578,7 @@ class _Writer:
             svg = etree.SubElement(ext, "{%s}svgBlip" % ASVG_NS, nsmap={"asvg": ASVG_NS})
             svg.set("{%s}embed" % R_NS, rid)
         else:
-            ext = "png" if f.media_type == "image/png" else "jpeg"
-            self._picture(run, f.data, ext, f.media_type, width, height, f"{f.id}.{ext}")
+            self._picture(run, f.view_data, "jpeg", f.view_type, width, height, f"{f.id}.jpeg")
         cap = self._para(style=self.doc.styles["Caption"])
         self._bookmark(cap, f"fig_{f.id}", lambda: cap._p.append(self._run(a.fig_caption(f))))
 

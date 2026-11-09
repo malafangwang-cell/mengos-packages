@@ -1,6 +1,6 @@
 {
   "package": "document",
-  "version": "2.0.2",
+  "version": "2.2.0",
   "publisher": "mengos",
   "scope": "public",
   "title": "长文档编排",
@@ -9,7 +9,7 @@
     "doc.check": "核对长文档交付要求",
     "doc.export": "导出长文档文件"
   },
-  "content_hash": "bd6f2ce33f0285c2af10051ec6afc8d453749c42329b362fbb4b9ff44468a3b3",
+  "content_hash": "334afb80c4f43ab30c1ece7b16ebd1fbecca01bc7e22a73c67c9d6f627bbf56c",
   "types": [
     {
       "name": "document",
@@ -63,13 +63,20 @@
       "assemble.py",
       "render.py",
       "docx_writer.py",
+      "pdf_writer.py",
       "checker.py",
       "doc_tool.py",
       "pyproject.toml",
       "uv.lock",
+      "fonts/NotoSansSC-Bold.ttf",
+      "fonts/NotoSansSC-Regular.ttf",
+      "fonts/NotoSerifSC-Bold.ttf",
+      "fonts/NotoSerifSC-Regular.ttf",
+      "fonts/OFL-NotoSansSC.txt",
+      "fonts/OFL-NotoSerifSC.txt",
       "registration.json"
     ],
-    "note": "工具 version（lock hash）只覆盖这些文件；renderer/、samples/、tests/、tools/、README 不在其内，改它们不使认证失效（TL-25）"
+    "note": "工具 version（lock hash）只覆盖这些文件（含随包字体 fonts/ 与许可文本）；renderer/、samples/、tests/、tools/、README 不在其内，改它们不使认证失效（TL-25）"
   },
   "certification_material": {
     "golden_cases": "golden_cases.json",

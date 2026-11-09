@@ -126,7 +126,8 @@ def test_only_text_images_tables(tmp_path):
     assert not r["ok"] and r["error"]["where"] == "doc.figures[0].source"
 
 
-def test_html_tells_how_to_get_pdf_and_hides_it_in_print(built):
+def test_html_has_no_browser_print_hint_and_keeps_print_css(built):
+    """2.2.0：PDF 改由导出直接交付，网页里不再教人“浏览器里打印”；打印样式仍在。"""
     page = built[1]["html"].decode("utf-8")
-    assert '<p class="print-hint">需要 PDF：在浏览器里打印' in page
-    assert "@media print{.print-hint{display:none}" in page
+    assert "print-hint" not in page and "另存为 PDF" not in page
+    assert "@media print{body{" in page and "@page{size:A4;margin:25mm 22mm}" in page

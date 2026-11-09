@@ -8,7 +8,7 @@ import pytest
 import doc_tool
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCES = ["model.py", "assemble.py", "render.py", "docx_writer.py", "checker.py", "doc_tool.py"]
+SOURCES = ["model.py", "assemble.py", "render.py", "docx_writer.py", "pdf_writer.py", "checker.py", "doc_tool.py"]
 NS = 'xmlns="http://www.w3.org/2000/svg"'
 
 

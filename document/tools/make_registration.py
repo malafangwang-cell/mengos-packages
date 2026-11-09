@@ -125,10 +125,10 @@ NAME = {"type": "string", "pattern": "^[^/\\\\.:*?\"<>|\\s]{1,64}$", "descriptio
 FILE_ITEM = {
     "type": "object", "required": ["path", "format", "role", "media_type", "bytes", "sha256"], "additionalProperties": False,
     "properties": {
-        "path": {"type": "string", "pattern": "^[^/\\\\]+$", "description": "相对 workdir 的文件名"},
-        "format": {"enum": ["json", "view", "md", "docx", "html", "figure"]},
-        "role": {"enum": ["document.model", "document.view", "document.text", "document.word", "document.web",
-                          "document.figure"]},
+        "path": {"type": "string", "pattern": "^(figures/)?[^/\\\\]+$", "description": "相对 workdir 的文件名；位图原图在 figures/ 下一级"},
+        "format": {"enum": ["json", "view", "md", "docx", "pdf", "html", "figure"]},
+        "role": {"enum": ["document.model", "document.view", "document.text", "document.word", "document.pdf",
+                          "document.web", "document.figure", "document.figure_original"]},
         "media_type": {"type": "string"}, "bytes": {"type": "integer", "minimum": 1}, "sha256": SHA,
     },
 }
@@ -218,7 +218,7 @@ units = [
             ],
             "non_goals": ["不替你写内容：正文、标题、图表都由调用方给出，工具只组装、编号、排版与追溯",
                           "不判断内容是否满足要求，只列出声明的响应关系",
-                          "不直接交 PDF：在 Word 里另存为 PDF，或打开网页版在浏览器里打印存为 PDF",
+                          "不出 PDF：PDF 在下载时由导出生成",
                           "不从别处取图：图要随内容一起给出（矢量图或 PNG、JPEG），文档里只有文字、图片和表格",
                           "不做脚注、尾注、参考文献格式与公式排版"],
         },
@@ -277,17 +277,17 @@ units = [
             "input_schema": {
                 "type": "object", "additionalProperties": False,
                 "oneOf": [{"required": ["doc"]}, {"required": ["object"]}],
-                "description": "把长文档交成需要的文件：Word（可直接编辑，带目录、页码与可跳转的引用）、单个网页文件（可在浏览器里打印存为 PDF）、"
+                "description": "把长文档交成需要的文件：Word（可直接编辑，带目录、页码与可跳转的引用）、PDF（版式固定，带目录页码、书签与可点的引用，适合发送与打印）、单个网页文件、"
                                "Markdown 原文（图片另附文件），以及可以再次编辑的文档模型。",
                 "properties": {"doc": DOC,
                                "object": {"type": "object",
                                           "description": "object：要导出的文档（document）；也可以直接给文档内容 doc，二选一。"},
                                "name": NAME,
                                "formats": {"type": "array", "minItems": 1, "uniqueItems": True,
-                                           "items": {"enum": ["docx", "md", "html", "json"]},
-                                           "description": "docx（Word）、md（Markdown 原文）、html（单个网页文件）、json（文档模型）中的一个或多个；"
+                                           "items": {"enum": ["docx", "pdf", "md", "html", "json"]},
+                                           "description": "docx（Word）、pdf（版式固定的 PDF）、md（Markdown 原文）、html（单个网页文件）、json（文档模型）中的一个或多个；"
                                                           "也可写单个 format。"},
-                               "format": {"enum": ["docx", "md", "html", "json"]}}},
+                               "format": {"enum": ["docx", "pdf", "md", "html", "json"]}}},
             "output_schema": {
                 "type": "object", "additionalProperties": False, "required": ["doc_sha256", "name", "warnings", "files"],
                 "properties": {"doc_sha256": SHA, "name": {"type": "string"}, "warnings": WARN,
@@ -295,14 +295,15 @@ units = [
         },
         "capability": {
             "ops": ["convert"], "in_types": ["document"], "out_types": ["doc_file"],
-            "constraints": {"formats": ["docx", "md", "html", "json"], "deterministic_files": True, "page_size": "A4",
-                            "max_file_mb": 64, "latency_note": "约 0.1–1 s，视篇幅与图片"},
+            "constraints": {"formats": ["docx", "pdf", "md", "html", "json"], "deterministic_files": True, "page_size": "A4",
+                            "max_file_mb": 48, "latency_note": "约 0.1–1 s，视篇幅与图片"},
             "examples": [
                 {"input": "把投标文件导出成 Word", "output": "formats [docx]"},
+                {"input": "要一份能直接发出去、版式固定的 PDF", "output": "formats [pdf]"},
                 {"input": "要一个能直接发给甲方、在浏览器里打开的版本", "output": "formats [html]"},
                 {"input": "导出 Markdown 原文，放进知识库", "output": "formats [md] → .md 与图片文件"},
             ],
-            "non_goals": ["不直接交 PDF：在 Word 里另存为 PDF，或打开网页版打印存为 PDF", "不导出 WPS、ODT、LaTeX 格式",
+            "non_goals": ["不导出 WPS、ODT、LaTeX 格式",
                           "不读入已有的 Word 文件"],
         },
     },
@@ -322,6 +323,7 @@ SELECTION = {
                   ("把报告导出成 Word", ["convert"], "doc_file", False),
                   ("核对这个零件外形是不是 80×50×20", ["check"], "verdict", False, "model")],
     "doc.export": [("把投标文件导出成 Word", ["convert"], "doc_file", True),
+                   ("把报告导出成能直接发出去的 PDF", ["convert"], "doc_file", True),
                    ("要一个能在浏览器里打开的报告网页版", ["convert"], "doc_file", True),
                    ("导出报告的 Markdown 原文", ["convert"], "doc_file", True),
                    ("写一份项目周报", ["generate"], "document", False),

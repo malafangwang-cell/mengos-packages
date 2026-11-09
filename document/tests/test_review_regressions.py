@@ -54,7 +54,7 @@ def png(w, h, ihdr_only=False):
     out = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
     if ihdr_only:
         return out
-    return out + chunk(b"IDAT", zlib.compress(b"\x00\xff\xff\xff" * max(1, h))) + chunk(b"IEND", b"")
+    return out + chunk(b"IDAT", zlib.compress((b"\x00" + b"\xff" * (3 * w)) * h)) + chunk(b"IEND", b"")
 
 
 def b64(b):
@@ -103,7 +103,7 @@ def test_jpeg_without_jfif_and_png_embed_in_word(tmp_path):
     out, files = build(one(body="[[fig:j]]\n\n[[fig:p]]", figures=figs), tmp_path)
     z = zipfile.ZipFile(io.BytesIO(files["docx"]))
     media = sorted(n for n in z.namelist() if n.startswith("word/media/"))
-    assert media == ["word/media/mengos_img1.jpeg", "word/media/mengos_img2.png"]
+    assert media == ["word/media/mengos_img1.jpeg", "word/media/mengos_img2.jpeg"]   # 位图一律以 JPEG 嵌入副本入 Word（2.1.0）
     assert len(docx.Document(io.BytesIO(files["docx"])).inline_shapes) == 2
 
 
