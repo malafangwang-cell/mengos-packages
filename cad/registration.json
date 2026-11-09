@@ -1,7 +1,7 @@
 {
   "family": "cad",
   "family_version": "2.5.0",
-  "lock_hash": "2a4efb009363fc73",
+  "lock_hash": "7ac22328b400cf72",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。入参写法写在 signature.input_schema 的 description 里；选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25），引擎不含这些名字；verdict 为平台类型。文件产出按 TL-9a。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
@@ -420,7 +420,7 @@
           "不标注尺寸与公差（三视图只有图线、中心线与标题栏）"
         ]
       },
-      "version": "2a4efb009363fc73"
+      "version": "7ac22328b400cf72"
     },
     {
       "tool_id": "cad.check",
@@ -459,7 +459,7 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 20000,
-              "description": "expect：期望清单，一行一条，例如 bbox 80 50 20、mass 199 g rtol=0.01、holes 6 d=10、hole d=10 axis=z at=(45,0) through、fits 130 70 60、watertight。"
+              "description": "expect：期望清单，一行一条，每类的写法：bbox 80 50 20 tol=0.05（外形尺寸）；fits 130 70 60（能放进这个包络，允许换方向）；volume 73700 rtol=0.001（体积，数后可加 mm3 或 cm3）；area 21000 rtol=0.01（表面积，数后可加 mm2 或 cm2）；mass 199 g rtol=0.01（质量，单位 g 或 kg；计划没写 material 时判 unknown）；mass max=350 g（只给上限或下限，用 max= 或 min=，volume、area 同）；com (40,25,10) tol=0.1（质心）；solids 1（实体个数）；valid（模型有效）；watertight（网格水密）；holes 7（孔的总数）；holes 6 d=10（直径 10 的孔有 6 个，还可加 axis=z）；hole d=10 axis=z at=(45,0) through（有这样一个孔；通孔写 through，盲孔写 blind，还可加 depth= cbore=(直径,深) csk=(直径,角度)）；feature boss（计划里有名叫 boss 的特征，且它在零件上还有面）。"
             }
           },
           "description": "按期望清单逐条核对零件（外形、包络、体积、质量、质心、孔、特征、有效性、水密），每条 pass/fail/unknown，给总判定。"
@@ -592,7 +592,7 @@
           "cad_model_meets_spec"
         ]
       },
-      "version": "2a4efb009363fc73"
+      "version": "7ac22328b400cf72"
     },
     {
       "tool_id": "cad.export",
@@ -794,7 +794,7 @@
           "不做格式间的反向转换（不读入文件）"
         ]
       },
-      "version": "2a4efb009363fc73"
+      "version": "7ac22328b400cf72"
     }
   ]
 }

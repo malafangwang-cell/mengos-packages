@@ -154,8 +154,15 @@ units = [
         "executor": EXECUTOR,
         "cost": {"latency": "约 0.1–1 s（含建模）", "price": 0, "timeout": 60000},
         "description": "按期望清单逐条核对零件（外形、包络、体积、质量、质心、孔、特征、有效性、水密），每条 pass/fail/unknown，给总判定。",
-        "input_domain": PLAN_DOMAIN + " expect：期望清单，一行一条，例如 bbox 80 50 20、mass 199 g rtol=0.01、"
-                        "holes 6 d=10、hole d=10 axis=z at=(45,0) through、fits 130 70 60、watertight。",
+        "input_domain": PLAN_DOMAIN + " expect：期望清单，一行一条，每类的写法："
+                        "bbox 80 50 20 tol=0.05（外形尺寸）；fits 130 70 60（能放进这个包络，允许换方向）；"
+                        "volume 73700 rtol=0.001（体积，数后可加 mm3 或 cm3）；area 21000 rtol=0.01（表面积，数后可加 mm2 或 cm2）；"
+                        "mass 199 g rtol=0.01（质量，单位 g 或 kg；计划没写 material 时判 unknown）；"
+                        "mass max=350 g（只给上限或下限，用 max= 或 min=，volume、area 同）；"
+                        "com (40,25,10) tol=0.1（质心）；solids 1（实体个数）；valid（模型有效）；watertight（网格水密）；"
+                        "holes 7（孔的总数）；holes 6 d=10（直径 10 的孔有 6 个，还可加 axis=z）；"
+                        "hole d=10 axis=z at=(45,0) through（有这样一个孔；通孔写 through，盲孔写 blind，还可加 depth= cbore=(直径,深) csk=(直径,角度)）；"
+                        "feature boss（计划里有名叫 boss 的特征，且它在零件上还有面）。",
         "input_example": {
             "plan": "material 6061-T6\nbase: box 80 50 20\nh1: hole d=20 at=center from=top through",
             "expect": "bbox 80 50 20\nholes 1 d=20\nhole d=20 axis=z at=(40,25) through\nmass 200 g rtol=0.01\nvalid"},
