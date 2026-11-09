@@ -1,4 +1,32 @@
-# document · 通用长文包 2.0.2
+# document · 通用长文包 2.2.0
+
+> 2.2.0（立法者 2026-11-09：长文图文能力与 PDF 进首发，合并为一个版本、认证一次；合并原定 2.1.0 的图文能力与 doc.export 的 PDF 格式）。给模型看的文字只改 doc.export 一件（加 PDF、删“不直接交 PDF”）；doc.build、doc.check 的说明与 schema 不动，doc.export 的 `format`/`formats` 词表只放宽（加 `pdf`），其余输入 schema 不变。工具代码、依赖、字体、登记都变，lock 变，须重新认证。
+>
+> **A. 图文能力**：最多 20 张 2K PNG 也稳定收下，不因体积整篇失败。
+> - **嵌入副本**：位图入口校验后确定性生成嵌入副本——长边 >1600 px 等比缩到 1600（否则不变），统一 JPEG q85，只留像素（去 EXIF、ICC），透明 PNG 先合成白底。副本用于 Word（`word/media`）、网页 data URI、产出台 `.view.json` 各节 html、PDF，并内嵌在 `.doc.json` 里。SVG 不变。1600 与 85 是 `model.py` 里的包内常量（`EMBED_MAX_EDGE`、`EMBED_QUALITY`）。同输入同 Pillow 版本逐字节相同。
+> - **原图单独成文件**（架构线 2026-11-09 裁决：对象层单次写入上限 50 MiB，`.doc.json` 内嵌 20 张 2K 原图在任何上限下都存不进去）：`doc.build` 只要有位图，不论 `formats` 选了什么，都把每张原图作为独立产出文件输出，路径 `figures/<id>.<ext>`，`role: document.figure_original`，原字节不改。`.doc.json` 里位图项的 `source` 内嵌嵌入副本，并加 `original: {sha256, bytes, media_type, path}` 指向原图文件（哈希由包按原字节计算，与对象层内容哈希一致）；原图仍是真源，只是按哈希引用。Markdown 导出的位图直接引用这些文件（同一字节，不另存一份）；SVG 照旧内嵌，Markdown 仍为 SVG 附一个文件。`doc.export` 只在导出 `md` 或 `json` 时随带原图文件（只导 Word、PDF、网页不带）。**已知限制**：带 `original` 的 `.doc.json` 里的位图再作为 `doc` 输入时，`source` 不认 `original`（输入 schema 不变），不能直接回灌；要回灌请换回原图 base64。
+> - **上限**：单张原图 8 MB → 16 MB；嵌入副本合计 `images_total_bytes` 48 MB → 36 MB（按副本计，SVG 按原文），使 base64 后的 `.doc.json` 与网页仍低于单文件 48 MB；原图合计 `originals_total_bytes` 320 MB（防滥用，20 × 16）；单个产出文件 `MAX_FILE_BYTES` 64 MB → 48 MB（低于对象层 50 MiB，登记 `constraints.max_file_mb` 同步为 48）；产出合计 `MAX_TOTAL_BYTES` 160 MB → 512 MB；单张像素上限 `image_pixels` 1 亿（解码内存保护，原先只限单边 30000）。超限一律在输入阶段判为 `BAD_INPUT`，信息写明是哪张图或哪项合计、多大、上限多少；规范模型文件会超过 48 MB 时同样在输入阶段拒收；产出阶段的 `RESOURCE_LIMIT` 只作最后兜底。**无法解码的位图**（块与 CRC 都对、但压缩流损坏）在入口就拒收（`BAD_INPUT`，`where` 指到该图）。
+> - **依赖**：新增 Pillow 12.3.0（`pyproject.toml` 钉死，`uv.lock` 锁定）。
+> - **读数**（§9 开销表）：20 张 2048² PNG（可压缩图案，原图合计 7.2 MB），`doc.build`（含 Word 与网页）2.6 s，Word 6.3 MB、网页 9.6 MB；`doc.export` 出 PDF 6.6 s、9.1 MB。20 张不可压缩 2048² PNG（每张 12.6 MB，原图合计 252 MB）`doc.build` 7.8 s，`.doc.json` 44.9 MB，产出合计 420 MB，整篇成功。均低于 30 s 的调整门槛，`cost.timeout` 仍为 60 000 ms，不调。
+> - **随之改了的测试**：`tests/test_review_regressions.py` 的 `png()` 夹具原先生成的 PNG 像素数据不足（只有结构合法，Pillow 解不出），改为生成完整像素；`test_jpeg_without_jfif_and_png_embed_in_word` 里 Word 媒体名由 `mengos_img2.png` 变为 `mengos_img2.jpeg`——位图一律以 JPEG 嵌入副本入 Word，是本版设计，不是迁就实现；`test_export_object.py` 里“pdf 不支持”的反例改用仍不支持的 `odt`。
+>
+> **B. PDF 导出**：`doc.export` 新增 `pdf`（`doc.build` 不加）。纯 Python 从已装配的文档模型直接排版（reportlab，invariant 模式），与 Word、网页同源，编号与交叉引用已解析；输出 `role: document.pdf`、`media_type: application/pdf`。
+> - **版式**：A4，页边距上下 25 mm、左右 22 mm（同网页打印样式）；正文衬线、标题无衬线，字号行距照 Word 的 zh-CN / en 两套；封面 `meta.cover`、目录 `meta.toc`（带页码与内部链接，两遍排版）、按 numbering 编号的各级标题、Markdown 正文（段落、粗体、行内代码、删除线、有序无序列表、引用、代码块、表格）、图（图题在下）、表（表题在上、表注）、`[[sec:]]`/`[[fig:]]`/`[[tab:]]` 为可点内部链接、要求响应对照表、页脚页码、按标题层级的书签；元数据标题与作者取自 `meta`，不写当前时间；`kind=outline` 照出。斜体没有对应字形，PDF 里与正文同形。
+> - **图**：位图用嵌入副本；SVG 转矢量（svglib，纯 Python，不依赖 cairo；SVG 里的字体名一律落到随包字体，不查系统字体）；转不了的 SVG 在原位画占位框，写图题与“此图无法在 PDF 中绘制”，并在 `warnings` 里报 `pdf_figure_unsupported`。随包字体没有的字符（如 emoji）报 `pdf_glyph_missing`，列出前 20 个，PDF 里显示为空框。
+> - **字体**（`fonts/`，SIL OFL 1.1，随包带许可全文；静态 TrueType，glyf 轮廓；嵌入 PDF 时再子集化，PDF 里的字体全是嵌入子集）：
+>
+>   | 文件 | 字体 | 版本 | sha256 |
+>   |---|---|---|---|
+>   | `NotoSerifSC-Regular.ttf` | Noto Serif SC 常规（正文） | 2.003 | `917cdd65b3554257e63b6fefd20d3328bd00be0e4afe51ec4ff519d863d67d86` |
+>   | `NotoSerifSC-Bold.ttf` | Noto Serif SC 粗体 | 2.003 | `6c25138197773a5321f8a93f7f2e87b8c0eb764ca8642cc3651fbbb1b81fec80` |
+>   | `NotoSansSC-Regular.ttf` | Noto Sans SC 常规（标题、表头、页脚） | 2.004 | `62e39e62aee711c435ba754805770258f78dfbb4722369b6fc27b42073637691` |
+>   | `NotoSansSC-Bold.ttf` | Noto Sans SC 粗体 | 2.004 | `4f2f6d350a9c25e9e65d79d9f3c90cf2b1979992ac20c4287ee59667da982ff7` |
+>
+>   来源：Google Fonts 公开仓库 `ofl/notosanssc/NotoSansSC[wght].ttf`（sha256 `a3041811…0af9`）与 `ofl/notoserifsc/NotoSerifSC[wght].ttf`（sha256 `050080d9…66f9`）两个可变字体；`tools/make_fonts.py` 实例化出 wght=400、700 两个静态实例，再裁到 GB 2312 全部字符与常用标点符号（约 7 千字），去掉提示与排版表，写入固定时间戳（重跑逐字节相同）。许可全文见 `fonts/OFL-NotoSansSC.txt`、`fonts/OFL-NotoSerifSC.txt`；OFL 的保留字体名是“Source”，本包字体仍叫 Noto，不含该名。四个字体与两份许可文本都在 `tools_lock.covers` 内。
+> - **依赖**：reportlab 5.1.0、svglib 1.5.1（及其纯 Python 依赖 cssselect2、tinycss2、webencodings、charset-normalizer）钉在 `pyproject.toml`、锁在 `uv.lock`；dev 依赖加 pypdf 6.17.0（只用于测试读回 PDF）与 fonttools 4.68.0（只用于重新生成字体）。不依赖任何系统库。
+> - **干净环境验证**：另起目录、全新虚拟环境（Python 3.12.3），只 `uv sync --frozen`，257 项测试全过，`uv.lock` 无改写（未用 python:3.12-slim 容器，开发环境无 docker；依赖全为纯 Python 或带自带 wheel，不依赖系统库）。
+> - **为什么不用 LibreOffice**：把 Word 转成 PDF 要带一个很大的外部程序，输出随版本与系统字体回退而变，不能保证逐字节复现（确定性，TL-12 ②），也违背包自足（TL-25）。本包直接排版、字体随包，同一文档任何时候、任何机器导出的 PDF 逐字节相同。
+> - **网页版**：不再在页面顶部写“在浏览器里打印另存为 PDF”的说明（PDF 现在直接导出）；打印样式（`@page`、`@media print`）保留。产出台下载菜单里的 PDF 一项由渲染器的格式表提供（`renderer/index.html` 的 `FORMATS`）。渲染器握手的 `format_hints`（契约 0.2，P8 可选）本版未做。
 
 > 2.0.2（立法者 2026-11-08 同意；只改渲染器，依据渲染器契约 v0.1 §4.2，认证继承 TL-25）：宿主发 `chrome:"host"` 时整条顶栏连同“下载 ▾”隐去（2.0.1 只隐了标题）；窄屏只保留目录按钮（目录在抽屉里），与 cad 2.5.1、table 2.0.0 一致。独立打开（不发 chrome:"host"）时顶栏与下载不变。工具代码、registration.json、schema、金样均未改，lock 仍为 `219a4dd622f9cda7`，只有 content_hash 变。
 
@@ -62,7 +90,8 @@
 | Markdown | 模型读的视图，每个标题前带 `<a id="sec-…">` | 模型 | `document.text`（`.md`，图另附） |
 | 产出台数据 | 人看的组装视图：目录、按节的正文 HTML、要求追溯、提醒、统计 | 表面层的产出台 | `document.view`（`.view.json`） |
 | Word | 缺省交付格式：A4、目录、页码、书签与内部链接 | 用户下载 | `document.word`（`.docx`） |
-| 网页 | 单个 HTML 文件。需要 PDF 时在浏览器里打印、另存为 PDF；页面顶部有一行说明，打印时不出现 | 用户下载 | `document.web`（`.html`） |
+| PDF | A4 版式固定：封面、带页码的目录、书签、可点的内部链接、嵌入字体；纯 Python 排版，逐字节确定 | 用户下载（`doc.export`） | `document.pdf`（`.pdf`） |
+| 网页 | 单个 HTML 文件，可在浏览器里打开、打印 | 用户下载 | `document.web`（`.html`） |
 
 **派生是确定的。**同一文档模型，任何时候导出都逐字节相同，跨进程、跨哈希种子也一样（测试覆盖）。平台因此可以按 ⟨doc_sha256, 格式, 工具版本⟩ 缓存派生文件：服务层 S4 的“派生下载”端点直接用这个键。
 
@@ -72,7 +101,7 @@
 |---|---|---|---|
 | `doc.build` | generate → `document` / `outline` | 内容 → 文档：编号、目录、引用、要求追溯、提醒 | 总有模型、产出台数据、Markdown（含图）；`formats` 缺省加 Word，可加网页 |
 | `doc.check` | check → `verdict` | 内置结构核对 + 期望清单，每条 pass / fail / unknown，总判定取最差 | 无 |
-| `doc.export` | convert → `doc_file` | 文档 → 指定格式：`docx`、`md`、`html`、`json` | 所列格式 |
+| `doc.export` | convert → `doc_file` | 文档 → 指定格式：`docx`、`pdf`、`md`、`html`、`json` | 所列格式 |
 
 三件都是：
 - `effect = none`（只写引擎给的 workdir，经 TL-9a 入 ObjectStore）；
@@ -269,7 +298,7 @@ python tools/make_package.py        # 重写包的 content_hash
 
 ## 7 已知边界
 
-- **不直接出 PDF**（立法者 2026-10-03）：网页版在浏览器里打印、另存为 PDF；网页顶部有说明，打印时不出现。也可以在 Word 里另存为 PDF。
+- **PDF**（2.2.0 起 `doc.export` 直接出）：不读系统字体，字形集为 GB 2312 加常用标点，集外字符报 `pdf_glyph_missing`；斜体不单独区分；SVG 里 svglib 不支持的写法会落到占位框并报 `pdf_figure_unsupported`；`doc.build` 不出 PDF（只在导出时生成）。
 - **Word 里的 SVG**：Word 2019、365 与 LibreOffice 显示矢量图本身；更旧的版本显示浅灰后备框。
 - **Word 目录**：打开时 Word 会提示更新域，更新后带页码。不更新也能用：条目已预先填好，没有页码。
 - **列表编号**写成文字（“1.”“•”），不用 Word 的自动编号，保证与其他视图一致、可复现。
@@ -301,13 +330,15 @@ uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider      # 项
 
 | 测试 | 内容 |
 |---|---|
-| `test_golden.py` | 38 条金样，期望值手写，可直接作为认证 ③ 的金样材料：<br>· 四种编号；<br>· 中文数字；<br>· 旧契约兼容；<br>· 引用与放置顺序；<br>· 代码里的记号不解析；<br>· 字数口径；<br>· 结构核对；<br>· 要求追溯；<br>· 期望清单逐条；<br>· 表格对齐；<br>· 英文；<br>· 对照表；<br>· 十种拒收 |
+| `test_golden.py` | 39 条金样（含 2.1.0 的位图结构金样 `fig_bitmap_structure`：图 1–3、所在节、图题、Word 图形数与图题样式、网页 `<figure>` 数、附图文件数，只比结构），期望值手写，可直接作为认证 ③ 的金样材料：<br>· 四种编号；<br>· 中文数字；<br>· 旧契约兼容；<br>· 引用与放置顺序；<br>· 代码里的记号不解析；<br>· 字数口径；<br>· 结构核对；<br>· 要求追溯；<br>· 期望清单逐条；<br>· 表格对齐；<br>· 英文；<br>· 对照表；<br>· 十种拒收 |
 | `test_determinism.py` | 不同进程、不同哈希种子：输出与全部文件逐字节相同。export 与 build 产出一致；规范模型再输入一次，doc_sha256 与文件都不变 |
 | `test_formats.py` | Word：<br>· 标题样式与顺序；<br>· 每节、每图表都有书签；<br>· 内部链接都有落点；<br>· 目录域；<br>· 表格；<br>· zip 时间戳固定；<br>· SVG 部件与内容类型。<br>网页：id 唯一、链接有落点、无脚本。<br>Markdown：链接与图片都有落点。<br>产出台数据：字段齐全 |
 | `test_registration.py` | 例子合 input_schema。例子与三份样例跑三件工具，输出合 output_schema。schema 与代码对同一批坏输入都拒收。version 等于 lock hash |
 | `test_package.py` | 只用 TL-6 字段；类型与渲染器；lock 覆盖范围；content_hash 最新；替换映射；选择金样每件应选与不应选各 3 条；给模型看的文字不含实现用词 |
 | `test_review_regressions.py` | 57 项。独立审查（另起的审查代理用对抗性输入找出 22 处缺陷）逐条钉住：<br>· 信封与预算的各种坏值不再让进程无输出退出；<br>· 坏图、非有限尺寸、实体解码出的控制字符、超长文件名不再导致内部错误，出错时不留半截文件；<br>· 两万行表格导出 Word 是线性耗时；<br>· 各种代码块里的记号不处理，跨块的行内代码不吞引用；<br>· Markdown 里的标题、表注不能注入结构，没闭合的代码块不吞后文；<br>· 十五种 SVG 绕过写法被拒；<br>· 核对的引号、参数与同名节 |
 | `test_contribution.py` | 60 项（另有 `test_legacy_default_ids.py` 3 项），贡献型接入预检（TL-30a）：标注合法、base 槽唯一、引擎合并金样（合并 / 触及键 / 空槽 / 骨架）；整体写法 schema 与 1.2.5 等价；带 base 的增量被接受；空槽中间版本被接受；分次合并出的文档与一次写成的交出同一份产物（文件逐字节相同）。夹具与参照实现见 `tests/fixtures/contribution/`、`tests/contribution_ref.py`；变异读数见 `tests/MUTANTS.md` |
+| `test_figures_embed.py` | 2.1.0 图文能力（图片全由 `tools/synth.py` 程序生成）：嵌入副本（2048²→1600² JPEG、800×600 不变、1600/1601 边界、透明合成白底、去 EXIF 与 ICC、字节确定、坏流拒收）；Word/网页/产出台/PDF/`.doc.json` 内嵌用副本，原图单独成文件、Markdown 引用它；单张 15 MB 收、16 MB 恰收、多 1 字节与 17 MB 拒（含图 id 与字节数）；原图合计与嵌入合计（36 MB）各自的上限与报错；像素上限；规范模型文件将超 48 MB 时输入阶段拒收；20 张 2K（可压缩与不可压缩各一）整篇成功，各产出文件 <48 MB，`.doc.json` 不含原图 base64、原图文件的 sha256 与 `original.sha256` 逐一相等；原图随 `doc.build` 恒出、随 `doc.export` 仅 md 与 json 出；同节多图顺序；孤立图 `figure_orphan` 提醒 |
+| `test_pdf.py` | 2.2.0 PDF：每份样例都能出 PDF 且双跑逐字节相同；跨进程、跨哈希种子一致；元数据无当前时间；中英文结构金样（页数区间、书签树与标题一致、目录页码与书签单调一致、页脚页码、图表题文字与位置、内部链接数、字体全是嵌入子集）；位图用嵌入副本；提纲、封面与目录开关；SVG 转不了时的占位框与提醒；缺字提醒；SVG 字体不查系统；超长表、代码、列表分页；单个超大单元格；`object` 入参；`doc.build` 不出 PDF；20 张 2K 图的体积与耗时 |
 | `test_safety.py` | 源码不执行代码；十种不合格 SVG 拒收且不写文件；正文里的原始 HTML 被转义、`javascript:` 链接失效；文件名不能越出 workdir；控制字符拒收；超时结构化 |
 
 **开销**：同一台机器，进程冷启动，含 Word。
@@ -316,6 +347,9 @@ uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider      # 项
 |---|---|
 | 投标样例 9 节、2 图、2 表 | `doc.build` 约 0.25 s；`doc.check` 约 0.1 s；`doc.export` Word 约 0.28 s |
 | 120 节、13 万字 | `doc.build` 约 1.05 s；`doc.check` 约 0.2 s |
+| 投标样例 `doc.export` PDF（6 页，2 张 SVG 转矢量） | 约 0.4 s，188 KB |
+| 20 张 2048² PNG（不可压缩噪声，每张 12.6 MB，原图合计 252 MB），一节 | `doc.build` 7.8 s：`.doc.json` 44.9 MB（不含原图），原图 20 个文件，产出合计 420 MB |
+| 20 张 2048² PNG（可压缩图案，原图合计 7.2 MB），一节 | `doc.build`（Word 与网页）2.6 s：Word 6.3 MB、网页 9.6 MB；`doc.export` PDF 6.6 s、9.1 MB、20 页 |
 
 ## 10 文件
 
@@ -325,11 +359,15 @@ uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider      # 项
 | `model.py` | 文档模型：校验、缺省、图片与 SVG 检查、规范化、doc_sha256 |
 | `assemble.py` | 组装：编号、放置、引用、字数、结构提醒、要求追溯 |
 | `render.py` | Markdown、产出台数据、单文件网页 |
+| `pdf_writer.py` | PDF：reportlab 排版、两遍目录页码、书签与内部链接、SVG 转矢量、缺字与降级提醒 |
+| `fonts/` | 随包字体（Noto Serif SC、Noto Sans SC 的常规与粗体静态子集）与 OFL 许可全文，见顶部版本记录 |
+| `tools/make_fonts.py` | 由可变字体重新生成 `fonts/` 的脚本（固定时间戳，可复现） |
+| `tools/synth.py` | 程序生成测试用 PNG（金样、样例、边界测试共用） |
 | `docx_writer.py` | Word：版式、样式、目录域、书签与链接、图（含 SVG）、表格、页码、zip 规范化 |
 | `checker.py` | 内置核对与期望清单 |
 | `registration.json` | 三件工具的登记资产（TL-6 字段），version 等于 lock hash |
 | `mengos-package.json` | 安装包清单：类型、渲染器、lock 覆盖范围、运行环境、替换映射 |
-| `golden_cases.json` | 38 条金样（认证 ③） |
+| `golden_cases.json` | 39 条金样（认证 ③） |
 | `selection_cases.json` | 选择金样（认证 ⑥），每件应选与不应选各 3 条 |
 | `renderer/index.html` | 产出台原型 |
 | `samples/` | 投标文件技术部分、读书角方案（无 level 的简写，各节带 id）、英文简报 |

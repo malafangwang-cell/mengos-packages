@@ -8,6 +8,8 @@
 import json
 from pathlib import Path
 
+from synth import b64png
+
 ROOT = Path(__file__).resolve().parents[1]
 SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 30"><rect width="40" height="30" fill="#ddd"/></svg>'
 
@@ -164,6 +166,17 @@ CASES = [
     ("err_old_empty_heading", "旧契约同样拒收：空标题",
      "doc.build", {"doc": {"title": "t", "sections": [{"heading": "", "body": "b"}]}},
      {"error.code": "BAD_INPUT", "error.where": "doc.sections[0].heading"}),
+    ("fig_bitmap_structure", "位图（2.1.0 嵌入副本）：3 节 3 张 PNG，第一节放 2 张；图 1–3 按放置顺序，Word 3 个图形、图题样式 3 条、网页 3 个 <figure>；只比结构",
+     "doc.build", {"doc": {"title": "图文", "sections": [
+         {"id": "a", "heading": "现场", "body": "[[fig:p1]]\n\n[[fig:p2]]"},
+         {"id": "b", "heading": "签到", "body": "见[[fig:p3]]。\n\n[[fig:p3]]"},
+         {"id": "c", "heading": "小结", "body": "无图。"}],
+         "figures": [{"id": i, "caption": f"图题{i}", "source": {"media_type": "image/png", "base64": b64png(40, 30, k)}}
+                     for k, i in enumerate(["p1", "p2", "p3"], 1)]},
+         "formats": ["docx", "html"]},
+     {"stats.figures": 3, "docx_drawings": 3, "docx_captions": ["图 1　图题p1", "图 2　图题p2", "图 3　图题p3"],
+      "html_figures": 3, "md_contains": ["*图 1　图题p1*", "*图 2　图题p2*", "*图 3　图题p3*", "![图 3　图题p3](", '<a id="sec-b"></a>'],
+      "md_figure_files": 3}),
     ("err_name", "文件名带路径拒收",
      "doc.export", {"doc": doc(sec("A")), "name": "../x", "formats": ["md"]}, {"error.code": "BAD_INPUT", "error.where": "name"}),
 ]

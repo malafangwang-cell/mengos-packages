@@ -34,7 +34,7 @@ def test_samples_through_all_tools(sample, tmp_path):
     d = json.loads(sample.read_text(encoding="utf-8"))
     for tid, payload in (("doc.build", {"doc": d, "formats": ["docx", "html"]}),
                          ("doc.check", {"doc": d, "expect": "pages max=80\ncovered"}),
-                         ("doc.export", {"doc": d, "formats": ["docx", "md", "html", "json"]})):
+                         ("doc.export", {"doc": d, "formats": ["docx", "pdf", "md", "html", "json"]})):
         jsonschema.validate(payload, UNITS[tid]["signature"]["input_schema"])
         w = tmp_path / tid
         w.mkdir()
@@ -52,3 +52,26 @@ def test_schema_and_code_agree_on_rejects(tmp_path):
             jsonschema.validate({"doc": d}, UNITS["doc.build"]["signature"]["input_schema"])
         r = doc_tool.run({"tool": "doc.build", "payload": {"doc": d}, "workdir": str(tmp_path)})
         assert not r["ok"] and r["error"]["code"] == "BAD_INPUT"
+
+
+# ---------------------------------------------------------------- 2.2.0 PDF 登记
+def test_export_registers_pdf_after_docx():
+    exp = UNITS["doc.export"]
+    cons = exp["capability"]["constraints"]["formats"]
+    assert cons == ["docx", "pdf", "md", "html", "json"]
+    sig = exp["signature"]["input_schema"]["properties"]
+    assert sig["formats"]["items"]["enum"] == cons and sig["format"]["enum"] == cons
+    item = exp["signature"]["output_schema"]["properties"]["files"]["items"]["properties"]
+    assert "pdf" in item["format"]["enum"] and "document.pdf" in item["role"]["enum"]
+    assert doc_tool.FORMATS["pdf"] == (".pdf", "application/pdf", "document.pdf")
+
+
+def test_build_does_not_offer_pdf():
+    props = UNITS["doc.build"]["signature"]["input_schema"]["properties"]
+    assert "pdf" not in json.dumps(props["formats"])
+
+
+def test_export_text_no_longer_says_no_pdf():
+    cap = UNITS["doc.export"]["capability"]
+    assert not any("不直接交 PDF" in g for g in cap["non_goals"])
+    assert any("PDF" in e["input"] and e["output"] == "formats [pdf]" for e in cap["examples"])

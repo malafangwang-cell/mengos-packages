@@ -1,7 +1,7 @@
 {
   "family": "document",
   "family_version": "2.0.0",
-  "lock_hash": "219a4dd622f9cda7",
+  "lock_hash": "5197cf5c7fe5e88c",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。文件产出按 TL-9a：结果对象顶层的 files。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
@@ -661,8 +661,8 @@
                 "properties": {
                   "path": {
                     "type": "string",
-                    "pattern": "^[^/\\\\]+$",
-                    "description": "相对 workdir 的文件名"
+                    "pattern": "^(figures/)?[^/\\\\]+$",
+                    "description": "相对 workdir 的文件名；位图原图在 figures/ 下一级"
                   },
                   "format": {
                     "enum": [
@@ -670,6 +670,7 @@
                       "view",
                       "md",
                       "docx",
+                      "pdf",
                       "html",
                       "figure"
                     ]
@@ -680,8 +681,10 @@
                       "document.view",
                       "document.text",
                       "document.word",
+                      "document.pdf",
                       "document.web",
-                      "document.figure"
+                      "document.figure",
+                      "document.figure_original"
                     ]
                   },
                   "media_type": {
@@ -749,7 +752,7 @@
           "不做脚注、尾注、参考文献格式与公式排版"
         ]
       },
-      "version": "219a4dd622f9cda7"
+      "version": "5197cf5c7fe5e88c"
     },
     {
       "tool_id": "doc.check",
@@ -1244,7 +1247,7 @@
           "document_meets_spec"
         ]
       },
-      "version": "219a4dd622f9cda7"
+      "version": "5197cf5c7fe5e88c"
     },
     {
       "tool_id": "doc.export",
@@ -1291,7 +1294,7 @@
               ]
             }
           ],
-          "description": "把长文档交成需要的文件：Word（可直接编辑，带目录、页码与可跳转的引用）、单个网页文件（可在浏览器里打印存为 PDF）、Markdown 原文（图片另附文件），以及可以再次编辑的文档模型。",
+          "description": "把长文档交成需要的文件：Word（可直接编辑，带目录、页码与可跳转的引用）、PDF（版式固定，带目录页码、书签与可点的引用，适合发送与打印）、单个网页文件、Markdown 原文（图片另附文件），以及可以再次编辑的文档模型。",
           "properties": {
             "doc": {
               "type": "object",
@@ -1614,16 +1617,18 @@
               "items": {
                 "enum": [
                   "docx",
+                  "pdf",
                   "md",
                   "html",
                   "json"
                 ]
               },
-              "description": "docx（Word）、md（Markdown 原文）、html（单个网页文件）、json（文档模型）中的一个或多个；也可写单个 format。"
+              "description": "docx（Word）、pdf（版式固定的 PDF）、md（Markdown 原文）、html（单个网页文件）、json（文档模型）中的一个或多个；也可写单个 format。"
             },
             "format": {
               "enum": [
                 "docx",
+                "pdf",
                 "md",
                 "html",
                 "json"
@@ -1692,8 +1697,8 @@
                 "properties": {
                   "path": {
                     "type": "string",
-                    "pattern": "^[^/\\\\]+$",
-                    "description": "相对 workdir 的文件名"
+                    "pattern": "^(figures/)?[^/\\\\]+$",
+                    "description": "相对 workdir 的文件名；位图原图在 figures/ 下一级"
                   },
                   "format": {
                     "enum": [
@@ -1701,6 +1706,7 @@
                       "view",
                       "md",
                       "docx",
+                      "pdf",
                       "html",
                       "figure"
                     ]
@@ -1711,8 +1717,10 @@
                       "document.view",
                       "document.text",
                       "document.word",
+                      "document.pdf",
                       "document.web",
-                      "document.figure"
+                      "document.figure",
+                      "document.figure_original"
                     ]
                   },
                   "media_type": {
@@ -1745,19 +1753,24 @@
         "constraints": {
           "formats": [
             "docx",
+            "pdf",
             "md",
             "html",
             "json"
           ],
           "deterministic_files": true,
           "page_size": "A4",
-          "max_file_mb": 64,
+          "max_file_mb": 48,
           "latency_note": "约 0.1–1 s，视篇幅与图片"
         },
         "examples": [
           {
             "input": "把投标文件导出成 Word",
             "output": "formats [docx]"
+          },
+          {
+            "input": "要一份能直接发出去、版式固定的 PDF",
+            "output": "formats [pdf]"
           },
           {
             "input": "要一个能直接发给甲方、在浏览器里打开的版本",
@@ -1769,12 +1782,11 @@
           }
         ],
         "non_goals": [
-          "不直接交 PDF：在 Word 里另存为 PDF，或打开网页版打印存为 PDF",
           "不导出 WPS、ODT、LaTeX 格式",
           "不读入已有的 Word 文件"
         ]
       },
-      "version": "219a4dd622f9cda7"
+      "version": "5197cf5c7fe5e88c"
     }
   ]
 }

@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 
+from synth import b64png
+
 ROOT = Path(__file__).resolve().parents[1]
 FONT = "font-family=\"Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif\""
 
@@ -151,6 +153,17 @@ BRIEF_EN = {"title": "Pilot Results: Smart Water Meters", "subtitle": "Quarterly
             "tables": [{"id": "kpi", "caption": "Key indicators", "columns": ["Indicator", "Before", "After"],
                         "rows": [["Average repair time (days)", "9", "2"], ["Unbilled water", "14.2%", "9.8%"]]}]}
 
-for name, doc in (("bid_tech", BID), ("reading_corner", READING), ("brief_en", BRIEF_EN)):
+def _pfig(i, cap, w, h, seed):
+    return {"id": i, "caption": cap, "source": {"media_type": "image/png", "base64": b64png(w, h, seed)}}
+
+
+# 位图样例：3 节 3 张程序生成的小 PNG，其中第一节放 2 张（嵌入副本、图编号、同节多图）
+ILLUSTRATED = {"title": "社区活动图文简报", "sections": [
+    {"id": "s1", "heading": "现场", "body": "活动当天的两处布置如下。\n\n[[fig:p1]]\n\n[[fig:p2]]"},
+    {"id": "s2", "heading": "签到", "body": "签到区见[[fig:p3]]。\n\n[[fig:p3]]"},
+    {"id": "s3", "heading": "小结", "body": "整体顺利，布置见[[fig:p1]]。"},
+], "figures": [_pfig("p1", "入口布置", 48, 32, 1), _pfig("p2", "展板", 32, 48, 2), _pfig("p3", "签到台", 40, 40, 3)]}
+
+for name, doc in (("bid_tech", BID), ("reading_corner", READING), ("brief_en", BRIEF_EN), ("illustrated", ILLUSTRATED)):
     (ROOT / "samples" / f"{name}.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 print("ok")

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import base64
+import io
 import hashlib
 import json
 import math
@@ -30,7 +31,10 @@ LIMITS = {
     "sections": 2000, "figures": 300, "tables": 500, "requirements": 2000,
     "title_chars": 200, "heading_chars": 200, "caption_chars": 500, "req_chars": 2000, "source_chars": 300,
     "body_chars": 200_000, "total_chars": 3_000_000,
-    "image_bytes": 8 * 1024 * 1024, "svg_bytes": 2 * 1024 * 1024, "images_total_bytes": 48 * 1024 * 1024,
+    "image_bytes": 16 * 1024 * 1024, "svg_bytes": 2 * 1024 * 1024,
+    "images_total_bytes": 36 * 1024 * 1024,        # 按嵌入副本（SVG 按原文）合计：base64 后的 .doc.json 与网页仍低于单文件 48 MB
+    "originals_total_bytes": 320 * 1024 * 1024,    # 原图合计，防滥用
+    "image_pixels": 100_000_000,
     "table_columns": 30, "table_cells": 20_000, "cell_chars": 2000, "meta_chars": 200,
 }
 
@@ -78,6 +82,18 @@ class Figure:
     data: bytes               # SVG 或位图的字节，随文档一起给出
     px: tuple[float, float] | None   # 固有尺寸（像素）；未知为 None
     source: dict              # 规范化后的 source，写回模型
+    embed: bytes | None = None       # 位图的嵌入副本（JPEG），Word、网页、PDF 与文档模型内嵌用；原图 data 单独成文件。SVG 为 None
+    embed_type: str | None = None
+    orig_path: str | None = None     # 原图产出文件的路径 figures/<id>.<ext>（仅位图）
+
+    @property
+    def view_data(self) -> bytes:
+        """嵌入到 Word / 网页 / 产出台的字节：位图用嵌入副本，SVG 原样。"""
+        return self.embed if self.embed is not None else self.data
+
+    @property
+    def view_type(self) -> str:
+        return self.embed_type or self.media_type
 
 
 @dataclass
@@ -201,6 +217,38 @@ def _list(v, where, limit, *, default=None):
 
 # ---------------------------------------------------------------- 图片
 MAX_PX = 30000
+EMBED_MAX_EDGE = 1600      # 嵌入副本长边上限（像素）
+EMBED_QUALITY = 85         # 嵌入副本 JPEG 质量
+ORIG_EXT = {"image/png": ".png", "image/jpeg": ".jpg"}   # 原图产出文件的扩展名
+
+
+def _mb(n: int) -> str:
+    return f"{n / 1024 / 1024:.1f} MB"
+
+
+def make_embed(data: bytes, where: str = "图片") -> bytes:
+    """位图 → 嵌入副本：长边 >1600 等比缩到 1600，统一 JPEG q85，只留像素（无 EXIF/ICC）；
+    带透明的先合成白底。同输入同 Pillow 版本逐字节相同。"""
+    from PIL import Image
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            im.load()
+            if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info) or "transparency" in im.info:
+                rgba = im.convert("RGBA")
+                bg = Image.new("RGB", rgba.size, (255, 255, 255))
+                bg.paste(rgba, mask=rgba.getchannel("A"))
+                im = bg
+            elif im.mode != "RGB":
+                im = im.convert("RGB")
+            w, h = im.size
+            if max(w, h) > EMBED_MAX_EDGE:
+                k = EMBED_MAX_EDGE / max(w, h)
+                im = im.resize((max(1, round(w * k)), max(1, round(h * k))), Image.LANCZOS)
+            out = io.BytesIO()
+            im.save(out, "JPEG", quality=EMBED_QUALITY, optimize=False, progressive=False, subsampling=2)
+            return out.getvalue()
+    except (OSError, ValueError, Image.DecompressionBombError, SyntaxError) as e:
+        raise BadInput(f"{where}：图片无法解码（{type(e).__name__}）", where, "重新导出一张 PNG 或 JPEG") from None
 
 
 def _png_size(b: bytes):
@@ -388,12 +436,20 @@ def _figure(v, where, index, warnings):
         except ValueError:
             raise BadInput(f"{sw}.base64 不是合法的 base64", f"{sw}.base64") from None
         if len(data) > LIMITS["image_bytes"]:
-            raise BadInput(f"{sw} 图片超过 {LIMITS['image_bytes'] // 1024 // 1024} MB", sw)
+            raise BadInput(f"图 {fid}（{sw}）的原图 {len(data)} 字节（{_mb(len(data))}），超过单张上限 "
+                           f"{LIMITS['image_bytes']} 字节（{LIMITS['image_bytes'] // 1024 // 1024} MB）", sw)
         px = _png_size(data) if mt == "image/png" else _jpeg_size(data)
         if px is None:
             raise BadInput(f"{sw}：不是完整的 {mt} 图片（文件头、尺寸或结尾不符）", sw, "重新导出一张 PNG 或 JPEG")
-        return Figure(index, fid, caption, width, "image", mt, data, (float(px[0]), float(px[1])),
-                      {"media_type": mt, "base64": base64.b64encode(data).decode("ascii")})
+        if px[0] * px[1] > LIMITS["image_pixels"]:
+            raise BadInput(f"图 {fid}（{sw}）尺寸 {px[0]}×{px[1]} 像素超过上限 {LIMITS['image_pixels']} 像素", sw)
+        embed = make_embed(data, sw)
+        path = f"figures/{fid}{ORIG_EXT[mt]}"
+        # 规范模型里位图内嵌的是嵌入副本；原图是真源，单独存成文件（path），这里按哈希引用
+        source = {"media_type": "image/jpeg", "base64": base64.b64encode(embed).decode("ascii"),
+                  "original": {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data), "media_type": mt, "path": path}}
+        return Figure(index, fid, caption, width, "image", mt, data, (float(px[0]), float(px[1])), source,
+                      embed, "image/jpeg", path)
     raise BadInput(f"{sw} 要给出 svg，或 media_type 加 base64", sw, "图片随文档一起给出：矢量图写 svg，位图写 PNG 或 JPEG 的 base64")
 
 
@@ -552,8 +608,16 @@ def normalize(raw) -> Doc:
     figs = [_figure(f, f"doc.figures[{i}]", i, warnings)
             for i, f in enumerate(_list(raw.get("figures"), "doc.figures", LIMITS["figures"]))]
     _unique([f.id for f in figs], "doc.figures", "图")
-    if sum(len(f.data or b"") for f in figs) > LIMITS["images_total_bytes"]:
-        raise BadInput(f"图片合计超过 {LIMITS['images_total_bytes'] // 1024 // 1024} MB", "doc.figures")
+    orig_total = sum(len(f.data or b"") for f in figs)
+    if orig_total > LIMITS["originals_total_bytes"]:
+        raise BadInput(f"原图合计 {orig_total} 字节（{_mb(orig_total)}），超过上限 "
+                       f"{LIMITS['originals_total_bytes']} 字节（{LIMITS['originals_total_bytes'] // 1024 // 1024} MB）", "doc.figures")
+    embed_total = sum(len(f.view_data) for f in figs)
+    if embed_total > LIMITS["images_total_bytes"]:
+        big = max(figs, key=lambda f: len(f.view_data))
+        raise BadInput(f"嵌入用图片（位图为缩小后的副本）合计 {embed_total} 字节（{_mb(embed_total)}），超过上限 "
+                       f"{LIMITS['images_total_bytes']} 字节（{LIMITS['images_total_bytes'] // 1024 // 1024} MB）；"
+                       f"最大的是图 {big.id}（{len(big.view_data)} 字节）", "doc.figures")
     tabs = [_table(t, f"doc.tables[{i}]", i)
             for i, t in enumerate(_list(raw.get("tables"), "doc.tables", LIMITS["tables"]))]
     _unique([t.id for t in tabs], "doc.tables", "表")

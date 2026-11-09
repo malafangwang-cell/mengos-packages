@@ -25,8 +25,8 @@ import sys
 DEFAULT_TIMEOUT_MS = 60_000
 MAX_TIMEOUT_S = 3600
 MAX_NAME_BYTES = 100
-MAX_FILE_BYTES = 64 * 1024 * 1024
-MAX_TOTAL_BYTES = 160 * 1024 * 1024
+MAX_FILE_BYTES = 48 * 1024 * 1024        # 低于对象层单次写入的 50 MiB，留余量
+MAX_TOTAL_BYTES = 512 * 1024 * 1024       # 原图 ≤320 MB + .doc.json、网页、产出台数据、Word 各 ≤48 MB + 余量
 NAME_RE = re.compile(r"[^/\\.:*?\"<>|\s\x00-\x1f]{1,64}")
 
 FORMATS = {
@@ -36,10 +36,11 @@ FORMATS = {
     "md": (".md", "text/markdown; charset=utf-8", "document.text"),
     "docx": (".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "document.word"),
     "html": (".html", "text/html; charset=utf-8", "document.web"),
+    "pdf": (".pdf", "application/pdf", "document.pdf"),
 }
 BUILD_ALWAYS = ["json", "view", "md"]
 BUILD_EXTRA = ["docx", "html"]
-EXPORT_FORMATS = ["docx", "md", "html", "json"]
+EXPORT_FORMATS = ["docx", "pdf", "md", "html", "json"]
 
 
 class _Timeout(Exception):
@@ -83,7 +84,21 @@ def _assembled(payload):
     from model import BadInput, normalize
     if "doc" not in payload:
         raise BadInput("缺少 doc（文档内容）", "doc")
-    return assemble(normalize(payload["doc"]))
+    a = assemble(normalize(payload["doc"]))
+    _check_model_size(a)
+    return a
+
+
+def _check_model_size(a):
+    """输入阶段就判：规范模型文件（内嵌嵌入副本的 base64）不能超过单文件上限，不留到写文件时才报裸的 RESOURCE_LIMIT。"""
+    from model import BadInput
+    import render
+    if not any(f.orig_path for f in a.doc.figures):
+        return
+    n = len(render.dumps(a.doc.to_json()))
+    if n > MAX_FILE_BYTES:
+        raise BadInput(f"文档模型文件将有 {n} 字节（{n / 1024 / 1024:.1f} MB），超过单文件上限 {MAX_FILE_BYTES} 字节"
+                       f"（{MAX_FILE_BYTES // 1024 // 1024} MB）：图片嵌入副本与正文合计过大，请减少图片或正文", "doc.figures")
 
 
 def slug(title: str) -> str:
@@ -134,10 +149,21 @@ def _render(a, fmt, name):
     if fmt == "docx":
         from docx_writer import to_docx
         return [(name + ext, to_docx(a), media, fmt, role)]
+    if fmt == "pdf":
+        from pdf_writer import to_pdf
+        data, warns = to_pdf(a)
+        a.warnings.extend(warns)            # 排版时才知道的提醒（图画不了、字体缺字）并入本次结果
+        return [(name + ext, data, media, fmt, role)]
     raise AssertionError(fmt)
 
 
-def _write(a, formats, name, workdir):
+def _originals(a):
+    """位图的原图，各成一个产出文件 figures/<id>.<ext>（原字节不改；.doc.json 按哈希引用，Markdown 直接引用）。"""
+    import render
+    return [(f.orig_path, f.data, f.media_type, "figure", render.ROLE_FIG_ORIG) for f in a.doc.figures if f.orig_path]
+
+
+def _write(a, formats, name, workdir, with_originals=False):
     """先全部生成、核对大小，再一次写出；中途出错不留半截文件。"""
     from model import BadInput
     if not workdir:
@@ -145,8 +171,11 @@ def _write(a, formats, name, workdir):
     if not isinstance(workdir, str) or not os.path.isabs(workdir) or not os.path.isdir(workdir):
         raise BadInput("workdir 必须是已存在目录的绝对路径", "workdir")
     out, total, seen = [], 0, set()
-    for fmt in formats:
-        for fn, data, media, f, role in _render(a, fmt, name):
+    renders = [_render(a, fmt, name) for fmt in formats]
+    if with_originals:
+        renders.append(_originals(a))
+    for batch in renders:
+        for fn, data, media, f, role in batch:
             if fn in seen:
                 continue
             seen.add(fn)
@@ -158,6 +187,7 @@ def _write(a, formats, name, workdir):
             out.append((fn, data, media, f, role))
     files = []
     for fn, data, media, f, role in out:
+        os.makedirs(os.path.dirname(os.path.join(workdir, fn)), exist_ok=True)
         with open(os.path.join(workdir, fn), "wb") as fh:
             fh.write(data)
         files.append({"path": fn, "format": f, "role": role, "media_type": media,
@@ -182,7 +212,7 @@ def doc_build(payload, workdir=None):
     return {
         "title": a.doc.title, "kind": a.doc.kind, "doc_sha256": a.sha, "name": name,
         "outline": outline, "stats": a.stats, "trace": a.trace, "warnings": _warnings(a),
-        "files": _write(a, BUILD_ALWAYS + extra, name, workdir),
+        "files": _write(a, BUILD_ALWAYS + extra, name, workdir, with_originals=True),
     }
 
 
@@ -242,7 +272,9 @@ def doc_export(payload, workdir=None):
     formats = _formats(payload, EXPORT_FORMATS, [])
     if not formats:
         raise BadInput("formats 不能为空", "formats")
-    return {"doc_sha256": a.sha, "name": name, "warnings": _warnings(a), "files": _write(a, formats, name, workdir)}
+    # Markdown 与规范模型引用原图文件，所以导出它们时随带原图；只导 Word、PDF、网页时不带
+    files = _write(a, formats, name, workdir, with_originals=bool({"md", "json"} & set(formats)))   # 先排版再取提醒：PDF 排版时会追加提醒
+    return {"doc_sha256": a.sha, "name": name, "warnings": _warnings(a), "files": files}
 
 
 TOOLS = {"doc.build": doc_build, "doc.check": doc_check, "doc.export": doc_export}

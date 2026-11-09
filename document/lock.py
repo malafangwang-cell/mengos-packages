@@ -7,7 +7,10 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SOURCES = ["model.py", "assemble.py", "render.py", "docx_writer.py", "checker.py", "doc_tool.py", "pyproject.toml", "uv.lock"]
+FONTS = ["fonts/NotoSansSC-Bold.ttf", "fonts/NotoSansSC-Regular.ttf", "fonts/NotoSerifSC-Bold.ttf", "fonts/NotoSerifSC-Regular.ttf",
+         "fonts/OFL-NotoSansSC.txt", "fonts/OFL-NotoSerifSC.txt"]       # 随包字体与许可文本，逐个列出（安装器按文件名重算）
+SOURCES = ["model.py", "assemble.py", "render.py", "docx_writer.py", "pdf_writer.py", "checker.py", "doc_tool.py",
+           "pyproject.toml", "uv.lock"] + FONTS
 
 
 def _registration_bytes() -> bytes:
