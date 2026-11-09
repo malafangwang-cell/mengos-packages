@@ -1,7 +1,7 @@
 {
   "family": "document",
   "family_version": "2.0.0",
-  "lock_hash": "5197cf5c7fe5e88c",
+  "lock_hash": "b3ae21a1147166cd",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。文件产出按 TL-9a：结果对象顶层的 files。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
@@ -747,12 +747,12 @@
         "non_goals": [
           "不替你写内容：正文、标题、图表都由调用方给出，工具只组装、编号、排版与追溯",
           "不判断内容是否满足要求，只列出声明的响应关系",
-          "不直接交 PDF：在 Word 里另存为 PDF，或打开网页版在浏览器里打印存为 PDF",
+          "不出 PDF：PDF 在下载时由导出生成",
           "不从别处取图：图要随内容一起给出（矢量图或 PNG、JPEG），文档里只有文字、图片和表格",
           "不做脚注、尾注、参考文献格式与公式排版"
         ]
       },
-      "version": "5197cf5c7fe5e88c"
+      "version": "b3ae21a1147166cd"
     },
     {
       "tool_id": "doc.check",
@@ -1247,7 +1247,7 @@
           "document_meets_spec"
         ]
       },
-      "version": "5197cf5c7fe5e88c"
+      "version": "b3ae21a1147166cd"
     },
     {
       "tool_id": "doc.export",
@@ -1786,7 +1786,7 @@
           "不读入已有的 Word 文件"
         ]
       },
-      "version": "5197cf5c7fe5e88c"
+      "version": "b3ae21a1147166cd"
     }
   ]
 }

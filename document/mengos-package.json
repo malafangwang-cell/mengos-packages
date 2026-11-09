@@ -9,7 +9,7 @@
     "doc.check": "核对长文档交付要求",
     "doc.export": "导出长文档文件"
   },
-  "content_hash": "05de44cd8cbf6dbbb8573d6ca58e023b403981bbd022fbdc10b7b08db9175608",
+  "content_hash": "334afb80c4f43ab30c1ece7b16ebd1fbecca01bc7e22a73c67c9d6f627bbf56c",
   "types": [
     {
       "name": "document",

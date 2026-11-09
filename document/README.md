@@ -17,12 +17,12 @@
 >
 >   | 文件 | 字体 | 版本 | sha256 |
 >   |---|---|---|---|
->   | `NotoSerifSC-Regular.ttf` | Noto Serif SC 常规（正文） | 2.003 | `917cdd65b3554257e63b6fefd20d3328bd00be0e4afe51ec4ff519d863d67d86` |
->   | `NotoSerifSC-Bold.ttf` | Noto Serif SC 粗体 | 2.003 | `6c25138197773a5321f8a93f7f2e87b8c0eb764ca8642cc3651fbbb1b81fec80` |
->   | `NotoSansSC-Regular.ttf` | Noto Sans SC 常规（标题、表头、页脚） | 2.004 | `62e39e62aee711c435ba754805770258f78dfbb4722369b6fc27b42073637691` |
->   | `NotoSansSC-Bold.ttf` | Noto Sans SC 粗体 | 2.004 | `4f2f6d350a9c25e9e65d79d9f3c90cf2b1979992ac20c4287ee59667da982ff7` |
+>   | `NotoSerifSC-Regular.ttf` | Noto Serif SC 常规（正文） | 2.003 | `a2179731f768a8bb2dcf4319209443ed4956063abe2a4b55df62a716a4a43abc` |
+>   | `NotoSerifSC-Bold.ttf` | Noto Serif SC 粗体 | 2.003 | `4203ed96c9d6d7091b5a7e21437be496804479e98eabbe75471a2980bca904bc` |
+>   | `NotoSansSC-Regular.ttf` | Noto Sans SC 常规（标题、表头、页脚） | 2.004 | `04d7e3052e440741e70f6ffecc59ed71e3d0228bdc38783751ffa83d2118e01e` |
+>   | `NotoSansSC-Bold.ttf` | Noto Sans SC 粗体 | 2.004 | `d09a6ba02ec7d38d337e01d84a716f3135319dad96a8a2fdcad631d6b93b2470` |
 >
->   来源：Google Fonts 公开仓库 `ofl/notosanssc/NotoSansSC[wght].ttf`（sha256 `a3041811…0af9`）与 `ofl/notoserifsc/NotoSerifSC[wght].ttf`（sha256 `050080d9…66f9`）两个可变字体；`tools/make_fonts.py` 实例化出 wght=400、700 两个静态实例，再裁到 GB 2312 全部字符与常用标点符号（约 7 千字），去掉提示与排版表，写入固定时间戳（重跑逐字节相同）。许可全文见 `fonts/OFL-NotoSansSC.txt`、`fonts/OFL-NotoSerifSC.txt`；OFL 的保留字体名是“Source”，本包字体仍叫 Noto，不含该名。四个字体与两份许可文本都在 `tools_lock.covers` 内。
+>   来源：Google Fonts 公开仓库 `ofl/notosanssc/NotoSansSC[wght].ttf`（sha256 `a3041811…0af9`）与 `ofl/notoserifsc/NotoSerifSC[wght].ttf`（sha256 `050080d9…66f9`）两个可变字体；`tools/make_fonts.py` 实例化出 wght=400、700 两个静态实例，再裁到 CJK 统一汉字基本区（U+4E00–9FFF）、CJK 兼容符号（U+3300–33FF，含㎡ ㎏）、希腊字母整区（U+0370–03FF）、GB 2312 全部字符、ASCII、Latin-1、常用标点、全角形式、数学符号与带圈数字，去掉提示与排版表，写入固定时间戳（重跑逐字节相同）。许可全文见 `fonts/OFL-NotoSansSC.txt`、`fonts/OFL-NotoSerifSC.txt`；OFL 的保留字体名是“Source”，本包字体仍叫 Noto，不含该名。四个字体与两份许可文本都在 `tools_lock.covers` 内。
 > - **依赖**：reportlab 5.1.0、svglib 1.5.1（及其纯 Python 依赖 cssselect2、tinycss2、webencodings、charset-normalizer）钉在 `pyproject.toml`、锁在 `uv.lock`；dev 依赖加 pypdf 6.17.0（只用于测试读回 PDF）与 fonttools 4.68.0（只用于重新生成字体）。不依赖任何系统库。
 > - **干净环境验证**：另起目录、全新虚拟环境（Python 3.12.3），只 `uv sync --frozen`，257 项测试全过，`uv.lock` 无改写（未用 python:3.12-slim 容器，开发环境无 docker；依赖全为纯 Python 或带自带 wheel，不依赖系统库）。
 > - **为什么不用 LibreOffice**：把 Word 转成 PDF 要带一个很大的外部程序，输出随版本与系统字体回退而变，不能保证逐字节复现（确定性，TL-12 ②），也违背包自足（TL-25）。本包直接排版、字体随包，同一文档任何时候、任何机器导出的 PDF 逐字节相同。
@@ -298,7 +298,7 @@ python tools/make_package.py        # 重写包的 content_hash
 
 ## 7 已知边界
 
-- **PDF**（2.2.0 起 `doc.export` 直接出）：不读系统字体，字形集为 GB 2312 加常用标点，集外字符报 `pdf_glyph_missing`；斜体不单独区分；SVG 里 svglib 不支持的写法会落到占位框并报 `pdf_figure_unsupported`；`doc.build` 不出 PDF（只在导出时生成）。
+- **PDF**（2.2.0 起 `doc.export` 直接出）：不读系统字体，字形集见顶部字体说明（CJK 基本区全收），集外字符（如 emoji、扩展 B 区生僻字）报 `pdf_glyph_missing`；斜体不单独区分；SVG 里 svglib 不支持的写法会落到占位框并报 `pdf_figure_unsupported`；`doc.build` 不出 PDF（只在导出时生成）。
 - **Word 里的 SVG**：Word 2019、365 与 LibreOffice 显示矢量图本身；更旧的版本显示浅灰后备框。
 - **Word 目录**：打开时 Word 会提示更新域，更新后带页码。不更新也能用：条目已预先填好，没有页码。
 - **列表编号**写成文字（“1.”“•”），不用 Word 的自动编号，保证与其他视图一致、可复现。

@@ -280,3 +280,13 @@ def test_twenty_2k_pngs_pdf_size_and_time(tmp_path):
     dt = time.time() - t0
     print(f"\n[读数] 20 张 2048² PNG：doc.export(pdf) {dt:.2f}s，PDF {len(data)} B，{len(PdfReader(io.BytesIO(data)).pages)} 页")
     assert len(data) < 64 * 1024 * 1024 and dt < 30
+
+
+def test_names_and_symbols_in_bundled_fonts_are_not_reported_missing(tmp_path):
+    """标书里常见的生僻人名字、单位符号、希腊字母，随包字体都有：不报缺字。"""
+    txt = "喆堃昇镕赟珺玥琍旻瑄璟翀犇垚彧祎啰 面积 120㎡ 重量 5㎏ 角度 α β γ Ω μ"
+    d = {"title": "T", "sections": [{"id": "a", "heading": "甲", "body": txt}]}
+    data, out = export_pdf(d, tmp_path)
+    assert out["warnings"] == []
+    text = PdfReader(io.BytesIO(data)).pages[-1].extract_text()
+    assert "喆堃昇镕赟" in text and "㎡" in text and "αβγ" in text.replace(" ", "")
