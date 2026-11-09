@@ -1,5 +1,7 @@
 # cad v2（W3 的 CAD 工具包）
 
+> 2.5.2（mengosv2 立法者 2026-11-09 批准；依据 `实验-工具描述规范-2026-11-09` TD-23）：只改 cad.check 的 `expect` 参数说明——原说明只举了 6 类期望的写法，模型会自造 `centroid` 之类执行器不认的写法；现在 12 类（bbox、fits、volume、area、mass、com、solids、valid、watertight、holes、hole、feature）各给一个可照抄的样例，样例逐条用 `checker.run_checks` 离线解析过（见 PR 描述）。执行逻辑与其它工具的说明未改。说明文字在 registration.json（由 `tools/make_registration.py` 生成），registration 在 `tools_lock.covers` 内，所以 lock 从 `2a4efb009363fc73` 变为 `7ac22328b400cf72`（cad.build、cad.check、cad.export 三件同一个值，随族走），须重新认证；content_hash 随之变化。
+
 > 2.5.1（mengosv2 执行令-2026-11-05-PLAN声明书与F环清单交互 支 T）：包清单加显示名 `title`「三维零件建模」与 `tool_titles`（`cad.build`「建三维零件模型」、`cad.check`「核对零件尺寸与特征」、`cad.export`「导出零件加工与图纸文件」）。两字段只供界面显示（声明书、商店），不进工具选择，也不进给模型看的任何文字；不在 `tools_lock.covers` 内，lock 不变（工具版本与认证继承），只有 content_hash 变。工具代码与 registration.json 未改（其中 `family_version` 仍写 2.5.0）。
 
 > 2.5.0（产出规则 支 B，第二单；17 TL-30a v0.2.62，设计 `产出不受模型输出长度限制` r8 §五）：cad.build 接入贡献型声明，让零件计划可以分多次写、由引擎按行合并，不再要求模型一次输出整份计划。**只放宽、不收紧**，所以升小版本；只改登记（input_schema 与说明），**工具代码未改**：
