@@ -46,7 +46,6 @@ button, input { font: inherit; color: inherit; }
 .toast { font-size: 12px; color: var(--mute); }
 
 .head { padding: 12px 16px 8px; display: grid; gap: 2px; }
-:root[data-chrome="host"] .head { padding-top: 8px; }
 .head:empty { display: none; }
 .head h1 { margin: 0; font-size: 18px; line-height: 1.35; font-weight: 600; text-wrap: balance; }
 :root[data-chrome="host"] .head h1 { display: none; }
@@ -60,7 +59,17 @@ button, input { font: inherit; color: inherit; }
 .tabs button .n { color: var(--mute); font-size: 12px; margin-left: 4px; }
 
 .tools { display: flex; align-items: center; gap: 10px; padding: 8px 16px; flex-wrap: wrap; }
-.tools .cap { font-weight: 500; flex: 1 1 auto; min-width: 0; }
+.top { display: flex; align-items: center; gap: 4px 12px; padding: 7px 16px; flex-wrap: wrap; }
+.top .head { padding: 0; flex: 1 1 260px; min-width: 0; }
+.top .tools { padding: 0; flex: 0 0 auto; flex-wrap: nowrap; }
+.head .line { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.capline { padding: 6px 16px; color: var(--ink-2); font-size: 12.5px; border-bottom: 1px solid var(--line); }
+/* 表格区撑满剩余高度，行少时用空行补到底，合计行贴底 */
+.grid table { height: 100%; }
+.grid tr.fill td { height: 100%; padding: 0; }
+.grid tbody tr.fill td, .grid tbody tr.fill:hover td { background: var(--cell); }
+.grid tbody tr.fill td.idx { background: var(--panel); }
+.shell { overflow: hidden; }
 .search { position: relative; flex: 0 1 240px; min-width: 140px; }
 .search input { width: 100%; border: 1px solid var(--line); background: var(--cell); border-radius: 8px; padding: 5px 10px 5px 28px; }
 .search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--mute); }
@@ -92,10 +101,18 @@ mark { background: var(--hit); color: inherit; border-radius: 2px; }
 .more { padding: 12px 16px; text-align: center; }
 .more button { border: 1px solid var(--line); background: var(--menu); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
 .empty { padding: 32px 16px; color: var(--mute); text-align: center; }
-.foot { max-height: 32%; overflow: auto; padding: 10px 16px 16px; color: var(--ink-2); font-size: 12.5px; display: grid; gap: 6px; border-top: 1px solid var(--line); }
+.foot { border-top: 1px solid var(--line); color: var(--ink-2); font-size: 12.5px; }
 .foot:empty { display: none; }
-.foot b { font-weight: 500; color: var(--ink); }
-.foot ul { margin: 2px 0 0; padding-left: 1.3em; }
+.foot summary { list-style: none; cursor: pointer; padding: 7px 16px; display: flex; gap: 14px; align-items: center; color: var(--mute); user-select: none; }
+.foot summary::-webkit-details-marker { display: none; }
+.foot summary::after { content: ""; margin-left: auto; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-135deg) translate(-1px, -1px); transition: transform .12s; }
+.foot details[open] > summary::after { transform: rotate(45deg) translate(-1px, -1px); }
+.foot summary:hover { color: var(--ink-2); background: var(--hover); }
+.foot summary b { font-weight: 500; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.foot .body { max-height: 40vh; overflow: auto; padding: 2px 16px 12px; display: grid; gap: 10px; }
+.foot h2 { margin: 0 0 2px; font-size: 12.5px; font-weight: 500; color: var(--ink); }
+.foot ul { margin: 0; padding-left: 1.3em; }
+.foot .fx { font-family: var(--mono); font-size: 12px; }
 
 /* 嵌入视图：一张卡片 */
 .embed { display: grid; gap: 8px; padding: 14px 16px; }
@@ -111,7 +128,8 @@ mark { background: var(--hit); color: inherit; border-radius: 2px; }
 html.embed-view, html.embed-view body { height: auto; }
 
 @media (max-width: 640px) {
-  .tools .cap { flex-basis: 100%; }
+  .top .tools { flex: 1 1 100%; }
+  .head .line { white-space: normal; }
   .search { flex: 1 1 auto; }
   th, td { padding: 6px 9px; }
 }
@@ -130,9 +148,9 @@ html.embed-view, html.embed-view body { height: auto; }
       <div class="menu" id="menu" role="menu" hidden></div>
     </div>
   </div>
-  <div class="head" id="head"></div>
+  <div class="top"><div class="head" id="head"></div><div class="tools" id="tools"></div></div>
   <div class="tabs" id="tabs" role="tablist" hidden></div>
-  <div class="tools" id="tools"></div>
+  <div class="capline" id="capline" hidden></div>
   <div class="grid" id="grid"></div>
   <div class="foot" id="foot"></div>
 </div>
@@ -182,15 +200,16 @@ function renderFull(v) {
   $("#name").textContent = v.title;
   const m = v.meta || {};
   const meta = [m.org, m.author, m.date, m.version && "版本 " + m.version].filter(Boolean);
-  $("#head").innerHTML = `<h1>${esc(v.title)}</h1>${v.subtitle ? `<div class="sub">${esc(v.subtitle)}</div>` : ""}`
-    + `<div class="meta">${esc([scaleText(v), ...meta].join(" · "))}</div>`;
+  // 规模（行 × 列）只在搜索栏旁出现一次；单张表时副标题与表说明二选一，副标题优先，没有才用表说明顶上
+  // 副标题与 meta 并成一行，与搜索、计数同在最上面一行
+  const one = v.sheets.length === 1;
+  const sub = v.subtitle || (one ? v.sheets[0].caption : "");
+  const line = [sub, ...meta].filter(Boolean).join(" · ");
+  $("#head").innerHTML = `<h1>${esc(v.title)}</h1>` + (line ? `<div class="line" title="${esc(line)}">${esc(line)}</div>` : "");
   const tabs = $("#tabs");
   tabs.hidden = v.sheets.length < 2;
   tabs.innerHTML = v.sheets.map((s, i) => `<button role="tab" data-i="${i}" aria-selected="${i === st.sheet}">${esc(s.name)}<span class="n">${n(s.rows.length)}</span></button>`).join("");
-  const foot = [];
-  if (v.sources?.length) foot.push(`<div><b>来源</b><ul>${v.sources.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></div>`);
-  if (v.assumptions?.length) foot.push(`<div><b>假设</b><ul>${v.assumptions.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></div>`);
-  st.footCommon = foot.join("");
+  st.footOpen = false;
   renderMenu();
   renderSheet();
 }
@@ -241,8 +260,7 @@ function renderSheet() {
     return `<td class="${[cls(c, j), t === "" ? "e" : ""].filter(Boolean).join(" ")}">${t === "" ? "" : hl(t)}</td>`;
   }).join("")}</tr>`).join("");
   const foot = s.totals ? `<tfoot><tr><td class="idx"></td>${s.totals.map((t, j) => `<td class="${cls(s.columns[j], j)}">${esc(t)}</td>`).join("")}</tr></tfoot>` : "";
-  const toolbar = `<div class="cap">${esc(s.caption || (v.sheets.length > 1 ? s.name : ""))}</div>`
-    + `<label class="search"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M9.2 9.2L12.5 12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`
+  const toolbar = `<label class="search"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M9.2 9.2L12.5 12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`
     + `<input id="q" type="search" placeholder="在这张表里找" aria-label="在这张表里找" value="${esc(st.q)}"></label>`
     + `<span class="count">${st.q ? `找到 ${n(idx.length)} / ${n(s.rows.length)} 行` : `${n(s.rows.length)} 行 × ${s.columns.length} 列`}</span>`;
   const more = idx.length > shown.length ? `<div class="more"><button id="more">再显示 ${n(Math.min(PAGE, idx.length - shown.length))} 行（还有 ${n(idx.length - shown.length)} 行）</button></div>` : "";
@@ -250,16 +268,32 @@ function renderSheet() {
   const grid = $("#grid");
   const hadFocus = document.activeElement && document.activeElement.id === "q";
   const caret = hadFocus ? document.activeElement.selectionStart : null;
-  grid.innerHTML = `<table><thead><tr><th class="idx" aria-label="行号">#</th>${head}</tr></thead><tbody>${body}</tbody>${foot}</table>${empty}${more}`;
+  grid.innerHTML = `<table><thead><tr><th class="idx" aria-label="行号">#</th>${head}</tr></thead><tbody>${body}<tr class="fill"><td class="idx"></td>${s.columns.map(() => "<td></td>").join("")}</tr></tbody>${foot}</table>${empty}${more}`;
   $("#tools").innerHTML = toolbar;
+  const cl = $("#capline"), ct = v.sheets.length > 1 ? s.caption || "" : "";   // 表说明只在多表时出现，单行
+  cl.hidden = !ct; cl.textContent = ct;
   if (hadFocus) { const q = $("#q"); q.focus(); if (caret !== null) q.setSelectionRange(caret, caret); }
   stickLeft(fz);
-  const notes = [];
-  if (s.note) notes.push(`<div>${esc(s.note)}</div>`);
-  const fs = s.columns.filter((c) => c.formula);
-  if (fs.length) notes.push(`<div><b>公式</b> ${fs.map((c) => `${esc(c.title)} = ${esc(c.formula_display || c.formula)}`).join("；")}</div>`);
-  $("#foot").innerHTML = notes.join("") + (st.footCommon || "");
+  renderFoot(v, s);
 }
+
+// 下方说明区：默认收成一行“公式 N · 来源 N · 假设 N”，点开才展开，展开时在表格区内部向上推。
+// 每条带 data-kind / data-key，留给表格局部追问（区分派生格、标出数的出处）取用。
+function renderFoot(v, s) {
+  const fs = s.columns.filter((c) => c.formula);
+  const src = v.sources || [], asm = v.assumptions || [];
+  const parts = [["公式", fs.length], ["来源", src.length], ["假设", asm.length]].filter((p) => p[1]);
+  if (s.note) parts.unshift(["说明", 1]);
+  const el = $("#foot");
+  if (!parts.length) { el.innerHTML = ""; return; }
+  const sec = (k, t, items) => items.length ? `<section data-kind="${k}"><h2>${t}</h2><ul>${items.join("")}</ul></section>` : "";
+  const body = (s.note ? sec("note", "说明", [`<li>${esc(s.note)}</li>`]) : "")
+    + sec("formula", "公式", fs.map((c) => `<li data-key="${esc(c.key || c.title)}"><span class="fx">${esc(c.title)} = ${esc(c.formula_display || c.formula)}</span></li>`))
+    + sec("source", "来源", src.map((x, i) => `<li data-i="${i}">${esc(x)}</li>`))
+    + sec("assumption", "假设", asm.map((x, i) => `<li data-i="${i}">${esc(x)}</li>`));
+  el.innerHTML = `<details${st.footOpen ? " open" : ""}><summary>${parts.map((p) => `<span>${p[0]} <b>${p[1]}</b></span>`).join("")}</summary><div class="body">${body}</div></details>`;
+}
+$("#foot").addEventListener("toggle", (e) => { st.footOpen = e.target.open; }, true);
 
 function stickLeft(fz) {
   if (!fz) return;
