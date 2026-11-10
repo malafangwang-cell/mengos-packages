@@ -1,0 +1,5 @@
+# 写给模型的提示词不公开，存放在私有仓库 malafangwang-cell/mengos-package-prompts（立法者 2026-11-10）。
+# 构建用 tools/pkgbuild.py 临时取用，跑完即删；任何包的 prompts/ 目录都不得提交到本仓库。
+**/prompts/
+# 归档含提示词原文，不得放进本仓库工作区
+*.zip
