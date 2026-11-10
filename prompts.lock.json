@@ -1,0 +1,13 @@
+{
+  "_comment": "写给模型的提示词不在本仓库，存放在私有仓库 malafangwang-cell/mengos-package-prompts。这里只登记文件放在哪、sha256 是多少，不含原文：private 是私有仓库根目录下的相对路径（每个包一个目录），path 是包目录下的相对路径。构建由 tools/pkgbuild.py 按本表临时放入，跑完即删。",
+  "env": "MENGOS_PACKAGE_PROMPTS_DIR",
+  "packages": {
+    "mathdisc": [
+      {
+        "private": "mathdisc/prompts/find_relations_v3.txt",
+        "path": "mathdisc/prompts/find_relations_v3.txt",
+        "sha256": "222fecdf189a9b2277e850ceec23109a71cc0219374a494d6f71a78d35d83c80"
+      }
+    ]
+  }
+}
