@@ -1,6 +1,6 @@
 {
   "package": "mathdisc",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "publisher": "mengos",
   "scope": "public",
   "title": "数学猜想核验",
@@ -13,7 +13,7 @@
     "mathdisc.solve_closed": "穷举凑出目标整数",
     "mathdisc.discover": "从数据里发现规律"
   },
-  "content_hash": "f2f456d1357b7568cd65f6c73a96f70ef641c1661b51e0d7fe9c36ee21473fd5",
+  "content_hash": "0f36926ea5548eff908271fc4a9423bc6629f384afea0265182dcf63c21a4634",
   "types": [
     {
       "name": "math_relation",

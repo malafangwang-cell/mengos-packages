@@ -29,13 +29,14 @@ COST = {"latency": 500, "price": 0, "timeout": 30000}
 
 
 def unit(tool_id, ops, in_types, out_types, input_schema, output_schema, example, constraints, examples, non_goals, review=None, cost=None,
-         trust="T1", executor=None):
+         trust="T1", executor=None, in_any=None):
     u = {
         "tool_id": tool_id, "trust_claim": trust, "effect": "none",
         "executor": executor or {"kind": "process", "entry": "md_tool.py", "mode": "sync"},
         "cost": cost or COST,
         "input_example": example,
-        "capability": {"ops": ops, "in_types": in_types, "out_types": out_types,
+        "capability": {"ops": ops, "in_types": in_types, **({"in_any": in_any} if in_any is not None else {}),
+                       "out_types": out_types,
                        "constraints": constraints, "examples": examples, "non_goals": non_goals},
         "signature": {"input_schema": input_schema, "output_schema": output_schema},
     }
@@ -161,7 +162,7 @@ DISCOVER_RECEIPT = {
 }
 
 UNITS.append(unit(
-    "mathdisc.discover", ["generate"], ["math_table", "math_sequence"], ["math_relation"],
+    "mathdisc.discover", ["generate"], [], ["math_relation"],
     {"type": "object", "additionalProperties": False, "required": ["f_task", "data"],
      "description": "你手上有一批观测数据、想找出背后的数学关系（经验公式或数列递推）、但还没有候选时用。它让模型多轮提出候选关系，每条候选都要过计算器的判定（拟合加盲测，或精确递推）才会交出；模型的话不算数。要分钟级时间，提交后取结果。交出的是候选：formula 的候选只是数据级验证（拟合加盲测），附适用范围与假设，不是证明；recurrence 的候选在给出的各项上逐项精确复现，附适用范围，给出的项之外未核验。回报四种停机状态：solved（找到）、exhausted（候选全被判不成立，不等于不存在规律）、budget（轮数用尽）、undetermined（时限内没有得出结论，不等于没有规律；此时 relations 为空）。",
      "properties": {
@@ -182,9 +183,9 @@ UNITS.append(unit(
     [{"input": "给一批 (x, y) 数据，找出 y 随 x 变化的公式", "output": "solved，交出通过拟合与盲测的候选公式，每条附适用范围与假设：只是数据级验证，未经证明"},
      {"input": "一串整数 1, 2, 6, 24, 120, 720，找出递推式", "output": "solved，交出 a[n-1]*n 一类候选，在给出的各项上逐项精确复现，附适用范围：给出的项之外未核验"},
      {"input": "对一组彼此无关的随机数找规律", "output": "exhausted，候选全被判不成立，relations 为空"}],
-    ["不给出证明", "exhausted 不等于不存在规律", "不核验自己手写的候选", "不做外推担保", "恒等式核验、算式等于目标值核验、素数猜想反例核验不走本件，用同步单件工具 mathdisc.identity、mathdisc.reach、mathdisc.counterexample"],
+    ["不给出证明", "exhausted 不等于不存在规律", "不核验自己手写的候选", "不做外推担保", "不做求和、平均这类已知算法的计算，那是 calc 的事", "恒等式核验、算式等于目标值核验、素数猜想反例核验不走本件，用同步单件工具 mathdisc.identity、mathdisc.reach、mathdisc.counterexample"],
     cost={"latency": 120000, "price": 10, "timeout": 600000},
-    trust="T3",
+    trust="T3", in_any=["math_table", "math_sequence"],
     executor={"kind": "process", "entry": "md_tool.py", "mode": "async", "credential_ref": "DASHSCOPE_API_KEY",
               "async_ops": {"submit": "POST /api/v1/jobs", "status": "GET /api/v1/jobs/{job_id}"}}))
 
@@ -192,7 +193,7 @@ TYPES_NOTE = {"math_relation": "表达式、公式、递推式或猜想的文字
               "math_sequence": "整数数列", "math_witness": "变量到整数的取值", "math_solution": "封闭求解的结果"}
 
 if __name__ == "__main__":
-    reg = {"family": "mathdisc", "family_version": "1.2.0", "lock_hash": "",
+    reg = {"family": "mathdisc", "family_version": "1.2.1", "lock_hash": "",
            "note": "mathdisc 的七件工具：六件确定性判定（零模型调用，T1）与发现循环 discover（异步、出网调用模型、T3，产物是候选）。代入求值另有计算工具承担，本包不重复登记。",
            "units": UNITS}
     for u in reg["units"]:
