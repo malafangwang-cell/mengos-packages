@@ -18,8 +18,8 @@ def test_only_value_types():
 def test_tool_types_are_declared():
     known = set(TYPES) | set(M["uses_platform_types"])
     for u in REG["units"]:
-        for k in ("in_types", "out_types"):
-            assert set(u["capability"][k]) <= known, (u["tool_id"], k)
+        for k in ("in_types", "in_any", "out_types"):
+            assert set(u["capability"].get(k, [])) <= known, (u["tool_id"], k)
 
 
 def test_entry_is_package_relative():

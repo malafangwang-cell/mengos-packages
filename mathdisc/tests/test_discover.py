@@ -373,3 +373,16 @@ def test_capability_ops_are_controlled_verbs():
         ops = u["capability"]["ops"]
         assert ops and set(ops) <= verbs, (u["tool_id"], ops)
     assert UNIT["capability"]["ops"] == ["generate"]
+
+
+def test_discover_inputs_are_any_of_and_checkers_still_need_both():
+    """1.2.1（执行令 11-10 §四 P1）：discover 收数据表或数列，有一样即可（in_any）；
+    formula、recurrence 两件核验工具的输入仍是两样都要（in_types），不跟着改。"""
+    cap = UNIT["capability"]
+    assert cap["in_types"] == [] and cap["in_any"] == ["math_table", "math_sequence"]
+    by_id = {u["tool_id"]: u["capability"] for u in REG["units"]}
+    assert by_id["mathdisc.formula"]["in_types"] == ["math_relation", "math_table"]
+    assert by_id["mathdisc.recurrence"]["in_types"] == ["math_relation", "math_sequence"]
+    for tid, c in by_id.items():
+        if tid != "mathdisc.discover":
+            assert "in_any" not in c, tid

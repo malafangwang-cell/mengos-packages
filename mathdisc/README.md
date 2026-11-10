@@ -1,4 +1,6 @@
-# mathdisc 1.2.0 · 数学核对与发现工具包
+# mathdisc 1.2.1 · 数学核对与发现工具包
+
+> 1.2.1（执行令 2026-11-10 §四 P1/P2）：`mathdisc.discover` 的输入类型改为“或”：`in_types: []`、`in_any: [math_table, math_sequence]`——它收一张数据表或一串数列，有一样即可（与 calc.algebra、cad.export 同一写法）。按旧形状两个类型会被读成“都要”。`mathdisc.formula`（`[math_relation, math_table]`）与 `mathdisc.recurrence`（`[math_relation, math_sequence]`）两样都要，不变。discover 的 `non_goals` 加一句“不做求和、平均这类已知算法的计算，那是 calc 的事”（只在登记资产里，不渲染给模型）。工具代码未改；registration 改了，lock 变（d47f318d18c30c2d → 4359c2cacde1cb10；本包七件共用一个 lock，七件 version 同变），须重新认证。包内测试与金样全过。
 
 > 1.2.0：解释器要求收到 Python ≥3.12（与 cad、document 一致），`uv.lock` 只留 3.12 及以上的一支，四库版本即 `mathdisc.lock` 所写。新增第七件工具 `mathdisc.discover`（发现循环，从数据里找规律）。形态：`executor.kind = process`、`mode = async`、`trust_claim = T3`、`effect = none`；出网只有 `dashscope.aliyuncs.com`（`runtime.process.network`），凭据名 `DASHSCOPE_API_KEY` 经 `executor.credential_ref` 由平台注入，包内不存任何密钥。回执是 `{stop_reason, relations, assumptions, cost, relation_receipts}`：前四项是原投影（`ta_projection.json` 逐条把证据等级映射成假设，丢一条即违例），`relation_receipts[]` 只增不删，每条关系一项 `{expr, verdict, evidence, validity?, assumptions}`，`evidence` 取自检查门回执原样；`validity` 由 `md_tool.py` 按检查门实际用的拆分与同步判定工具同一口径算出（formula 为 `data_range`，recurrence 为 `index_range`），门回执本身不带就不带。入参不含 `mock`（`additionalProperties: false`）；空 ρ 只由环境变量 `MATHDISC_RHO_MOCK=1` 打开，供管道自检，发布档由平台拒启。ρ 模型锁在 `mathdisc.lock`（`qwen3.8-max-0902`，思考模式关）。随包公开的是 mathdisc 自带的提示词 `mathdisc/prompts/find_relations_v3.txt` 与 `mathdisc/llm/`。到点未跑完回 `stop_reason = undetermined`，不报错。离线回放金样见 `tests/test_discover.py`（阳性、阴性对照、v1 事故、超时），不调模型；真模型读数在部署后另跑。
 
