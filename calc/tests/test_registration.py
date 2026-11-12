@@ -45,3 +45,22 @@ def test_golden_payloads_follow_input_schema_and_outputs_follow_output_schema():
 def test_capability_examples_3_to_5():
     for unit in REG["units"]:
         assert 3 <= len(unit["capability"]["examples"]) <= 5, unit["tool_id"]
+
+
+def test_expr_params_declaration_present_and_well_formed():
+    """17 TL-30b（v0.2.99）：位数、步长一类参数在 input_schema 顶层声明 x-mengos-expr-params。
+
+    格式 {"<函数名>": [<参数序号>, …]}，序号从 1 起。本计算器的函数没有这类参数，声明为空对象；
+    若以后列入函数，函数名必须是解析器认得的函数（小写），序号不超过该函数的最多参数个数。
+    """
+    from expr_parser import FUNCTIONS
+    for unit in REG["units"]:
+        sch = unit["signature"]["input_schema"]
+        assert "x-mengos-expr-params" in sch, unit["tool_id"]
+        decl = sch["x-mengos-expr-params"]
+        assert isinstance(decl, dict), unit["tool_id"]
+        for name, idxs in decl.items():
+            assert isinstance(name, str) and name == name.lower() and name in FUNCTIONS, (unit["tool_id"], name)
+            assert isinstance(idxs, list) and idxs and len(set(idxs)) == len(idxs), (unit["tool_id"], name)
+            assert all(type(i) is int and 1 <= i <= FUNCTIONS[name][1] for i in idxs), (unit["tool_id"], name)
+        assert decl == {}, (unit["tool_id"], decl)

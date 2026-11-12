@@ -1,5 +1,7 @@
 # calc v2（计算工具族的替换包）
 
+> 2.2.3（17 TL-30b，kernel-spec v0.2.99；引擎 mengosv2 #734）：三件工具的 input_schema 顶层加 `x-mengos-expr-params`，值为空对象 `{}`。本计算器的函数里没有位数、步长、倍数一类的参数（不支持 round、roundup、rounddown、ceiling、mround；floor、ceil 只收一个参数），其余多参函数的每个参数都参与运算（log 的底、root 的次数、mod 的除数、atan2、binomial/comb/perm、gcd/lcm、max/min），所以一个也不列，引擎照常要求证件。三件的说明末尾各加一句“算式里的函数没有位数、步长一类的参数……”。只放宽：入参 schema 剥掉新增键与新增的一句后与 2.2.2 逐键相同；工具代码未改，旧输入结果不变。registration 改了（`family_version` 2.2.3），lock 变，须重新认证。
+
 > 2.2.2（mengosv2 执行令-2026-11-05-PLAN声明书与F环清单交互 支 T）：包清单加显示名 `title`「精确计算」与 `tool_titles`（`calc.evaluate`「算式精确求值」、`calc.algebra`「代数与微积分运算」、`calc.check_equal`「判断两式是否相等」）。两字段只供界面显示（声明书、商店），不进工具选择，也不进给模型看的任何文字；不在 `tools_lock.covers` 内，lock 不变（工具版本与认证继承），只有 content_hash 变。工具代码与 registration.json 未改（其中 `family_version` 仍写 2.2.1）。
 
 > 2.2.1（W-11，17 TL-16c v0.2.32）：calc.algebra 的输入类型改为“或”：`in_types: []`、`in_any: [math_expression, equation]`——它收一个式子（expr）或一组方程（exprs），二者有一即可（input_schema 只 required op）。calc.check_equal 的 `[math_expression, number]` 两边都要，不变。工具代码未改；registration 改了，lock 变（ecbbbd50de6a4d29），须重新认证。本容器无 sympy，执行类测试未跑；登记与包自检 15 项过。

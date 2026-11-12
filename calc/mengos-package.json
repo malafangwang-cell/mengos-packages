@@ -1,6 +1,6 @@
 {
   "package": "calc",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "publisher": "mengos",
   "scope": "public",
   "title": "精确计算",
@@ -9,7 +9,7 @@
     "calc.algebra": "代数与微积分运算",
     "calc.check_equal": "判断两式是否相等"
   },
-  "content_hash": "3e683e4fac0cd8e351a8198e6f0b90f72d2b7add17cd9b8598a63da339bc20e7",
+  "content_hash": "eae023969985444cc4a77e24620d25db695f698263a3efedee7432298ce9cacd",
   "types": [
     {
       "name": "math_expression",
