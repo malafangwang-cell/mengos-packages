@@ -1,4 +1,14 @@
-# table 2.0.1 — 表格交付物包
+# table 2.1.0 — 表格交付物包
+
+> 2.1.0（执行令《首发后-table包2.1.0》，立法者 11-12 批准开工；依据 mengosv2 #710 §6.2、#711、kernel-spec v0.2.98 #713）：G1–G5 与公共项。**只放宽**：只加可选字段、枚举值、函数、告警码与输出字段；不带新字段的合规输入，表模型、Markdown、CSV 与 1.0.1 逐字节相同，产出台数据只多 `totals_fn` 一个输出字段，xlsx 逐格的值不变（`tests/test_contribution.py`）。
+> - **第 0 步四个条件**：C1 样式跟着行走——行里的保留键 `$style`（`"x-mengos-display": true` 声明，17 TL-30 v0.2.98），不设按行号寻址的 `cell_styles`，`row_styles` 只按行种类（2.1.0 只有 total）。C2 恒真条件格式——LibreOffice 24.2.7.2 实测：两条规则同时命中同一格时**不按属性合并**（`readings/table-2.1.0-cf/读数-LibreOffice.md`），照 #711 §2.2 第 3 条退路：叠加口径改为与 Excel 相同（规则 > 格 > 行 > 列默认），**不写恒真规则**；Excel、WPS 的读数单在同目录，交本地施工方填。C3 取整与比较的参数按 15 位有效数字归整，Excel 一侧写 `ROUND(x,14-INT(LOG10(ABS(x)+(x=0))))`；不连续的函数再用双精度算一遍，不同就告警 `excel_float`，点名到格。C4 精度口径 b：公式列照旧逐行舍入，Excel 公式外包 `ROUND(…, 位数)`，合计行的平均值等也外包同样位数的 ROUND。
+> - **G1 样式层与条件规则**：样式 `{fill, color, bold, italic}`，颜色取 12 色命名色板（浅色、深色主题与 Excel 各一套色值，也认英文名）。`columns[].style` 列默认、`header_style` 表头、`row_styles [{kind: total}]` 合计行、行里 `$style {row, cells}`。`rules` 有序、先命中先得、逐属性，条件直接写条件式（与公式同一种写法），`apply_to` 缺省给条件里的列、`"row"` 整行或列名数组；色阶 `{scale: {column, from, to}}`。规则只管数据行；不标 by-id，给了就整组替换；每张表最多 50 条。Excel 里写成公式型条件格式（带 COUNT/LEN 防空格当 0）与 2_color_scale，说明表列出规则次序。
+> - **G2 函数**：roundup、rounddown、ceiling、floor（照 Excel），比较 `> >= < <= = <>`，and、or、not、if（两支暂不收数字常数；结果是文字时 type 写 text），total(列)、cumsum(列)；数后可带 %，日期写 `"YYYY-MM-DD"`。
+> - **G3 合计口径**：fn 加 `formula`（合计行按本列公式重算，Excel 写合计行版本的公式）与 `none`；产出台数据带 `totals_fn`，悬停显示每格的算法；告警 `ratio_total`（比率列配了 sum、avg）与 `rounded_sum`（逐行舍入后相加与先加后舍入不同，T3-09）。
+> - **G4**：同 C3、C4；公式引用的格有空时 Excel 写 `IF(COUNT(…)=n, 原式, "")`，与产出台“有空就空”一致。登记与说明照实写“产出台与 Excel 重算一致；个别边界值不一致时会告警”。
+> - **G5 显示格式**：日期列 `date_format`（五种），数值列 `thousands`；CSV 仍写 ISO 日期与原值。
+> - **公共**：三件工具的描述与 constraints 随改，non_goals 去掉“不做条件格式”；选择金样加 3 条；金样 40 → 76 例（测试集 24 条各一例另加边界与报错）；Excel 往返 `tools/lo_roundtrip.py`（LibreOffice 无头重算读回逐格比，45 例 0 处不一致）。渲染器按视图画样式（浅色、深色两套），说明区列出规则。
+> - 不做：G6；G8 的 seq 随 2.2.0。
 
 > 2.0.1（立法者验收页面稿 表格说明区去重-2026-11-10；只改渲染器，认证继承 TL-25）：上方压成一行（副标题·日期＋搜索＋“N 行 × M 列”，行列数只出现一次；单表只显示副标题一句，没有才用表说明）；表格区撑满剩余高度，行少补空行到底，表头与合计固定；公式·来源·假设收成紧贴合计行的一行、点开在表格区内向上推，条目带 data-kind/data-key 钩子。工具代码、registration.json、schema、金样、导出均未改，lock 不变，只有 content_hash 变。
 
@@ -34,7 +44,8 @@
 ```
 
 - 列类型：text / integer / number / money / percent（写百分点：12.5 即 12.5%）/ date / bool；不写就推断。被公式或合计引用的列必须写 type（2.0.0）。
-- 公式列只能引用数值列和它左边的公式列；支持 + - * / 括号、round/abs/min/max；除零留空并给警告。
+- 公式列只能引用输入列和它左边的公式列；支持 + - * / 括号、round/abs/min/max，2.1.0 起另有 roundup/rounddown/ceiling/floor、比较与 and/or/not/if、total/cumsum；除零留空并给警告。
+- 样式与条件规则（2.1.0）：见上方 2.1.0 说明与登记里的描述。
 - 多张表用 `{"sheets": [{"id": "s1", …}, …]}`，table.build 里每张表的 id 必填（2.0.0）；`freeze_cols` 冻结左侧列。
 - 上限：20 张表、200 列、10 万行、100 万格。
 - 1.0.1 起，`table.build` 的 `rows`（单表与各 sheet）声明为数据字段（`"x-mengos-data": true`，17 TL-30）：引擎派单前核对行里每个数的证件（原文数、`{"$calc": 算式}` 或 `{"$ref": 计算器回执}`，08 PD-1e），算式由平台计算器求值后再交给本工具。工具本身行为不变。
@@ -44,7 +55,8 @@
 ```
 uv sync --frozen
 .venv/bin/python -m pytest -q          # 单测
-.venv/bin/python tools/run_golden.py   # 金样 40 例
+.venv/bin/python tools/run_golden.py   # 金样 76 例
+.venv/bin/python tools/lo_roundtrip.py # Excel 往返：LibreOffice 无头重算读回逐格比（要 soffice 与系统 Python 的 uno）
 ```
 
 改动源码后依次运行 `python tools/make_registration.py`、`python lock.py`、`python tools/make_package.py`。
@@ -55,3 +67,4 @@ uv sync --frozen
 - `renderer/index.html` 渲染器（契约 v0.1，full + embed，无网络）
 - `golden_cases.json`、`selection_cases.json`、`tools/run_golden.py` 认证材料
 - `samples/` 四张样例表
+- `readings/table-2.1.0-cf/` C2 恒真条件格式实测：样例工作簿、LibreOffice 读回、Excel 与 WPS 读数单

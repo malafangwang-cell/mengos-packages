@@ -37,6 +37,24 @@
   },
   {
     "tool_id": "table.build",
+    "task": "采购清单里金额超过 1 万的标红，到货晚于 11 月 20 日的整行标浅黄，导出 Excel",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.build",
+    "task": "分解单的下料数量 = 总数量 ×（1 + 损耗率），向上取整到整数",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.build",
     "task": "写一份老旧小区充电桩加装技术方案",
     "ops": [
       "generate"
@@ -135,6 +153,15 @@
     "required_type": "verdict",
     "expect_selected": false,
     "stage": "model"
+  },
+  {
+    "tool_id": "table.check",
+    "task": "把预算表里超支的科目标红",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": false
   },
   {
     "tool_id": "table.export",

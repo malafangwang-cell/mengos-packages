@@ -17,7 +17,28 @@ import formula as F
 SCHEMA = "mengos.table/1"
 TYPES = ("text", "integer", "number", "money", "percent", "date", "bool")
 NUMERIC = ("integer", "number", "money", "percent")
-FNS = ("sum", "avg", "min", "max", "count")
+FNS = ("sum", "avg", "min", "max", "count", "formula", "none")
+# 2.1.0 G1：样式值只有四种属性；颜色取命名色板（Excel 色值、产出台浅色与深色主题各一套）。名字不能读成数（不进 08 PD-1e 证件账）。
+STYLE_KEYS = ("fill", "color", "bold", "italic")
+PALETTE = {   # 名字: (Excel 与浅色主题, 深色主题底色, 深色主题字色)
+    "红": ("#FF0000", "#8E1B1B", "#FF7B72"), "橙": ("#FFC000", "#8A5A00", "#FFB547"),
+    "黄": ("#FFFF00", "#6B6400", "#F2E35A"), "绿": ("#00B050", "#1B6B3A", "#5FD38D"),
+    "蓝": ("#0070C0", "#1D4F86", "#6CB4F5"), "深蓝": ("#1F3864", "#22385F", "#9DB7E8"),
+    "灰": ("#808080", "#4A4A47", "#A8A8A3"), "浅灰": ("#D9D9D9", "#33332F", "#C8C8C3"),
+    "白": ("#FFFFFF", "#191918", "#ECECE8"), "黑": ("#000000", "#0B0B0A", "#ECECE8"),
+    "浅红": ("#FFC7CE", "#5A2A2E", "#FFB3BC"), "浅黄": ("#FFF2CC", "#4A4220", "#F5E3A1"),
+}
+COLOR_ALIAS = {"red": "红", "orange": "橙", "yellow": "黄", "green": "绿", "blue": "蓝", "navy": "深蓝", "darkblue": "深蓝",
+               "gray": "灰", "grey": "灰", "lightgray": "浅灰", "lightgrey": "浅灰", "white": "白", "black": "黑",
+               "lightred": "浅红", "pink": "浅红", "lightyellow": "浅黄"}
+COLOR_NAMES = tuple(PALETTE) + tuple(COLOR_ALIAS)
+DISPLAY_KEY = "$style"        # 行里的保留键：本行、本格的显示设置（17 TL-30 v0.2.98 “显示设置跟着行走”）
+ROW_KINDS = ("total",)        # row_styles 只按行种类写；小计、组头随 2.2.0 的 G7 一起加
+DATE_FORMATS = {"YYYY-MM-DD": ("yyyy-mm-dd", "{y:04d}-{m:02d}-{d:02d}"), "YYYY/MM/DD": ("yyyy/mm/dd", "{y:04d}/{m:02d}/{d:02d}"),
+                "YYYY年M月D日": ('yyyy"年"m"月"d"日"', "{y:04d}年{m}月{d}日"), "M月D日": ('m"月"d"日"', "{m}月{d}日"),
+                "YYYY.MM.DD": ("yyyy.mm.dd", "{y:04d}.{m:02d}.{d:02d}")}
+MAX_RULES = 50
+MAX_FLOAT_WARN = 20           # G4：每列最多点名这么多格，其余合成一句
 KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,31}$")
 SHEET_BAD = re.compile(r"[\[\]:*?/\\]")
 MAX_SHEETS = 20
@@ -197,7 +218,8 @@ def infer_type(values):
 
 # ---------------------------------------------------------------- 结构
 class Column:
-    __slots__ = ("key", "title", "type", "unit", "decimals", "formula", "node", "align", "width", "inferred")
+    __slots__ = ("key", "title", "type", "unit", "decimals", "formula", "node", "align", "width", "inferred",
+                 "style", "date_format", "thousands")
 
     def to_json(self):
         o = {"key": self.key, "title": self.title, "type": self.type}
@@ -210,7 +232,22 @@ class Column:
         if self.width is not None:
             o["width"] = self.width
         o["align"] = self.align
+        if self.style:
+            o["style"] = dict(self.style)
+        if self.date_format is not None:
+            o["date_format"] = self.date_format
+        if self.thousands is not None:
+            o["thousands"] = self.thousands
         return o
+
+    @property
+    def grouped(self):
+        """数值显示带不带千分位：integer、money 缺省带，number、percent 缺省不带（G5 可改）。"""
+        return self.thousands if self.thousands is not None else self.type in ("integer", "money")
+
+    @property
+    def kind(self):
+        return "num" if self.type in NUMERIC else self.type if self.type in ("date", "bool") else "text"
 
     @property
     def shown_decimals(self):
@@ -218,7 +255,8 @@ class Column:
 
 
 class Sheet:
-    __slots__ = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols", "formula_errors")
+    __slots__ = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols", "formula_errors",
+                 "header_style", "rules", "row_styles", "displays", "raw", "_styles")
 
     def col(self, key):
         return next(c for c in self.columns if c.key == key)
@@ -248,14 +286,51 @@ class Sheet:
         if self.caption:
             o["caption"] = self.caption
         o["columns"] = [c.to_json() for c in self.columns]
-        o["rows"] = [[_cell_json(c, v) for c, v in zip(self.columns, r)] for r in self.rows]
+        o["rows"] = [[_cell_json(c, v) for c, v in zip(self.columns, r)] if not d else
+                     {**{c.key: _cell_json(c, v) for c, v in zip(self.columns, r)}, DISPLAY_KEY: _display_json(d)}
+                     for r, d in zip(self.rows, self.displays)]
         if self.totals:
             o["totals"] = [{"column": k, "fn": fn, "value": None if v is None else dec_str(v)} for k, fn, v in self.totals]
         if self.freeze_cols:
             o["freeze_cols"] = self.freeze_cols
         if self.note:
             o["note"] = self.note
+        if self.header_style:
+            o["header_style"] = dict(self.header_style)
+        if self.rules:
+            o["rules"] = [_rule_json(r) for r in self.rules]
+        if self.row_styles:
+            o["row_styles"] = [{"kind": k, "style": dict(v)} for k, v in self.row_styles.items()]
         return o
+
+    def styles(self):
+        """每格的最终样式（G1 叠加，见 _overlay）。只算一次。"""
+        if self._styles is None:
+            self._styles = _overlay(self)
+        return self._styles
+
+
+def _display_json(d):
+    o = {}
+    if d.get("row"):
+        o["row"] = dict(d["row"])
+    if d.get("cells"):
+        o["cells"] = {k: dict(v) for k, v in d["cells"].items()}
+    return o
+
+
+def _rule_json(r):
+    o = {}
+    if r.get("label"):
+        o["label"] = r["label"]
+    if r["kind"] == "scale":
+        key, a, b = r["scale"]
+        o["scale"] = {"column": key, "from": a, "to": b}
+        return o
+    o["when"] = r["src"]
+    o["apply_to"] = "row" if r["apply"] == "row" else list(r["apply"])
+    o["style"] = dict(r["style"])
+    return o
 
 
 def _cell_json(col, v):
@@ -334,10 +409,11 @@ def _allowed(obj, keys, where):
 
 
 # ---------------------------------------------------------------- 规范化
+SHEET_STYLE_KEYS = ("header_style", "rules", "row_styles")
 TABLE_KEYS = ("schema", "title", "subtitle", "meta", "sheets", "sources", "assumptions",
-              "columns", "rows", "totals", "caption", "note", "freeze_cols", "name", "lang")
-SHEET_KEYS = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols")
-COL_KEYS = ("key", "title", "type", "unit", "decimals", "formula", "width", "align")
+              "columns", "rows", "totals", "caption", "note", "freeze_cols", "name", "lang") + SHEET_STYLE_KEYS
+SHEET_KEYS = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols") + SHEET_STYLE_KEYS
+COL_KEYS = ("key", "title", "type", "unit", "decimals", "formula", "width", "align", "style", "date_format", "thousands")
 
 
 def normalize(raw, build=False) -> Table:
@@ -359,7 +435,7 @@ def normalize(raw, build=False) -> Table:
             if t.meta.get("lang", lang) != lang:
                 raise BadInput("lang 与 meta.lang 不一致", "table.lang")
             t.meta["lang"] = lang
-    single = [k for k in ("columns", "rows", "totals", "caption", "note", "freeze_cols", "name") if k in raw]
+    single = [k for k in ("columns", "rows", "totals", "caption", "note", "freeze_cols", "name") + SHEET_STYLE_KEYS if k in raw]
     if "sheets" in raw and single:
         raise BadInput(f"sheets 与单张表的写法二选一：有 sheets 时 {single[0]} 写进各张表里", f"table.{single[0]}")
     if "sheets" in raw:
@@ -372,7 +448,7 @@ def normalize(raw, build=False) -> Table:
     else:
         if "columns" not in raw:
             raise BadInput("缺少 columns：单张表写 {title, columns, rows}，多张表写 sheets", "table.columns")
-        sheets = [{k: raw[k] for k in ("columns", "rows", "totals", "caption", "note", "freeze_cols") if k in raw}]
+        sheets = [{k: raw[k] for k in ("columns", "rows", "totals", "caption", "note", "freeze_cols") + SHEET_STYLE_KEYS if k in raw}]
         sheets[0]["name"] = raw.get("name") if raw.get("name") is not None else t.title
         where = ["table"]
     from_model = raw.get("schema") == SCHEMA
@@ -455,6 +531,8 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     _allowed(s, SHEET_KEYS, where)
     sh = Sheet()
     sh.formula_errors = []
+    sh.raw = {}
+    sh._styles = None
     sid = s.get("id")
     if sid is not None and (not isinstance(sid, str) or not KEY_RE.match(sid)):
         raise BadInput("id 由字母、数字、下划线组成，字母或下划线开头，最多 32 个字符", f"{where}.id")
@@ -487,22 +565,31 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     if build:
         _declared_types(s, sh, where)
     plain = [j for j, c in enumerate(sh.columns) if c.formula is None]
+    sh.displays = []
     raw_rows = [_row(r, f"{where}.rows[{ri}]", sh, plain, t, from_model, ri) for ri, r in enumerate(rows)]
     # 没写 type 的列按内容推断（公式列恒为数值）
     for j, c in enumerate(sh.columns):
         if c.type is None:
             c.type = "number" if c.formula is not None else infer_type([r[j] for r in raw_rows])
             c.inferred = True
-        if c.formula is not None and c.type not in NUMERIC:
-            raise BadInput("公式列的 type 只能是数值类：integer、number、money、percent", f"{where}.columns[{j}].type")
+        if c.formula is not None and c.type not in NUMERIC + ("text",):
+            raise BadInput("公式列的 type 只能是数值类（integer、number、money、percent），或 text（结果是文字的 if）",
+                           f"{where}.columns[{j}].type")
         if c.decimals is not None and c.type not in NUMERIC:
             raise BadInput("decimals 只用于数值列", f"{where}.columns[{j}].decimals")
+        if c.thousands is not None and c.type not in NUMERIC:
+            raise BadInput("thousands 只用于数值列", f"{where}.columns[{j}].thousands")
+        if c.date_format is not None and c.type != "date":
+            raise BadInput("date_format 只用于日期列", f"{where}.columns[{j}].date_format")
         c.align = c.align or ("right" if c.type in NUMERIC else "center" if c.type == "bool" else "left")
     sh.rows = [[_cell(sh.columns[j], v, f"{where}.rows[{ri}][{j}]", t.lang) for j, v in enumerate(r)]
                for ri, r in enumerate(raw_rows)]
     _formulas(sh, where, t)
-    sh.totals = _totals(s.get("totals"), sh, f"{where}.totals")
+    sh.totals = _totals(s.get("totals"), sh, f"{where}.totals", t)
     sh.freeze_cols = fc
+    sh.header_style = _style(s.get("header_style"), f"{where}.header_style")
+    sh.row_styles = _row_styles(s.get("row_styles"), f"{where}.row_styles")
+    sh.rules = _rules(s.get("rules"), sh, f"{where}.rules", t)
     if build and not sh.rows:
         t.warnings.append({"where": f"{where}.rows", "code": "no_rows",
                            "message": f"“{sh.name}”还没有行，只交出表头" + ("，合计留空" if sh.totals else "")})
@@ -537,8 +624,8 @@ def _declared_types(s, sh, where):
     for it in spec if isinstance(spec, list) else []:
         name = it if isinstance(it, str) else it.get("column") if isinstance(it, dict) else None
         cc = sh.find(name) if isinstance(name, str) else None
-        if cc is not None:
-            fn = it.get("fn", "sum") if isinstance(it, dict) else "sum"
+        fn = it.get("fn", "sum") if isinstance(it, dict) else "sum"
+        if cc is not None and fn != "none":          # none 只是留空，不读这一列的值
             need.setdefault(sh.columns.index(cc), f"合计（{fn}）")
     for j in sorted(need):
         c = sh.columns[j]
@@ -580,11 +667,25 @@ def _column(c, where, j) -> Column:
     if a is not None and a not in ("left", "center", "right"):
         raise BadInput("align 只能是 left、center、right", f"{where}.align")
     col.align = a
+    col.style = _style(c.get("style"), f"{where}.style")
+    df = c.get("date_format")
+    if df is not None and df not in DATE_FORMATS:
+        raise BadInput(f"date_format 只能是 {' / '.join(DATE_FORMATS)}", f"{where}.date_format")
+    col.date_format = df
+    th = c.get("thousands")
+    if th is not None and not isinstance(th, bool):
+        raise BadInput("thousands 是 true 或 false：数字要不要千分位", f"{where}.thousands")
+    col.thousands = th
     return col
 
 
 def _row(r, where, sh, plain, t, from_model, ri):
     n = len(sh.columns)
+    if isinstance(r, dict) and DISPLAY_KEY in r:
+        sh.displays.append(_display(r[DISPLAY_KEY], sh, f"{where}.{DISPLAY_KEY}"))
+        r = {k: v for k, v in r.items() if k != DISPLAY_KEY}
+    else:
+        sh.displays.append(None)
     if isinstance(r, dict):
         out = [None] * n
         for k, v in r.items():
@@ -625,6 +726,253 @@ def _formula_given(t, where, c):
                            "message": f"“{c.title}”是公式列，行里给的值不用，按公式算"})
 
 
+# ---------------------------------------------------------------- 样式（G1）
+def _style(v, where):
+    """样式值 {fill?, color?, bold?, italic?} → 规范写法（颜色用色板里的中文名）；缺席或空对象 → None。"""
+    if v is None:
+        return None
+    if not isinstance(v, dict):
+        raise BadInput("样式是对象：{fill 底色, color 字色, bold 加粗, italic 斜体}", where)
+    _allowed(v, STYLE_KEYS, where)
+    out = {}
+    for k in STYLE_KEYS:
+        if k not in v:
+            continue
+        x = v[k]
+        if k in ("fill", "color"):
+            out[k] = _color(x, f"{where}.{k}")
+        else:
+            if not isinstance(x, bool):
+                raise BadInput(f"{k} 是 true 或 false", f"{where}.{k}")
+            out[k] = x
+    return out or None
+
+
+def _color(x, where):
+    if isinstance(x, str):
+        n = unicodedata.normalize("NFKC", x).strip()
+        if n in PALETTE:
+            return n
+        a = COLOR_ALIAS.get(n.lower().replace(" ", "").replace("_", ""))
+        if a:
+            return a
+    raise BadInput(f"颜色取色板里的名字：{'、'.join(PALETTE)}", where, "也认英文名 red、orange、yellow、green、blue、navy、gray、lightgray、white、black、lightred、lightyellow")
+
+
+def _display(v, sh, where):
+    """行里的保留键 $style：{row: 样式（整行）, cells: {列名: 样式}}。跟着这一行走，不按行号寻址（17 TL-30 v0.2.98）。"""
+    if not isinstance(v, dict):
+        raise BadInput(f"{DISPLAY_KEY} 是对象：{{row: 整行的样式, cells: {{列名: 这一格的样式}}}}", where)
+    _allowed(v, ("row", "cells"), where)
+    out = {}
+    row = _style(v.get("row"), f"{where}.row")
+    if row:
+        out["row"] = row
+    cells = v.get("cells")
+    if cells is not None:
+        if not isinstance(cells, dict):
+            raise BadInput("cells 是对象：列的 key 或标题 → 样式", f"{where}.cells")
+        cs = {}
+        for k, st in cells.items():
+            c = sh.find(k) if isinstance(k, str) else None
+            if c is None:
+                raise BadInput(f"cells 里的“{k}”不是这张表的列", f"{where}.cells")
+            if c.key in cs:
+                raise BadInput(f"cells 里“{c.title}”写了两次", f"{where}.cells")
+            st = _style(st, f"{where}.cells.{k}")
+            if st:
+                cs[c.key] = st
+        if cs:
+            out["cells"] = {c.key: cs[c.key] for c in sh.columns if c.key in cs}
+    return out or None
+
+
+def _row_styles(v, where):
+    if v is None:
+        return {}
+    if not isinstance(v, list) or len(v) > len(ROW_KINDS):
+        raise BadInput(f"row_styles 是数组：[{{kind, style}}]，kind 为 {' / '.join(ROW_KINDS)}", where)
+    out = {}
+    for i, it in enumerate(v):
+        w = f"{where}[{i}]"
+        _allowed(it, ("kind", "style"), w)
+        k = it.get("kind")
+        if k not in ROW_KINDS:
+            raise BadInput(f"kind 只能是 {' / '.join(ROW_KINDS)}（total 合计行）；某一行、某一格的样式写在那一行的 {DISPLAY_KEY} 里",
+                           f"{w}.kind")
+        if k in out:
+            raise BadInput(f"row_styles 里 {k} 写了两次", w)
+        st = _style(it.get("style"), f"{w}.style")
+        if st:
+            out[k] = st
+    return out
+
+
+def _rules(v, sh, where, t):
+    """条件规则（有序，先命中先得，逐属性）。条件直接写条件式（与公式同一种写法）；色阶单列。不标 by-id：给了就整组替换。"""
+    if v is None:
+        return []
+    if not isinstance(v, list) or len(v) > MAX_RULES:
+        raise BadInput(f"rules 是规则的数组（最多 {MAX_RULES} 条）：[{{when, apply_to, style}}] 或 [{{scale: {{column, from, to}}}}]", where)
+    kinds = _kinds(sh)
+    out = []
+    for i, it in enumerate(v):
+        w = f"{where}[{i}]"
+        if not isinstance(it, dict):
+            raise BadInput("每条规则是对象：{when 条件, apply_to 着色范围, style 样式}，或色阶 {scale: {column, from, to}}", w)
+        label = _str(it.get("label"), f"{w}.label", 200)
+        if "scale" in it:
+            _allowed(it, ("scale", "label"), w)
+            sc = it["scale"]
+            _allowed(sc, ("column", "from", "to"), f"{w}.scale")
+            c = sh.find(sc.get("column")) if isinstance(sc.get("column"), str) else None
+            if c is None:
+                raise BadInput(f"色阶的列“{sc.get('column')}”不在表里", f"{w}.scale.column")
+            if c.type not in NUMERIC:
+                raise BadInput(f"“{c.title}”不是数值列，不能做色阶", f"{w}.scale.column")
+            a = _color(sc.get("from", "白"), f"{w}.scale.from")
+            b = _color(sc.get("to", "绿"), f"{w}.scale.to")
+            out.append({"kind": "scale", "scale": (c.key, a, b), "label": label, "where": w})
+            continue
+        _allowed(it, ("when", "apply_to", "style", "label"), w)
+        src = it.get("when")
+        if not isinstance(src, str) or not src.strip():
+            raise BadInput("when 是条件式，例如 \"金额 > 10000\"、\"实际 > 预算\"、\"到货日期 > \\\"2026-11-20\\\"\"", f"{w}.when")
+        try:
+            node = F.parse(src, _resolver(sh, None, "条件"))
+            k = F.kind_of(node, kinds)
+        except F.FormulaError as e:
+            raise BadInput(f"条件“{src}”：{e}", f"{w}.when") from None
+        if k != "bool":
+            raise BadInput(f"条件“{src}”不是条件：要写比较（> >= < <= = <>），或用 and、or、not 组合", f"{w}.when")
+        ap = it.get("apply_to")
+        if ap is None:
+            keys = [c.key for c in sh.columns if c.key in F.row_refs(node)]
+            if not keys:
+                raise BadInput("这条规则没有引用列，写 apply_to 说明给哪些列着色", f"{w}.apply_to")
+            apply = keys
+        elif ap == "row":
+            apply = "row"
+        elif isinstance(ap, list) and ap and all(isinstance(x, str) for x in ap):
+            apply = []
+            for x in ap:
+                c = sh.find(x)
+                if c is None:
+                    raise BadInput(f"apply_to 里的“{x}”不是这张表的列", f"{w}.apply_to")
+                if c.key not in apply:
+                    apply.append(c.key)
+            apply = [c.key for c in sh.columns if c.key in apply]
+        else:
+            raise BadInput("apply_to 写 \"row\"（整行着色），或列名的数组；不写时给条件里引用的列着色", f"{w}.apply_to")
+        st = _style(it.get("style"), f"{w}.style")
+        if not st:
+            raise BadInput("规则要有 style：{fill 底色, color 字色, bold, italic}", f"{w}.style")
+        r = {"kind": "when", "src": src.strip(), "node": node, "apply": apply, "style": st, "label": label, "where": w}
+        r["hits"] = _rule_hits(sh, r, t)
+        out.append(r)
+    return out
+
+
+def _rule_hits(sh, r, t):
+    """规则命中的数据行（不管合计行）。条件里的比较照双精度再算一遍，结果不同就告警（G4）。"""
+    cols = {c.key: [row[k] for row in sh.rows] for k, c in enumerate(sh.columns)}
+    hits, flt = [], []
+    for ri, row in enumerate(sh.rows):
+        env = _env(sh, row)
+        try:
+            v = F.evaluate(r["node"], env, cols, ri)
+        except F.DivZero:
+            v = None
+        hits.append(v is True)
+        fv, hit = F.float_eval(r["node"], env, cols, ri)
+        if hit and (fv is True) != (v is True):
+            flt.append(ri)
+    for ri in flt[:MAX_FLOAT_WARN]:
+        t.warnings.append({"where": f"{r['where']}.when", "code": "excel_float",
+                           "message": f"规则“{r['src']}”在第 {ri + 1} 行：产出台判{'命中' if hits[ri] else '不命中'}，"
+                                      f"Excel 里按双精度比较可能{'不命中' if hits[ri] else '命中'}（数在比较的边界上）；"
+                                      "导出的条件已先归整到 15 位有效数字，仍请在 Excel 里核对这一行"})
+    return hits
+
+
+def scale_t(sh, key):
+    """色阶：每行在最小到最大之间的位置 0–1（空格子为 None）。最小等于最大时都取 0。"""
+    j = next(k for k, c in enumerate(sh.columns) if c.key == key)
+    vals = [r[j] for r in sh.rows]
+    nums = [v for v in vals if isinstance(v, Decimal)]
+    if not nums:
+        return [None] * len(vals)
+    lo, hi = min(nums), max(nums)
+    return [None if not isinstance(v, Decimal) else (Decimal(0) if hi == lo else (v - lo) / (hi - lo)) for v in vals]
+
+
+def _overlay(sh):
+    """G1 叠加（C2 退路口径，与 Excel 相同）：一格的每个属性分别决定——
+       条件规则（按次序，先命中先得）> 格（$style.cells）> 行（$style.row）> 列默认（columns[].style）。
+       规则只管数据行；合计行取 row_styles 的 total > 列默认；表头取 header_style。
+    返回 {"cells": {(行, 列): 样式}, "totals": {列: 样式}, "header": 样式 | None}。色阶的底色写成 ("scale", 起色, 止色, t)。"""
+    cells = {}
+    scales = {}
+    if not (sh.rules or any(sh.displays) or any(c.style for c in sh.columns)):
+        totals = {j: dict(sh.row_styles["total"]) for j in range(len(sh.columns))} if sh.row_styles.get("total") else {}
+        return {"cells": cells, "totals": totals, "header": sh.header_style}
+    for r in sh.rules:
+        if r["kind"] == "scale":
+            scales[id(r)] = scale_t(sh, r["scale"][0])
+    for ri in range(len(sh.rows)):
+        d = sh.displays[ri] or {}
+        for j, c in enumerate(sh.columns):
+            st = dict(c.style or {})
+            st.update(d.get("row") or {})
+            st.update((d.get("cells") or {}).get(c.key) or {})
+            ruled = {}
+            for r in sh.rules:
+                if r["kind"] == "scale":
+                    if r["scale"][0] == c.key and scales[id(r)][ri] is not None and "fill" not in ruled:
+                        ruled["fill"] = ("scale", r["scale"][1], r["scale"][2], scales[id(r)][ri])
+                    continue
+                if r["hits"][ri] and (r["apply"] == "row" or c.key in r["apply"]):
+                    for k, v in r["style"].items():
+                        ruled.setdefault(k, v)
+            st.update(ruled)
+            if st:
+                cells[(ri, j)] = st
+    totals = {}
+    for j, c in enumerate(sh.columns):
+        st = dict(c.style or {})
+        st.update(sh.row_styles.get("total") or {})
+        if st:
+            totals[j] = st
+    return {"cells": cells, "totals": totals, "header": sh.header_style}
+
+
+def static_style(sh, ri, j):
+    """静态的三层（列默认 < 行 < 格），Excel 里写成单元格格式；条件规则另写成条件格式压在上面。"""
+    c = sh.columns[j]
+    d = sh.displays[ri] or {}
+    st = dict(c.style or {})
+    st.update(d.get("row") or {})
+    st.update((d.get("cells") or {}).get(c.key) or {})
+    return st
+
+
+def hex_of(v, theme="light", attr="fill"):
+    """样式里的颜色 → #RRGGBB。theme: light（也是 Excel 的色值）或 dark。"""
+    if isinstance(v, tuple):
+        _, a, b, tt = v
+        return _mix(hex_of(a, theme, attr), hex_of(b, theme, attr), float(tt))
+    x = PALETTE[v]
+    if theme == "light":
+        return x[0]
+    return x[1] if attr == "fill" else x[2]
+
+
+def _mix(a, b, tt):
+    ca = [int(a[i:i + 2], 16) for i in (1, 3, 5)]
+    cb = [int(b[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(x + (y - x) * tt):02X}" for x, y in zip(ca, cb))
+
+
 def _cell(col, v, where, lang):
     if col.formula is not None:
         return None
@@ -637,54 +985,134 @@ def _cell(col, v, where, lang):
     return _text_from(v, where, lang)
 
 
+def _env(sh, row):
+    """一行 → 公式求值用的环境：数值列给 Decimal，日期给 ISO 串，文字给串，是否给 bool。"""
+    return {c.key: row[k] for k, c in enumerate(sh.columns)}
+
+
+def _kinds(sh):
+    return {c.key: c.kind for c in sh.columns}
+
+
+def col_name(j: int) -> str:
+    s = ""
+    j += 1
+    while j:
+        j, r = divmod(j - 1, 26)
+        s = chr(65 + r) + s
+    return s
+
+
+def _resolver(sh, j, what="公式"):
+    def resolve(name):
+        cc = sh.find(name)
+        if cc is None:
+            raise F.FormulaError(f"{what}里的“{name}”不是这张表的列（用列的 key 或标题）")
+        k = sh.columns.index(cc)
+        if j is not None:
+            if cc.formula is not None and k >= j:
+                raise F.FormulaError(f"公式只能引用它左边的公式列（“{cc.title}”在右边）" if k != j else "公式不能引用自己")
+            if k == j:
+                raise F.FormulaError("公式不能引用自己")
+        return cc.key
+    return resolve
+
+
 def _formulas(sh, where, t):
-    done = set()
+    kinds = _kinds(sh)
+    cols = {}
+    for j, c in enumerate(sh.columns):
+        if c.formula is None:
+            cols[c.key] = [r[j] for r in sh.rows]
     for j, c in enumerate(sh.columns):
         if c.formula is None:
             continue
         w = f"{where}.columns[{j}].formula"
-
-        def resolve(name, _j=j):
-            cc = sh.find(name)
-            if cc is None:
-                raise F.FormulaError(f"公式里的“{name}”不是这张表的列（用列的 key 或标题）")
-            if cc.type not in NUMERIC:
-                raise F.FormulaError(f"“{cc.title}”不是数值列，不能参与计算")
-            k = sh.columns.index(cc)
-            if cc.formula is not None and k >= _j:
-                raise F.FormulaError(f"公式只能引用它左边的公式列（“{cc.title}”在右边）")
-            if k == _j:
-                raise F.FormulaError("公式不能引用自己")
-            return cc.key
         try:
-            c.node = F.parse(c.formula, resolve)
+            c.node = F.parse(c.formula, _resolver(sh, j))
+            k = F.kind_of(c.node, kinds)
         except F.FormulaError as e:
             raise BadInput(f"公式“{c.formula}”：{e}", w) from None
+        if k == "bool":
+            raise BadInput(f"公式“{c.formula}”：结果是条件（真或假），要用 if(条件, 甲, 乙) 写成数或文字", w)
+        if c.type == "text" and k not in ("text", "empty"):
+            raise BadInput(f"公式“{c.formula}”：type 为 text 的公式列，结果只能是双引号里的文字或空", w)
+        if c.type != "text" and k == "text":
+            raise BadInput(f"公式“{c.formula}”：结果是文字，这一列的 type 要写 text", f"{where}.columns[{j}].type")
+        kinds[c.key] = c.kind
         divz = 0
+        raw = []
+        check_float = F.uses(c.node, F.DISCONTINUOUS + ("cmp",))
+        flt = []
         for ri, row in enumerate(sh.rows):
-            env = {cc.key: row[k] for k, cc in enumerate(sh.columns) if cc.type in NUMERIC}
+            env = _env(sh, row)
             try:
-                v = F.evaluate(c.node, env)
+                v = F.evaluate(c.node, env, cols, ri)
             except F.DivZero:
                 v = None
                 divz += 1
                 sh.formula_errors.append({"row": ri, "column": c.key})
             except F.FormulaError as e:
                 raise BadInput(f"公式“{c.formula}”：{e}", w) from None
-            if v is not None and c.type == "integer":
-                v = v.quantize(Decimal(1), rounding=ROUND_HALF_UP)
-            row[j] = None if v is None else quantize(v, c.decimals if c.type != "percent" or c.decimals is None else c.decimals + 2)
+            raw.append(v)
+            if c.type == "text":
+                row[j] = v
+            else:
+                if v is not None and c.type == "integer":
+                    v = v.quantize(Decimal(1), rounding=ROUND_HALF_UP)
+                row[j] = None if v is None else quantize(v, c.decimals if c.type != "percent" or c.decimals is None else c.decimals + 2)
+            if check_float:
+                fv, hit = F.float_eval(c.node, env, cols, ri)
+                if hit and _float_differs(c, row[j], fv):
+                    flt.append((ri, fv))
+        sh.raw[c.key] = raw
+        cols[c.key] = [r[j] for r in sh.rows]
         if divz:
             t.warnings.append({"where": w, "code": "div_zero", "column": c.key,
                                "message": f"“{c.title}”有 {divz} 行除以零，这些格子留空"})
+        _float_warnings(t, sh, w, j, c, flt)
 
 
-def _totals(spec, sh, where):
+def _float_value(c, fv):
+    """双精度结果按本列的口径写成 Decimal（与 Excel 公式外包的 ROUND 一致），便于与产出台的值比。"""
+    if fv is None or isinstance(fv, (str, bool)):
+        return fv
+    if fv != fv or fv in (float("inf"), float("-inf")):
+        return None
+    d = Decimal(repr(fv))
+    if c.type == "integer":
+        d = d.quantize(Decimal(1), rounding=ROUND_HALF_UP)
+    return quantize(d, c.decimals if c.type != "percent" or c.decimals is None else c.decimals + 2)
+
+
+def _float_differs(c, v, fv):
+    if c.type == "text":
+        return v != fv
+    return _float_value(c, fv) != v
+
+
+def _float_warnings(t, sh, w, j, c, flt):
+    """G4 ②：不连续的函数（取整、比较、if）照双精度再算一遍，与产出台不同就告警，点名到格。只告警，不改结果。"""
+    for ri, fv in flt[:MAX_FLOAT_WARN]:
+        got = _float_value(c, fv)
+        shown = "空" if got is None else got if isinstance(got, str) else dec_str(got)
+        mine = sh.rows[ri][j]
+        mine = "空" if mine is None else mine if isinstance(mine, str) else dec_str(mine)
+        t.warnings.append({"where": f"{w}", "code": "excel_float", "column": c.key,
+                           "message": f"“{c.title}”第 {ri + 1} 行（{sh.name}!{col_name(j)}{ri + 2}）在 Excel 里重算可能得 {shown}；"
+                                      f"产出台按十进制算得 {mine}。双精度浮点在取整或比较的边界上差一个尾数；"
+                                      "导出的公式已先归整到 15 位有效数字，仍请在 Excel 里核对这一格"})
+    if len(flt) > MAX_FLOAT_WARN:
+        t.warnings.append({"where": w, "code": "excel_float", "column": c.key,
+                           "message": f"“{c.title}”另有 {len(flt) - MAX_FLOAT_WARN} 格同样可能与 Excel 重算不同，未逐一列出"})
+
+
+def _totals(spec, sh, where, t=None):
     if spec is None:
         return []
     if not isinstance(spec, list) or len(spec) > MAX_COLS:
-        raise BadInput("totals 是合计的数组：[{column, fn}]，fn 为 sum / avg / min / max / count；只写列名时按 sum", where)
-    out, seen = [], set()
+        raise BadInput("totals 是合计的数组：[{column, fn}]，fn 为 sum / avg / min / max / count / formula / none；只写列名时按 sum", where)
+    items, seen = [], set()
     for i, it in enumerate(spec):
         w = f"{where}[{i}]"
         if isinstance(it, str):
@@ -696,15 +1124,59 @@ def _totals(spec, sh, where):
             raise BadInput(f"合计的列“{name}”不在表里", f"{w}.column")
         fn = it.get("fn", "sum")
         if fn not in FNS:
-            raise BadInput("fn 只能是 sum、avg、min、max、count", f"{w}.fn")
-        if fn != "count" and c.type not in NUMERIC:
+            raise BadInput("fn 只能是 sum、avg、min、max、count、formula（合计行按本列公式重算）、none（留空）", f"{w}.fn")
+        if fn not in ("count", "none") and c.type not in NUMERIC:
             raise BadInput(f"“{c.title}”不是数值列，只能 count", f"{w}.fn")
+        if fn == "formula":
+            if c.formula is None:
+                raise BadInput(f"“{c.title}”不是公式列，不能按公式合计", f"{w}.fn", "fn 为 formula 只用于公式列：合计行把各列的合计代入本列公式")
+            if F.uses(c.node, ("agg",)):
+                raise BadInput(f"“{c.title}”的公式用了 total 或 cumsum，不能按公式合计", f"{w}.fn")
         if c.key in seen:
             raise BadInput(f"“{c.title}”的合计写了两次", w)
         seen.add(c.key)
-        out.append((c.key, fn, aggregate(sh.values(c.key), fn, c)))
+        items.append((c, fn, w))
     order = {c.key: k for k, c in enumerate(sh.columns)}
-    return sorted(out, key=lambda x: order[x[0]])
+    items.sort(key=lambda x: order[x[0].key])
+    vals = {}
+    for c, fn, w in items:
+        if fn not in ("formula", "none"):
+            vals[c.key] = aggregate(sh.values(c.key), fn, c)
+            if t is not None:
+                _total_warnings(t, sh, c, fn, vals[c.key], w)
+    by_fn = {c.key: fn for c, fn, _ in items}
+    for c, fn, w in items:
+        if fn == "none":
+            vals[c.key] = None
+        elif fn == "formula":
+            env = {k: vals.get(k) if by_fn.get(k) not in (None, "none", "count") else None for k in F.row_refs(c.node)}
+            try:
+                v = F.evaluate(c.node, env)
+            except F.DivZero:
+                v = None
+            if v is not None and c.type == "integer":
+                v = v.quantize(Decimal(1), rounding=ROUND_HALF_UP)
+            vals[c.key] = None if v is None else quantize(v, c.decimals if c.type != "percent" or c.decimals is None else c.decimals + 2)
+    return [(c.key, fn, vals[c.key]) for c, fn, _ in items]
+
+
+def _total_warnings(t, sh, c, fn, v, w):
+    """G3 ratio_total：比率类公式列配了 sum、avg；G4（精度口径 b）rounded_sum：逐行舍入后相加与先加后舍入不同。只告警，不改结果。"""
+    if c.formula is not None and fn in ("sum", "avg") and (c.type == "percent" or F.divides_by_column(c.node)):
+        t.warnings.append({"where": w, "code": "ratio_total", "column": c.key,
+                           "message": f"“{c.title}”是比率类的公式列，合计用了{'求和' if fn == 'sum' else '平均'}；"
+                                      "比率的合计通常要按公式重算（fn 写 formula，例如 实际合计 ÷ 预算合计）"})
+    raw = sh.raw.get(c.key)
+    if fn == "sum" and raw is not None and v is not None and (c.decimals is not None or c.type == "integer"):
+        exact = aggregate(raw, "sum", c)
+        d = c.decimals if c.type != "percent" or c.decimals is None else c.decimals + 2
+        exact = quantize(exact, 0 if c.type == "integer" else d)
+        if exact != v:
+            col = next(x for x in sh.columns if x.key == c.key)
+            from render import display
+            t.warnings.append({"where": w, "code": "rounded_sum", "column": c.key,
+                               "message": f"“{c.title}”各行先按显示位数舍入再相加，合计为 {display(col, v)}；"
+                                          f"各行不舍入、相加后再舍入为 {display(col, exact)}。产出台与 Excel 都按逐行舍入（精度口径 b），两边一致"})
 
 
 def aggregate(vals, fn, col):
@@ -723,12 +1195,20 @@ def aggregate(vals, fn, col):
             r = min(nums)
         else:
             r = max(nums)
+    d = aggregate_decimals(nums, fn, col)
+    if d == "exact":
+        return r
+    return quantize(r, d)
+
+
+def aggregate_decimals(nums, fn, col):
+    """合计舍入到几位小数（None 为 10 位归整，"exact" 为不舍入）。Excel 的合计公式外包同样位数的 ROUND（精度口径 b）。"""
     if fn == "avg" and col.decimals is None and col.shown_decimals is None:
         # 平均值没给小数位时：比数据本身多不出位，至少 2 位（百分比按小数算，至少 4 位即 2 位百分点），最多 6 位
         data = max((max(0, -v.as_tuple().exponent) for v in nums if v.is_finite()), default=0)
-        return quantize(r, min(6, max(data, 4 if col.type == "percent" else 2)))
+        return min(6, max(data, 4 if col.type == "percent" else 2))
     if col.type == "percent":
-        return quantize(r, None if col.decimals is None else col.decimals + 2)
+        return None if col.decimals is None else col.decimals + 2
     if col.type == "integer" and fn != "avg":
-        return r
-    return quantize(r, col.shown_decimals if fn == "avg" or col.decimals is not None else None)
+        return "exact"
+    return col.shown_decimals if fn == "avg" or col.decimals is not None else None

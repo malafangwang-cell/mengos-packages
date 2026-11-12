@@ -136,6 +136,7 @@ html.embed-view, html.embed-view body { height: auto; }
 </style>
 </head>
 <body>
+<style id="userstyles"></style>
 <div class="embed" id="embed" hidden></div>
 <div class="shell" id="shell" hidden>
   <div class="bar">
@@ -171,6 +172,28 @@ const FORMATS = {
   json: { t: "表模型", x: ".json", d: "规范对象，供程序读取。" },
 };
 const ALIGN = { right: "r", center: "c", left: "" };
+const FN_NAME = { sum: "求和", avg: "平均", min: "最小值", max: "最大值", count: "计数", formula: "按本列公式重算", none: "留空" };
+
+// 2.1.0：表里设的样式（底色、字色、加粗、斜体）。视图给出每格的最终样式（规则、行、格、列默认已叠好），
+// 浅色、深色主题各一套色值；这里只照着画，不另算。是用户要的样式，不是辅助色块。
+function styleCss(v) {
+  const out = [];
+  v.sheets.forEach((s, si) => (s.styles || []).forEach((x, i) => {
+    const sel = `.us${si}-${i}`;
+    const one = (fill, color) => [fill ? `background:${fill} !important` : "", color ? `color:${color} !important` : "",
+      x.bold === true ? "font-weight:700" : x.bold === false ? "font-weight:400" : "", x.italic === true ? "font-style:italic" : x.italic === false ? "font-style:normal" : ""].filter(Boolean).join(";");
+    out.push(`${sel}{${one(x.fill, x.color)}}`);
+    const dark = one(x.fill_dark, x.color_dark);
+    out.push(`@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) ${sel}{${dark}}}`, `:root[data-theme="dark"] ${sel}{${dark}}`);
+  }));
+  $("#userstyles").textContent = out.join("\n");
+}
+function styleMaps(s, si) {
+  const cell = new Map((s.cell_styles || []).map(([r, j, k]) => [r + "," + j, `us${si}-${k}`]));
+  const tot = new Map((s.totals_styles || []).map(([j, k]) => [j, `us${si}-${k}`]));
+  const head = s.header_style === undefined ? "" : `us${si}-${s.header_style}`;
+  return { cell, tot, head };
+}
 const st = { view: null, sheet: 0, sort: null, q: "", shown: PAGE, formats: [] };
 
 function viewOf(m) {
@@ -244,6 +267,7 @@ function hl(text) {
 
 function renderSheet() {
   const v = st.view, s = v.sheets[st.sheet];
+  const sm = styleMaps(s, st.sheet);
   const idx = rowsOf(s);
   const fz = s.freeze_cols || 0;
   const cls = (c, j) => [ALIGN[c.align] || "", j < fz ? "fz" : "", c.type === "text" && s.rows.some((r) => String(r[j]).length > 40) ? "wrap" : ""].filter(Boolean).join(" ");
@@ -252,14 +276,18 @@ function renderSheet() {
     const fx = c.formula_display || c.formula;
     const label = `${c.formula ? `<span class="f" title="公式：${esc(fx)}">ƒ</span>` : ""}${esc(c.title)}${c.unit ? `<span class="u">${esc(c.unit)}</span>` : ""}`;
     const sortName = st.sort && st.sort.col === j ? (st.sort.dir > 0 ? "ascending" : "descending") : "none";
-    return `<th class="${cls(c, j)}" aria-sort="${sortName}"><button data-col="${j}" title="${esc(c.formula ? c.header + " = " + (c.formula_display || c.formula) : c.header)}（点击排序）">${label}<span class="s">${arrow}</span></button></th>`;
+    return `<th class="${[cls(c, j), sm.head].filter(Boolean).join(" ")}" aria-sort="${sortName}"><button data-col="${j}" title="${esc(c.formula ? c.header + " = " + (c.formula_display || c.formula) : c.header)}（点击排序）">${label}<span class="s">${arrow}</span></button></th>`;
   }).join("");
   const shown = idx.slice(0, st.shown);
   const body = shown.map((i) => `<tr><td class="idx">${i + 1}</td>${s.columns.map((c, j) => {
     const t = s.rows[i][j];
-    return `<td class="${[cls(c, j), t === "" ? "e" : ""].filter(Boolean).join(" ")}">${t === "" ? "" : hl(t)}</td>`;
+    return `<td class="${[cls(c, j), t === "" ? "e" : "", sm.cell.get(i + "," + j) || ""].filter(Boolean).join(" ")}">${t === "" ? "" : hl(t)}</td>`;
   }).join("")}</tr>`).join("");
-  const foot = s.totals ? `<tfoot><tr><td class="idx"></td>${s.totals.map((t, j) => `<td class="${cls(s.columns[j], j)}">${esc(t)}</td>`).join("")}</tr></tfoot>` : "";
+  const fns = s.totals_fn || [];
+  const foot = s.totals ? `<tfoot><tr><td class="idx"></td>${s.totals.map((t, j) => {
+    const how = fns[j] ? FN_NAME[fns[j]] || fns[j] : "";
+    return `<td class="${[cls(s.columns[j], j), sm.tot.get(j) || ""].filter(Boolean).join(" ")}"${how ? ` title="${esc(s.columns[j].title)}：${esc(how)}" data-fn="${esc(fns[j])}"` : ""}>${esc(t)}</td>`;
+  }).join("")}</tr></tfoot>` : "";
   const toolbar = `<label class="search"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M9.2 9.2L12.5 12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`
     + `<input id="q" type="search" placeholder="在这张表里找" aria-label="在这张表里找" value="${esc(st.q)}"></label>`
     + `<span class="count">${st.q ? `找到 ${n(idx.length)} / ${n(s.rows.length)} 行` : `${n(s.rows.length)} 行 × ${s.columns.length} 列`}</span>`;
@@ -282,13 +310,15 @@ function renderSheet() {
 function renderFoot(v, s) {
   const fs = s.columns.filter((c) => c.formula);
   const src = v.sources || [], asm = v.assumptions || [];
-  const parts = [["公式", fs.length], ["来源", src.length], ["假设", asm.length]].filter((p) => p[1]);
+  const rules = s.rules || [];
+  const parts = [["公式", fs.length], ["规则", rules.length], ["来源", src.length], ["假设", asm.length]].filter((p) => p[1]);
   if (s.note) parts.unshift(["说明", 1]);
   const el = $("#foot");
   if (!parts.length) { el.innerHTML = ""; return; }
   const sec = (k, t, items) => items.length ? `<section data-kind="${k}"><h2>${t}</h2><ul>${items.join("")}</ul></section>` : "";
   const body = (s.note ? sec("note", "说明", [`<li>${esc(s.note)}</li>`]) : "")
     + sec("formula", "公式", fs.map((c) => `<li data-key="${esc(c.key || c.title)}"><span class="fx">${esc(c.title)} = ${esc(c.formula_display || c.formula)}</span></li>`))
+    + sec("rule", "规则（按次序，先命中的先得）", rules.map((r) => `<li data-n="${r.n}">规则 ${r.n}：${esc(r.text)}${r.label ? `（${esc(r.label)}）` : ""}</li>`))
     + sec("source", "来源", src.map((x, i) => `<li data-i="${i}">${esc(x)}</li>`))
     + sec("assumption", "假设", asm.map((x, i) => `<li data-i="${i}">${esc(x)}</li>`));
   el.innerHTML = `<details${st.footOpen ? " open" : ""}><summary>${parts.map((p) => `<span>${p[0]} <b>${p[1]}</b></span>`).join("")}</summary><div class="body">${body}</div></details>`;
@@ -358,11 +388,12 @@ $("#menu").addEventListener("click", (e) => {
 // ---------------------------------------------------------------- 嵌入视图
 function renderEmbed(v) {
   const s = v.sheets[0];
+  const sm = styleMaps(s, 0);
   const cols = s.columns.slice(0, 6);
   const rows = s.rows.slice(0, 5);
   const more = s.columns.length > cols.length;
-  const head = cols.map((c) => `<th class="${ALIGN[c.align] || ""}">${esc(c.title)}</th>`).join("") + (more ? "<th>…</th>" : "");
-  const body = rows.map((r) => `<tr>${cols.map((c, j) => `<td class="${ALIGN[c.align] || ""}">${esc(r[j])}</td>`).join("")}${more ? "<td></td>" : ""}</tr>`).join("");
+  const head = cols.map((c) => `<th class="${[ALIGN[c.align] || "", sm.head].filter(Boolean).join(" ")}">${esc(c.title)}</th>`).join("") + (more ? "<th>…</th>" : "");
+  const body = rows.map((r, i) => `<tr>${cols.map((c, j) => `<td class="${[ALIGN[c.align] || "", sm.cell.get(i + "," + j) || ""].filter(Boolean).join(" ")}">${esc(r[j])}</td>`).join("")}${more ? "<td></td>" : ""}</tr>`).join("");
   const rest = s.rows.length - rows.length;
   $("#embed").innerHTML = `<div class="t">${esc(v.title)}</div><div class="m">表格 · ${esc(scaleText(v))}</div>`
     + (rows.length ? `<div class="mini"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>` : "")
@@ -382,6 +413,7 @@ function render(m) {
   $("#embed").hidden = !embed;
   $("#shell").hidden = embed;
   st.view = v; st.sheet = 0; st.sort = null; st.q = ""; st.shown = PAGE;
+  if (v) styleCss(v);
   if (!v) {
     const msg = `<div class="empty">表较大，没有随来数据。可以从下载菜单取得文件。</div>`;
     if (embed) $("#embed").innerHTML = msg; else { $("#grid").innerHTML = msg; renderMenu(); }

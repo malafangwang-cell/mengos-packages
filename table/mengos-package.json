@@ -1,6 +1,6 @@
 {
   "package": "table",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "title": "表格",
   "tool_titles": {
     "table.build": "生成表格",
@@ -9,7 +9,7 @@
   },
   "publisher": "mengos",
   "scope": "public",
-  "content_hash": "844965a433efc1cc59a898d7836abb4edd6a0c7617b36c0c719bf88a34eac8b2",
+  "content_hash": "4e62da3e5e93098c92bcb4738ade1aa24dd1467fc3f69da180ab2ce7f8d4e767",
   "types": [
     {
       "name": "table",
@@ -54,7 +54,7 @@
       "uv.lock",
       "registration.json"
     ],
-    "note": "工具 version（lock hash）只覆盖这些文件；renderer/、samples/、tests/、tools/、README 不在其内，改它们不使认证失效（TL-25）"
+    "note": "工具 version（lock hash）只覆盖这些文件；renderer/、samples/、tests/、tools/、readings/、README 不在其内，改它们不使认证失效（TL-25）"
   },
   "certification_material": {
     "golden_cases": "golden_cases.json",

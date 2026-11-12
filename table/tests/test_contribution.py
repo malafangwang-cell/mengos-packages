@@ -338,10 +338,48 @@ def _overlay(base, extra):
             _overlay(base[k], v)
 
 
+# 2.1.0 只放宽（执行令 table 包 2.1.0 §四）：入参 schema 只加可选字段、枚举值与说明文字。去掉这些，应与 1.0.1 逐键相同。
+ADDED_FIELDS_210 = {"style", "date_format", "thousands", "header_style", "rules", "row_styles"}
+ADDED_FN_210 = ["formula", "none"]
+
+
+def _strip_210(node):
+    """去掉 2.1.0 新增的可选字段、枚举值、行里的 $style 保留键，与新增的说明句。"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("mr", ROOT / "tools" / "make_registration.py")
+    mr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mr)
+    added = mr.FORMULA_ADD + mr.STYLE_DESC + mr.TOT_ADD + ["改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。",
+                                                        "产出台与 Excel 重算一致；个别取整或比较的边界值可能不一致时会告警，点名到格。"]
+
+    def text(t):
+        t = t.replace("、样式与条件格式）", "）").replace("只写列名时按 sum；", "只写列名时按 sum。")
+        for a in added:
+            t = t.replace(a.replace('\\"', '"'), "")
+        return t
+
+    def walk(n):
+        if isinstance(n, dict):
+            out = {}
+            for k, v in n.items():
+                if k == "properties" and isinstance(v, dict):
+                    v = {pk: pv for pk, pv in v.items() if pk not in ADDED_FIELDS_210 and pk != "$style"}
+                    if not v and n.get("type") == "object" and "additionalProperties" in n and n["additionalProperties"] is not False:
+                        continue        # 对象行只多了 $style 这一项
+                if k == "enum" and isinstance(v, list) and all(x in v for x in ADDED_FN_210):
+                    v = [x for x in v if x not in ADDED_FN_210]
+                out[k] = text(v) if k == "description" and isinstance(v, str) else walk(v)
+            return out
+        if isinstance(n, list):
+            return [walk(x) for x in n]
+        return n
+    return walk(node)
+
+
 def test_whole_mode_schema_equals_1_0_1_schema_plus_sheet_id():
     """不带 base 时走 else：去掉贡献标注与 base 槽、把 else 叠回主体，再去掉 sheet id 必填这一处新增、
-    去掉 table 的说明文字（2.0.0 改写了），应与 1.0.1 的 table.build input_schema 逐键相同。x-mengos-data 保留。"""
-    s = _strip(copy.deepcopy(BUILD))
+    去掉 table 的说明文字（2.0.0 改写了），去掉 2.1.0 新增的可选字段与说明句，应与 1.0.1 的 table.build input_schema 逐键相同。x-mengos-data 保留。"""
+    s = _strip(_strip_210(copy.deepcopy(BUILD)))
     s.pop("if"), s.pop("then")
     els = s.pop("else")
     s["properties"].pop("base")
@@ -364,9 +402,35 @@ def test_build_description_states_the_2_0_0_rules():
 WM = json.loads((FIX / "whole-mode-1.0.1.json").read_text(encoding="utf-8"))
 
 
+WX = json.loads((FIX / "whole-mode-2.0.1-xlsx.json").read_text(encoding="utf-8"))
+NEW_VIEW_FIELDS_210 = ("totals_fn",)      # 2.1.0 产出台数据新增的输出字段（只加，不改原有字段）
+
+
+def _unwrap_210(new, old):
+    """2.1.0 的 Excel 公式 = 2.0.1 的公式外面至多加两层：ROUND(…,d)（精度口径 b，C4）与 IF(COUNT(…)=n,…,"")（有空就空）。"""
+    import re
+    if new == old:
+        return True
+    m = re.fullmatch(r'=IF\((?:COUNT|AND)\(.*?\)(?:=\d+)?,(.*),""\)', new)
+    if m and _unwrap_210("=" + m.group(1), old):
+        return True
+    inner_old = old[1:]
+    for pat in (r"=ROUND\((.*),\d+\)", r'=IFERROR\(ROUND\((.*),\d+\),""\)'):
+        m = re.fullmatch(pat, new)
+        if m:
+            cand = "=" + m.group(1) if pat.startswith("=ROUND") else '=IFERROR(' + m.group(1) + ',"")'
+            if cand == old or "=" + m.group(1) == old:
+                return True
+    return False
+
+
 @pytest.mark.parametrize("case", WM["cases"], ids=[c["id"] for c in WM["cases"]])
-def test_whole_mode_output_byte_identical_to_1_0_1(case, tmp_path):
-    """同一进程入口、同一信封，stdout 一行与 1.0.1 逐字节相同，产出文件逐个 sha256 相同。"""
+def test_whole_mode_output_unchanged_since_1_0_1(case, tmp_path):
+    """同一进程入口、同一信封：表模型、Markdown、CSV 逐字节同 1.0.1；产出台数据去掉 2.1.0 新增的输出字段后逐字节相同；
+    xlsx 逐格的值同 2.0.1，公式只多 ROUND 与 IF(COUNT…) 两层（C4、G4）；stdout 除这两件文件的 bytes 与 sha256 外逐字节相同。"""
+    import io
+    import openpyxl
+    import render
     assert VB.is_valid(case["payload"]) and "base" not in case["payload"]
     w = tmp_path / "w"
     w.mkdir()
@@ -374,9 +438,36 @@ def test_whole_mode_output_byte_identical_to_1_0_1(case, tmp_path):
     p = subprocess.run([sys.executable, str(ROOT / "table_tool.py")], input=json.dumps(env, ensure_ascii=False).encode(),
                        capture_output=True, cwd=str(ROOT), timeout=120)
     line = p.stdout.decode("utf-8")
-    files = {f["path"]: sha((w / f["path"]).read_bytes()) for f in json.loads(line)["output"]["files"]}
-    assert line == case["stdout"]
-    assert files == case["file_sha256"]
+    out = json.loads(line)["output"]
+    old = json.loads(case["stdout"])["output"]
+    for f in out["files"]:
+        data = (w / f["path"]).read_bytes()
+        if f["format"] == "view":
+            v = json.loads(data)
+            for sh in v["sheets"]:
+                for k in NEW_VIEW_FIELDS_210:
+                    sh.pop(k, None)
+            assert sha(render.dumps(v)) == case["file_sha256"][f["path"]], f["path"]
+        elif f["format"] == "xlsx":
+            want = WX["cases"][case["id"]]
+            wf, wv = openpyxl.load_workbook(io.BytesIO(data)), openpyxl.load_workbook(io.BytesIO(data), data_only=True)
+            got = {}
+            for ws in wf.worksheets:
+                got[ws.title] = {c.coordinate: [c.value if isinstance(c.value, str) and c.value.startswith("=") else None,
+                                                wv[ws.title][c.coordinate].value] for r in ws.iter_rows() for c in r if c.value is not None}
+            assert set(got) == set(want)
+            for t, cells in want.items():
+                assert set(got[t]) == set(cells), t
+                for k, (f_old, v_old) in cells.items():
+                    f_new, v_new = got[t][k]
+                    v_new = v_new.isoformat() if hasattr(v_new, "isoformat") else v_new
+                    assert v_new == v_old, (t, k, v_new, v_old)
+                    assert (f_old is None) == (f_new is None) and (f_old is None or _unwrap_210(f_new, f_old)), (t, k, f_new, f_old)
+        else:
+            assert sha(data) == case["file_sha256"][f["path"]], f["path"]
+    norm = lambda o: [{k: v for k, v in f.items() if not (f["format"] in ("xlsx", "view") and k in ("bytes", "sha256"))} for f in o["files"]]
+    assert norm(out) == norm(old)
+    assert {k: v for k, v in out.items() if k != "files"} == {k: v for k, v in old.items() if k != "files"}
 
 
 def test_whole_mode_fixture_was_recorded_on_1_0_1():
@@ -476,9 +567,10 @@ def test_check_and_export_input_schemas_have_no_contribution_vocabulary():
         assert "x-mengos-base" not in json.dumps(s) and "x-mengos-merge" not in json.dumps(s)
 
 
-def test_check_and_export_input_schemas_equal_1_0_1():
-    assert sha(canonical_json(CHECK).encode()) == V101_CHECK_SHA256
-    assert sha(canonical_json(EXPORT).encode()) == V101_EXPORT_SHA256
+def test_check_and_export_input_schemas_equal_1_0_1_plus_2_1_0_additions():
+    """2.1.0 只加可选字段、枚举值与说明句；去掉它们，核对与导出的入参 schema 与 1.0.1 逐键相同。"""
+    assert sha(canonical_json(_strip_210(CHECK)).encode()) == V101_CHECK_SHA256
+    assert sha(canonical_json(_strip_210(EXPORT)).encode()) == V101_EXPORT_SHA256
 
 
 def test_check_and_export_accept_old_table_objects_without_sheet_id(tmp_path):
