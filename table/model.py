@@ -224,7 +224,7 @@ def infer_type(values):
 # ---------------------------------------------------------------- 结构
 class Column:
     __slots__ = ("key", "title", "type", "unit", "decimals", "formula", "node", "align", "width", "inferred",
-                 "style", "date_format", "thousands", "numbering")
+                 "style", "date_format", "thousands", "numbering", "identifier")
 
     def to_json(self):
         o = {"key": self.key, "title": self.title, "type": self.type}
@@ -245,6 +245,8 @@ class Column:
             o["thousands"] = self.thousands
         if self.numbering is not None:
             o["numbering"] = self.numbering
+        if self.identifier:
+            o["identifier"] = True
         return o
 
     @property
@@ -459,7 +461,9 @@ SHEET_ONLY_KEYS = ("derive",)                                           # 2.2.0 
 TABLE_KEYS = ("schema", "title", "subtitle", "meta", "sheets", "sources", "assumptions",
               "columns", "rows", "totals", "caption", "note", "freeze_cols", "name", "lang") + SHEET_STYLE_KEYS + STRUCT_KEYS + ("sheet_order",)
 SHEET_KEYS = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols") + SHEET_STYLE_KEYS + STRUCT_KEYS + SHEET_ONLY_KEYS
-COL_KEYS = ("key", "title", "type", "unit", "decimals", "formula", "width", "align", "style", "date_format", "thousands", "numbering")
+COL_KEYS = ("key", "title", "type", "unit", "decimals", "formula", "width", "align", "style", "date_format", "thousands", "numbering", "identifier")
+ID_TITLE = re.compile(r"(编号|序号|代号|代码|编码|号码|图号|料号|ID)$", re.IGNORECASE)
+ID_LOOK = re.compile(r"^(0\d+(\.\d+)?|\d+\.\d*0|\d+(\.\d+){2,})$")     # 前导零、小数点后有末尾零、两个以上小数点
 
 
 def normalize(raw, build=False) -> Table:
@@ -684,6 +688,8 @@ def _sheet_finish(sh, t, build):
     if s.get("derive") is not None:
         _derive_rows(sh, s["derive"], t, f"{where}.derive")
     _formulas(sh, where, t)
+    if build:
+        _number_warnings(sh, t, where)
     sh.levels = _levels(sh)
     sh.merge_rows = _merge_spec(s.get("merge_rows"), sh, f"{where}.merge_rows")
     sh.subtotals = _subtotal_spec(s.get("subtotals"), sh, f"{where}.subtotals")
@@ -782,6 +788,10 @@ def _column(c, where, j) -> Column:
     if nb is not None and nb not in NUMBERINGS:
         raise BadInput("numbering 只能是 seq（数据行依次编 1、2…）或 outline（按 outline_from 的层级编 1、1.1…）", f"{where}.numbering")
     col.numbering = nb
+    idf = c.get("identifier")
+    if idf is not None and not isinstance(idf, bool):
+        raise BadInput("identifier 是 true 或 false：这一列是标识符（编号、代码），不是数", f"{where}.identifier")
+    col.identifier = bool(idf)
     return col
 
 
@@ -1943,6 +1953,25 @@ def _formulas(sh, where, t):
                                "message": f"“{c.title}”的跨表汇总在{names}{'等' if len(nomatch) > 10 else ''}一行也对不上（结果为 0）；"
                                           "请核对两张表的写法是否一致"})
         _float_warnings(t, sh, w, j, c, flt)
+
+
+def _number_warnings(sh, t, where):
+    """17 TL-30 v0.2.99 与 2.2.0 令 §二 补：只提示，不改写、不拒收。
+    formula_no_column：公式的结果不依赖任何一列（如 168、数量*0+168）；
+    numeric_as_text：列显式写了 type text，而整列的值都能读成数（编号列、identifier、像标识符的值、标题像编号的列除外）。"""
+    for j, c in enumerate(sh.columns):
+        if c.formula is not None and c.node is not None and not F.live_refs(c.node):
+            t.warnings.append({"where": f"{where}.columns[{j}].formula", "code": "formula_no_column", "column": c.key,
+                               "message": f"“{c.title}”的公式“{c.formula}”不依赖任何一列，每行都是同一个数；"
+                                          "公式不把数据原样带进表：数要写在输入格里（照常标出处），或引用一列"})
+        if (c.type == "text" and not c.inferred and c.formula is None and c.numbering is None and not c.identifier
+                and not ID_TITLE.search(c.title)):
+            vals = [r[j] for r in sh.rows if isinstance(r[j], str)]
+            norm = [unicodedata.normalize("NFKC", v).strip().replace(",", "") for v in vals]
+            if norm and all(NUM_RE.match(v) for v in norm) and not any(ID_LOOK.match(v) for v in norm):
+                t.warnings.append({"where": f"{where}.columns[{j}].type", "code": "numeric_as_text", "column": c.key,
+                                   "message": f"“{c.title}”写成了文字列，可它的值都是数；表格里的数默认就是数字，可以计算。"
+                                              "这一列若是编号、代码一类的标识符，写 \"identifier\": true"})
 
 
 def _float_value(c, fv):

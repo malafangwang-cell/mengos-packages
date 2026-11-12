@@ -55,6 +55,8 @@ def test_x_mengos_expr_is_declared_on_every_rows_and_only_where_the_engine_can_s
     declared = [p for p, n in reach.items() if n.get("x-mengos-expr")]
     assert sorted(declared) == sorted(rows), declared             # 只在 rows 上，公式列等别处不声明
     assert json.dumps(s).count('"x-mengos-expr"') == len(rows)    # oneOf、anyOf 分支里没有（引擎看不见那里）
+    for p in rows:                                                 # 17 TL-30b v0.2.99：位数、步长参数的声明在同一层
+        assert reach[p]["x-mengos-expr-params"] == {"round": [2], "roundup": [2], "rounddown": [2], "ceiling": [2], "floor": [2]}
 
 
 def test_cell_schema_accepts_expr_objects_and_nothing_else():
@@ -78,6 +80,38 @@ def engine_numbers(expr):
 def test_numbers_the_engine_will_check_are_exactly_the_numbers_in_the_expression(expr, nums):
     """取整的步长、位数可省（ceiling(x)）：式里不写，就不用为它找出处；行 id、表 id 里的数字不当成数。"""
     assert engine_numbers(expr) == nums
+
+
+# 引擎（mengosv2 #734）按声明跳过“恰是一个数”的位数、步长参数：这里照它的切分法核一遍我们的式
+def engine_exempt(expr, decl):
+    out, i = [], 0
+    for m in re.finditer(r"([^\W\d][\w]*)\s*\(", expr):
+        idx = decl.get(m.group(1).lower())
+        if not idx:
+            continue
+        depth, arg, start = 0, 1, m.end()
+        for k in range(start, len(expr)):
+            ch = expr[k]
+            if ch in "([":
+                depth += 1
+            elif ch in ")]":
+                if depth == 0:
+                    if arg in idx and re.fullmatch(r"[+-]?\d+(?:\.\d+)?", expr[start:k].strip()):
+                        out.append(float(expr[start:k]))
+                    break
+                depth -= 1
+            elif ch == "," and depth == 0:
+                if arg in idx and re.fullmatch(r"[+-]?\d+(?:\.\d+)?", expr[start:k].strip()):
+                    out.append(float(expr[start:k]))
+                arg, start = arg + 1, k + 1
+    return out
+
+
+@pytest.mark.parametrize("expr,exempt", [("ceiling(672*1.005, 1)", [1]), ("round(@r1.数量/3, 2)", [2]), ("ceiling(1, 50)", [50]),
+                                         ("round(ceiling(@r1.数量, 1), 2)", [1, 2]), ("roundup(@r1.数量*1.05)", [])])
+def test_declared_rounding_params_are_the_ones_the_engine_skips(expr, exempt):
+    decl = UNITS["table.build"]["signature"]["input_schema"]["properties"]["table"]["properties"]["rows"]["x-mengos-expr-params"]
+    assert sorted(engine_exempt(expr, {k: set(v) for k, v in decl.items()})) == sorted(exempt)
 
 
 def test_formula_and_numbering_columns_refuse_expr(tmp_path):
@@ -188,6 +222,29 @@ def test_csv_of_merged_tables_writes_visible_rows_only(tmp_path):
     r, w = run("table.build", {**G["t5_03_merge_formula"]["payload"], "formats": ["csv"]}, tmp_path)
     lines = files(r, w)["csv"].decode("utf-8-sig").strip().split("\r\n")
     assert len(lines) == 1 + 10                                    # 11 行并成 10 行（看得见的行）
+
+
+@pytest.mark.parametrize("formula,warn", [("168", True), ("数量*0+168", True), ("0*数量", True), ("单价*数量", False), ("total(数量)", False)])
+def test_formula_no_column_warning(formula, warn, tmp_path):
+    t = {"title": "T", "columns": [{"title": "数量", "type": "integer"}, {"title": "单价", "type": "money"},
+                                  {"title": "金额", "type": "money", "formula": formula}], "rows": [[1, 2]]}
+    r, _ = run("table.build", {"table": t}, tmp_path)
+    assert ("formula_no_column" in [w["code"] for w in r["output"]["warnings"]]) is warn
+
+
+@pytest.mark.parametrize("col,vals,warn", [
+    ({"title": "单价", "type": "text"}, ["12", "15.5"], True),
+    ({"title": "编号", "type": "text"}, ["1", "1.1"], False),                       # 标题像编号
+    ({"title": "零件", "type": "text", "identifier": True}, ["12", "15"], False),   # identifier
+    ({"title": "零件", "type": "text"}, ["0012", "15"], False),                     # 前导零
+    ({"title": "层", "type": "text"}, ["1.10", "2"], False),                        # 小数点后末尾零
+    ({"title": "单价"}, ["12", "15"], False),                                       # 没写 type：推断成数，不告警
+    ({"title": "名称", "type": "text"}, ["甲", "12"], False)])
+def test_numeric_as_text_warning(col, vals, warn, tmp_path):
+    t = {"title": "T", "columns": [col], "rows": [[v] for v in vals]}
+    r, _ = run("table.build", {"table": t}, tmp_path)
+    assert r["ok"], r
+    assert ("numeric_as_text" in [w["code"] for w in r["output"]["warnings"]]) is warn
 
 
 def test_old_tables_have_no_new_view_fields(tmp_path):

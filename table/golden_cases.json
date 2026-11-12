@@ -18335,6 +18335,131 @@
   }
  },
  {
+  "id": "err_if_numeric_branches",
+  "note": "补：if 的两支不收数字常数（长期规则）：if(名称=\"立柱\", 168, 1296) 回 BAD_INPUT，提示引用一列",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "T",
+    "columns": [
+     {
+      "title": "名称",
+      "type": "text"
+     },
+     {
+      "title": "数量",
+      "type": "integer",
+      "formula": "if(名称 = \"立柱\", 168, 1296)"
+     }
+    ],
+    "rows": [
+     [
+      "立柱"
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "error.code": "BAD_INPUT",
+   "error.where": "table.columns[1].formula"
+  }
+ },
+ {
+  "id": "w_formula_no_column",
+  "note": "补：公式的结果不依赖任何一列（数量*0+168）出告警 formula_no_column，只提示不拒收",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "T",
+    "columns": [
+     {
+      "title": "数量",
+      "type": "integer"
+     },
+     {
+      "title": "单价",
+      "type": "money"
+     },
+     {
+      "title": "甲",
+      "type": "integer",
+      "formula": "数量*0+168"
+     },
+     {
+      "title": "金额",
+      "type": "money",
+      "formula": "单价*数量"
+     }
+    ],
+    "rows": [
+     [
+      2,
+      5
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "warning_codes": [
+    "formula_no_column"
+   ],
+   "warnings_contain": [
+    "“甲”的公式“数量*0+168”不依赖任何一列"
+   ],
+   "model": {
+    "sheets[0].rows[0][2]": "168"
+   }
+  }
+ },
+ {
+  "id": "w_numeric_as_text",
+  "note": "补：列显式写 text 而值都是数时告警 numeric_as_text；编号列、写了 identifier 的列、标题像编号的列不告警",
+  "tool": "table.build",
+  "payload": {
+   "table": {
+    "title": "T",
+    "columns": [
+     {
+      "title": "编号",
+      "type": "text"
+     },
+     {
+      "title": "单价",
+      "type": "text"
+     },
+     {
+      "title": "零件",
+      "type": "text",
+      "identifier": true
+     }
+    ],
+    "rows": [
+     [
+      "1",
+      "12",
+      "100"
+     ],
+     [
+      "1.1",
+      "15.5",
+      "200"
+     ]
+    ]
+   }
+  },
+  "expect": {
+   "warning_codes": [
+    "numeric_as_text"
+   ],
+   "warnings_contain": [
+    "“单价”写成了文字列"
+   ],
+   "model": {
+    "sheets[0].columns[2].identifier": true
+   }
+  }
+ },
+ {
   "id": "c_pass",
   "note": "列、唯一、非空、合计、行数全过",
   "tool": "table.check",
