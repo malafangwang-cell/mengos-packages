@@ -1,15 +1,16 @@
 {
   "package": "cad",
-  "version": "2.5.2",
+  "version": "2.6.0",
   "publisher": "mengos",
   "scope": "public",
   "title": "三维零件建模",
   "tool_titles": {
     "cad.build": "建三维零件模型",
     "cad.check": "核对零件尺寸与特征",
-    "cad.export": "导出零件加工与图纸文件"
+    "cad.export": "导出零件加工与图纸文件",
+    "cad.compare": "比较零件改前改后的特征表"
   },
-  "content_hash": "6e438da4be44f3c75c0a7700c7bf82b5ad9f81cbf3c2c9cb66f09e81e894fbbe",
+  "content_hash": "a32639075857bbca7c15a9683b80e84457ed3f3f9a4a22ffe5d9e021350fb65d",
   "types": [
     {
       "name": "cad_model",
@@ -50,6 +51,18 @@
       "parent": null,
       "kind": "value",
       "note": "导出的文件集合，经 TL-9a 进入 ObjectStore；以通用文件卡片展示"
+    },
+    {
+      "name": "cad_feature_table",
+      "parent": null,
+      "kind": "value",
+      "note": "cad.build 产出里的特征表（features 与 part，2.6.0 起带面摘要）；只给 cad.compare 作入参"
+    },
+    {
+      "name": "cad_diff",
+      "parent": null,
+      "kind": "value",
+      "note": "两份特征表的比较结果：改了、随动、被修剪、新增、删去、零件级属性与逐行参数差（cad.compare 产出）。局部修改的服务端在 run 外直接调用，不经选择管线"
     }
   ],
   "uses_platform_types": [

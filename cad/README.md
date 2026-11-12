@@ -1,5 +1,18 @@
 # cad v2（W3 的 CAD 工具包）
 
+> 2.6.0（mengosv2《执行令-局部追问-cad包补强-2026-11-12》K1–K14；设计《局部追问 r9.2》§五 C1–C9；终审 M7；交互定稿 #728）：给“只改零件里的一处”补包内的东西。**只放宽**：只加输出字段、告警与一件新工具；2.5.2 已有的输出字段逐字节不变，35 条金样一字未动、全过（`tests/test_local_edit.py` 拿 2.5.2 的实跑输出逐样件比对：STEP、STL、3MF、SVG、DXF 的 sha256 不变，GLB 去掉新加的 `extras.faces` 后逐字节相同）。
+> - **K1 行行有名**：cad.build 对无名的特征行（实体、加工、圆角、倒角、抽壳、阵列、镜像）出告警 `{line, code: "unnamed_feature", feature: "chamfer#1", message}`，排在原有告警之后；plan 的说明由“想以后还能改的特征都写上名字”改为要求。只告警，不拒收（拒收留到大版本）。
+> - **K2、K11 全行表**：输出加 `lines`，计划里每一行一项 `{line, name?, op?, kind: feature|declaration|modifier|copy|comment, feature_id?, selectable, why_not?, scope?}`；`let`、`material`、`units`（具名也一样）为 declaration、不可选；每个特征行恰好对应一个特征 id。特征表每项加 `selectable` 与 `why_not`（`unnamed`；0 面特征仍可选，`faces = 0`）。另加 `part: {material, density, mass}`。
+> - **K3 阵列与镜像分组**：pattern、mirror 行加 `group: {kind, source, instances}`（instances 含源特征）；GLB 里复制出来的面带实例号（源特征本身是实例 0，面归源特征那一行）。
+> - **K4 面摘要**：特征表每项加 `face_digest`：名下各面的 `[曲面键, 面积]`，按键排序，面积 3 位小数；曲面键沿用 `builder.surface_key`，文字形式见 `builder.face_key_text`。
+> - **K5、K11、K14 新工具 `cad.compare`**：两份特征表（`old`、`new`）→ `{changed, followed, trimmed, added, removed, part_changed, param_diffs}`。计划行（只看代码部分，注释与空白不算）变了算 changed，行没变、曲面键集合变了算 followed，只有面积变了算 trimmed；`part_changed` 报材料、密度，质量只在密度变了或有无质量变了时列出（几何变化带来的质量变化不算）；`param_diffs` 逐个参数给前后值，原样取自计划行（如 `{name: boss, param: d, before: "60", after: "70"}`，位置参数记 arg1、arg2…）。不建模、不读几何；旧表缺 `face_digest` 或 `part` 时回 BAD_INPUT，提示先用当前版本重建一次。登记动词 check、入参类型 `cad_feature_table`、产物类型 `cad_diff`（新声明的两个值类型），不声明 review_coverage；`cad_diff` 没有别的工具产出、普通任务也不要它，所以不进普通 run 的选择管线。
+> - **K6、K12 依赖与作用范围**：特征表每项加 `refs`（`edges=名`、`pattern 名`、`mirror 名`）与反向 `referenced_by`，只是下限；加 `scope`：shell 与按 all、vertical、面名选边（含缺省 all）的圆角、倒角为 global，其余 local。
+> - **K7、K13 面一级**：特征表每项加 `uncertain_faces`（键里含面积的面，即非平面、非圆柱面）；GLB 每个特征节点的 `extras.faces` 列出名下各面 `{tris: [起, 数], face_key, uncertain?, instance?}`，渲染器据此带出点中的面。
+> - **K8 局部补丁形状**：registration.json 顶层加 `local_patch {tool_id: cad.build, field: plan, schema, description}`，schema 为 `{lines: string[]}`，每行必须是“名字: 操作 …”；随登记进 lock，换包版本即换形状。
+> - **K9 按行合并的金样**：`tests/fixtures/local/merge_goldens.json`，底稿 + 补丁行经 `contribution_ref.merge` 合并后与手写完整计划逐字节相同，建模输出也逐字节相同；覆盖原位替换、末尾追加、全角冒号、中文名、带点的名字。合并本身未改。
+> - **K10 渲染器**（锁外）：两步选中、计划面板 Shift 加选至多 3 行、不可选行灰显与 `mengos.select_denied`、处理中颜色呼吸（`mengos.busy`）、修改记录按步分色（`mengos.marks`）、三维少文字，见 §7。
+> - 金样追加 16 条（K1、K2、K3、K6、K7、K12 的建模金样与 cad.compare 的 7 条：调研 §3.1 法兰五例、旧表缺摘要、改材料），共 51 条。cad_dsl.py、checker.py、pyproject.toml、uv.lock 未改；不引新依赖。lock 与 content_hash 见 PR。
+
 > 2.5.2（mengosv2 立法者 2026-11-09 批准；依据 `实验-工具描述规范-2026-11-09` TD-23）：只改 cad.check 的 `expect` 参数说明——原说明只举了 6 类期望的写法，模型会自造 `centroid` 之类执行器不认的写法；现在 12 类（bbox、fits、volume、area、mass、com、solids、valid、watertight、holes、hole、feature）各给一个可照抄的样例，样例逐条用 `checker.run_checks` 离线解析过（见 PR 描述）。执行逻辑与其它工具的说明未改。说明文字在 registration.json（由 `tools/make_registration.py` 生成），registration 在 `tools_lock.covers` 内，所以 lock 从 `2a4efb009363fc73` 变为 `7ac22328b400cf72`（cad.build、cad.check、cad.export 三件同一个值，随族走），须重新认证；content_hash 随之变化。
 
 > 2.5.1（mengosv2 执行令-2026-11-05-PLAN声明书与F环清单交互 支 T）：包清单加显示名 `title`「三维零件建模」与 `tool_titles`（`cad.build`「建三维零件模型」、`cad.check`「核对零件尺寸与特征」、`cad.export`「导出零件加工与图纸文件」）。两字段只供界面显示（声明书、商店），不进工具选择，也不进给模型看的任何文字；不在 `tools_lock.covers` 内，lock 不变（工具版本与认证继承），只有 content_hash 变。工具代码与 registration.json 未改（其中 `family_version` 仍写 2.5.0）。
@@ -36,7 +49,7 @@
 
 **做法**：模型写一份行式的**零件计划**（§3）。工具只认白名单语法、不执行代码，按计划逐行建精确实体，再测量、核对、导出。
 
-## 2 三件工具
+## 2 四件工具
 
 一个执行体，三件工具。全部申报 T1，effect = none，执行器为 process。信任类由立法者签字决定，申报不生效（TL-13）。
 
@@ -45,6 +58,7 @@
 | `cad.build` | generate | cad_plan → cad_part | 计划 → 精确实体。返回测量值、特征表、警告，以及文件（缺省 STEP + GLB + SVG） |
 | `cad.check` | check | cad_plan + cad_spec → verdict | 按期望清单逐条判 pass / fail / unknown，给总判定。审核工具，`review_coverage.by_predicate = cad_model_meets_spec` |
 | `cad.export` | convert | cad_plan → cad_file | 导出指定格式 |
+| `cad.compare` | check | cad_feature_table → cad_diff | 比较改前、改后两份特征表（2.6.0）。不建模；供局部修改的服务端在 run 外调用 |
 
 原先设想的 `cad.measure` 并进了 `cad.build`：build 总是返回测量值；`formats: []` 时就是只测量、不出文件。
 
@@ -94,7 +108,7 @@ fillet r=3 edges=vertical
 - 数前的直径记号 `Φ φ Ø ø ⌀`、数后的 `°` 与 `mm` 解析前去掉（2.4.0）：`d=Φ25`、`angle=38°`、`h=12mm` 分别等于 `d=25`、`angle=38`、`h=12`。
 - 上限：300 行，每行 400 字符，最多 400 个特征，单个尺寸 0.01–10000 mm。
 
-**名字就是特征的句柄。** 倒角、阵列、核对都靠名字引用特征，界面点选也靠它定位到计划行。没有命名的特征自动编号为 `fillet#1` 这样的形式。
+**名字就是特征的句柄。** 倒角、阵列、核对都靠名字引用特征，界面点选也靠它定位到计划行。没有命名的特征自动编号为 `fillet#1` 这样的形式。**特征行都要写名字**（2.6.0）：没有名字的特征行收到 `unnamed_feature` 告警，以后也不能单独改它（`#` 是注释符，`fillet#1` 在计划里不是句柄）。
 
 ### 3.1 操作
 
@@ -198,7 +212,8 @@ feature boss                         # 这个特征还在零件上
 | DXF | drawing | 三视图，图层分为 visible、hidden、center、text |
 
 **GLB 的结构。**
-- 每个特征是一个节点：节点名为特征名，`extras = {feature, op, line}`。界面点中一个面，就能知道它是哪一行产生的。
+- 每个特征是一个节点：节点名为特征名，`extras = {feature, op, line, faces}`。界面点中一个面，就能知道它是哪一行产生的。
+- `faces`（2.6.0）：名下各面在本节点三角形里的区间与身份，`{tris: [起, 数], face_key, uncertain?, instance?}`。射线命中的三角形序号落在哪个区间，点中的就是哪个面；`uncertain` 标出键里含面积的面（归属不确定），`instance` 是阵列、镜像复制体的序号（1 起）。
 - 另有一个 `edges` 节点，是 B-rep 的边线（LINES）。
 - 单位为米，y 向上（glTF 约定）。根节点把模型的 z 向上转过去，根节点的 `extras` 记录 `units: mm, up: z`。
 
@@ -255,6 +270,19 @@ feature boss                         # 这个特征还在零件上
 
 原型源码在 `renderer/index.html`，样件数据用 `python tools/make_viewer_data.py renderer` 生成，然后起一个静态服务器打开。页面依赖 three.js 0.170 与 JSZip 3.10，从 CDN 加载。
 
+**局部修改（2.6.0，K10；渲染器的私有扩展，r9.2 L11，不进公开的渲染器契约；细节以 #728 定稿为准）：**
+
+| 方向 | 消息 | 内容 |
+|---|---|---|
+| 渲染器 → 宿主 | `mengos.select` | `handles: [feature:名…]`（三维单选；计划面板 Shift 加选至多 3 行）、`anchor: {x, y}`（点中处的屏幕坐标，宿主在这里画“改这里”按钮与浮层）、`picked?: {feature, face_key}`、`instance?`、`uncertain?: true`；`handle_id` 照旧给第一个句柄。点空白或再点同一个为取消（`handles: []`） |
+| 渲染器 → 宿主 | `mengos.select_denied` | `{handle_id, why_not, anchor}`：点了不可选的行（`unnamed`、`declaration`），灰字由宿主出 |
+| 宿主 → 渲染器 | `mengos.open` | `{handles?}`：用户点了“改这里”，开始聚光（其余元件淡到 0.16）。没收到之前只标出选中，按钮阶段点别处即换选 |
+| 宿主 → 渲染器 | `mengos.close` | 关浮层：退出聚光并清空选中 |
+| 宿主 → 渲染器 | `mengos.busy` | `{handles}`：选中元件颜色呼吸（原色与朱之间缓慢往复，周期 1.6 s），计划行同一节拍；减少动效时静止为淡朱；`handles: []` 停 |
+| 宿主 → 渲染器 | `mengos.marks` | `{steps: [{step, color?, changed, followed, param_diffs}], upto?}`：每一步一个颜色（不给 color 时用 #728 的六色序列），改过的元件染该步颜色，随动淡染并描同色点线；`upto` 之后的步不着色；比 `upto` 早 6 步及以上的统一变灰；悬停一句如“boss · 第 1 次：boss d 60→70” |
+
+计划面板里不可选的行灰显并标“未命名”或“声明”；三维上不挂“改”“随动”字标，说明只在悬停时出现；宿主接管外框（`chrome: "host"`）时角上的选中说明也不显示，由宿主的浮层回显。
+
 **接入表面层时要做的事：**
 1. 下载直接取 ObjectStore 的原文件。原型页受预览环境限制，只能托管网页类文件、只能保存 zip，所以把二进制存成 base64 文本，下载时打成 zip。正式环境没有这些限制。
 2. 界面读 `role` 与 `media_type` 决定怎么展示；引擎不解释 role（TL-4）。
@@ -263,7 +291,7 @@ feature boss                         # 这个特征还在零件上
 ## 8 测试
 
 ```
-uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 69 条，约 100 s
+uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 224 条，约 150 s
 ```
 
 不要用不带 `--frozen` 的 `uv sync` / `uv run`：环境变量里配了别的索引（例如国内镜像）时，uv 会重新解析并改写 `uv.lock`，工具版本（lock hash）与 content_hash 随之失配。安装区里只用环境解释器跑，不运行 uv。
@@ -276,6 +304,7 @@ uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 69 条
 | `test_safety.py` | · 源码中没有 eval、exec、compile；<br>· 16 种恶意或畸形计划只得到结构化失败；<br>· 150 条随机组合的计划从不出现 INTERNAL；<br>· workdir 与 name 不能越界 |
 | `test_registration.py` | · 登记资产的件数与入口一致；<br>· lock hash 是最新的，覆盖执行体、依赖与登记资产；<br>· input_example 与金样的输入、输出都通过 schema；<br>· 动词在受控表内；<br>· 审核工具声明了覆盖范围 |
 | `test_contribution.py` | 74 项，贡献型接入预检：标注合法、base 槽唯一、引擎合并金样（引擎自己的夹具逐字节拷贝，全量跑，含 named-lines 条目）；整体写法 schema 与 2.4.4 等价；行名正则与计划解析器逐行一致；合并后的计划与一次写成的交出同一份产物；注释行、空行、空行名的读数。夹具与参照实现见 `tests/fixtures/contribution/`、`tests/contribution_ref.py`；变异读数见 `tests/MUTANTS.md` |
+| `test_local_edit.py` | 2.6.0 局部修改用的输出（执行令 K1–K9、K11–K14 的先红测试，在 2.5.2 上 41 红 8 绿，绿的 8 条是只加金样、不改代码的 K9 合并金样与“全具名零告警”）。其中“旧样例除新增字段外逐字节不变”拿 `tests/fixtures/v252/` 里 2.5.2 的实跑输出比对 |
 | `test_package.py` | 登记资产严格是 TL-6 的字段，cost 全为数值；选择金样每件应选与不应选各 3 条，且应选的能通过程序过滤。安装包清单：<br>· 交付物类型有 realizes 与渲染器（可继承）；<br>· 工具引用的类型都已声明或是平台类型；<br>· cad.build 只产出 cad_part；<br>· 运行环境不出网；<br>· content_hash 是最新的 |
 
 维护顺序：

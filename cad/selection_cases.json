@@ -160,5 +160,59 @@
     ],
     "required_type": "number",
     "expect_selected": false
+  },
+  {
+    "tool_id": "cad.compare",
+    "task": "比较零件改前改后的两份特征表，哪些特征跟着变了",
+    "ops": [
+      "check"
+    ],
+    "required_type": "cad_diff",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.compare",
+    "task": "凸台直径改了以后，列出被牵连的特征",
+    "ops": [
+      "check"
+    ],
+    "required_type": "cad_diff",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.compare",
+    "task": "改了材料以后，零件的材料、密度、质量哪些变了",
+    "ops": [
+      "check"
+    ],
+    "required_type": "cad_diff",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "cad.compare",
+    "task": "核对这个零件外形是不是 80×50×20",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "cad.compare",
+    "task": "画一个带孔的铝底座",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "cad_model",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "cad.compare",
+    "task": "把支架导出成 STL",
+    "ops": [
+      "convert"
+    ],
+    "required_type": "cad_file",
+    "expect_selected": false
   }
 ]
