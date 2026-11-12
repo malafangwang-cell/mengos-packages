@@ -98,6 +98,14 @@ thead th.fz { z-index: 3; background: var(--panel); }
 tfoot td { position: sticky; bottom: 0; background: var(--panel); font-weight: 600; border-top: 1px solid var(--line); z-index: 2; }
 tfoot td.idx { z-index: 3; }
 mark { background: var(--hit); color: inherit; border-radius: 2px; }
+/* 2.2.0：分组、小计、合并行 */
+tbody tr.lg td, tbody tr.ls td { font-weight: 600; }
+tbody tr.lh td { font-weight: 600; }
+tbody tr.lg td.idx button, tbody tr.lm td.idx button, tbody tr.lh td.idx button { all: unset; cursor: pointer; color: var(--mute); width: 100%; text-align: right; }
+tbody tr.lg td.idx button:focus-visible, tbody tr.lm td.idx button:focus-visible, tbody tr.lh td.idx button:focus-visible { outline: 2px solid var(--accent); }
+tbody tr.lx td { color: var(--ink-2); font-size: 12.5px; }
+tbody tr.lx td.idx { padding-right: 16px; }
+td.xp { text-decoration: underline dotted var(--mute); text-underline-offset: 3px; }
 .more { padding: 12px 16px; text-align: center; }
 .more button { border: 1px solid var(--line); background: var(--menu); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
 .empty { padding: 32px 16px; color: var(--mute); text-align: center; }
@@ -194,7 +202,7 @@ function styleMaps(s, si) {
   const head = s.header_style === undefined ? "" : `us${si}-${s.header_style}`;
   return { cell, tot, head };
 }
-const st = { view: null, sheet: 0, sort: null, q: "", shown: PAGE, formats: [] };
+const st = { view: null, sheet: 0, sort: null, q: "", shown: PAGE, formats: [], fold: new Set(), open: new Set() };
 
 function viewOf(m) {
   const out = (m.object && m.object.output) || {};
@@ -268,6 +276,7 @@ function hl(text) {
 function renderSheet() {
   const v = st.view, s = v.sheets[st.sheet];
   const sm = styleMaps(s, st.sheet);
+  if (s.layout) st.sort = null;                // 有分组、合并时按显示次序，不排序
   const idx = rowsOf(s);
   const fz = s.freeze_cols || 0;
   const cls = (c, j) => [ALIGN[c.align] || "", j < fz ? "fz" : "", c.type === "text" && s.rows.some((r) => String(r[j]).length > 40) ? "wrap" : ""].filter(Boolean).join(" ");
@@ -279,10 +288,12 @@ function renderSheet() {
     return `<th class="${[cls(c, j), sm.head].filter(Boolean).join(" ")}" aria-sort="${sortName}"><button data-col="${j}" title="${esc(c.formula ? c.header + " = " + (c.formula_display || c.formula) : c.header)}（点击排序）">${label}<span class="s">${arrow}</span></button></th>`;
   }).join("");
   const shown = idx.slice(0, st.shown);
-  const body = shown.map((i) => `<tr><td class="idx">${i + 1}</td>${s.columns.map((c, j) => {
-    const t = s.rows[i][j];
-    return `<td class="${[cls(c, j), t === "" ? "e" : "", sm.cell.get(i + "," + j) || ""].filter(Boolean).join(" ")}">${t === "" ? "" : hl(t)}</td>`;
-  }).join("")}</tr>`).join("");
+  const xp = new Map((s.exprs || []).map(([r, j, t]) => [r + "," + j, t]));
+  const dataRow = (i, extra, idxHtml) => `<tr${extra || ""}><td class="idx">${idxHtml || i + 1}</td>${s.columns.map((c, j) => {
+    const t = s.rows[i][j], f = xp.get(i + "," + j);
+    return `<td class="${[cls(c, j), t === "" ? "e" : "", sm.cell.get(i + "," + j) || "", f ? "xp" : ""].filter(Boolean).join(" ")}"${f ? ` title="格公式：${esc(f)}"` : ""}>${t === "" ? "" : hl(t)}</td>`;
+  }).join("")}</tr>`;
+  const body = s.layout ? layoutBody(s, sm, new Set(idx), dataRow, cls) : shown.map((i) => dataRow(i)).join("");
   const fns = s.totals_fn || [];
   const foot = s.totals ? `<tfoot><tr><td class="idx"></td>${s.totals.map((t, j) => {
     const how = fns[j] ? FN_NAME[fns[j]] || fns[j] : "";
@@ -291,7 +302,7 @@ function renderSheet() {
   const toolbar = `<label class="search"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M9.2 9.2L12.5 12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>`
     + `<input id="q" type="search" placeholder="在这张表里找" aria-label="在这张表里找" value="${esc(st.q)}"></label>`
     + `<span class="count">${st.q ? `找到 ${n(idx.length)} / ${n(s.rows.length)} 行` : `${n(s.rows.length)} 行 × ${s.columns.length} 列`}</span>`;
-  const more = idx.length > shown.length ? `<div class="more"><button id="more">再显示 ${n(Math.min(PAGE, idx.length - shown.length))} 行（还有 ${n(idx.length - shown.length)} 行）</button></div>` : "";
+  const more = !s.layout && idx.length > shown.length ? `<div class="more"><button id="more">再显示 ${n(Math.min(PAGE, idx.length - shown.length))} 行（还有 ${n(idx.length - shown.length)} 行）</button></div>` : "";
   const empty = !s.rows.length ? `<div class="empty">这张表还没有数据行。</div>` : !idx.length ? `<div class="empty">没有找到“${esc(st.q)}”。</div>` : "";
   const grid = $("#grid");
   const hadFocus = document.activeElement && document.activeElement.id === "q";
@@ -305,13 +316,42 @@ function renderSheet() {
   renderFoot(v, s);
 }
 
+// 2.2.0：按 layout 画分组、小计、合并行。组头（包生成的）点开收起整组；合并行点开看明细（默认收起）。
+function layoutBody(s, sm, keep, dataRow, cls) {
+  const out = [];
+  const visibleGroup = new Map();
+  for (const e of s.layout) if (e.k === "d" && keep.has(e.r) && e.g !== undefined) visibleGroup.set(e.g, true);
+  const q = st.q.trim() !== "";
+  for (const e of s.layout) {
+    const g = e.g;
+    if (q && g !== undefined && !visibleGroup.get(g)) continue;
+    const folded = g !== undefined && st.fold.has(st.sheet + ":" + g);
+    if (e.k === "d") {
+      if (!keep.has(e.r)) continue;
+      if (folded && !e.h) continue;
+      if (e.x !== undefined && !st.open.has(st.sheet + ":" + e.x) && !q) continue;
+      const head = e.h ? `<button data-fold="${g}" aria-expanded="${!folded}" title="${folded ? "展开" : "收起"}这一组">${folded ? "▸" : "▾"} ${e.r + 1}</button>` : "";
+      out.push(dataRow(e.r, e.x !== undefined ? ' class="lx"' : e.h ? ` class="lh" data-g="${g}"` : "", head));
+      continue;
+    }
+    if (folded && e.k !== "g") continue;
+    const kcls = { g: "lg", s: "ls", m: "lm" }[e.k];
+    const stc = e.st !== undefined ? `us${st.sheet}-${e.st}` : "";
+    const toggle = e.k === "g" ? `<button data-fold="${g}" aria-expanded="${!folded}" title="${folded ? "展开" : "收起"}这一组">${folded ? "▸" : "▾"}</button>`
+      : e.k === "m" ? `<button data-open="${s.layout.indexOf(e)}" title="合并自 ${e.members.map((r) => r + 1).join("、")} 行，点开看明细">≡</button>` : "";
+    out.push(`<tr class="${kcls}"><td class="idx">${toggle}</td>${e.cells.map((t, j) => `<td class="${[cls(s.columns[j], j), t === "" ? "e" : "", stc].filter(Boolean).join(" ")}">${esc(t)}</td>`).join("")}</tr>`);
+  }
+  return out.join("");
+}
+
 // 下方说明区：默认收成一行“公式 N · 来源 N · 假设 N”，点开才展开，展开时在表格区内部向上推。
 // 每条带 data-kind / data-key，留给表格局部追问（区分派生格、标出数的出处）取用。
 function renderFoot(v, s) {
   const fs = s.columns.filter((c) => c.formula);
   const src = v.sources || [], asm = v.assumptions || [];
   const rules = s.rules || [];
-  const parts = [["公式", fs.length], ["规则", rules.length], ["来源", src.length], ["假设", asm.length]].filter((p) => p[1]);
+  const how = [s.merge, s.derive].filter(Boolean);
+  const parts = [["公式", fs.length], ["规则", rules.length], ["口径", how.length], ["来源", src.length], ["假设", asm.length]].filter((p) => p[1]);
   if (s.note) parts.unshift(["说明", 1]);
   const el = $("#foot");
   if (!parts.length) { el.innerHTML = ""; return; }
@@ -319,6 +359,7 @@ function renderFoot(v, s) {
   const body = (s.note ? sec("note", "说明", [`<li>${esc(s.note)}</li>`]) : "")
     + sec("formula", "公式", fs.map((c) => `<li data-key="${esc(c.key || c.title)}"><span class="fx">${esc(c.title)} = ${esc(c.formula_display || c.formula)}</span></li>`))
     + sec("rule", "规则（按次序，先命中的先得）", rules.map((r) => `<li data-n="${r.n}">规则 ${r.n}：${esc(r.text)}${r.label ? `（${esc(r.label)}）` : ""}</li>`))
+    + sec("how", "合并与派生的口径", how.map((x) => `<li>${esc(x)}</li>`))
     + sec("source", "来源", src.map((x, i) => `<li data-i="${i}">${esc(x)}</li>`))
     + sec("assumption", "假设", asm.map((x, i) => `<li data-i="${i}">${esc(x)}</li>`));
   el.innerHTML = `<details${st.footOpen ? " open" : ""}><summary>${parts.map((p) => `<span>${p[0]} <b>${p[1]}</b></span>`).join("")}</summary><div class="body">${body}</div></details>`;
@@ -349,9 +390,19 @@ $("#tabs").addEventListener("keydown", (e) => {
   bs[i].click(); bs[i].focus(); e.preventDefault();
 });
 $("#grid").addEventListener("click", (e) => {
+  const fb = e.target.closest("[data-fold]");
+  if (fb) { const k = st.sheet + ":" + fb.dataset.fold; st.fold.has(k) ? st.fold.delete(k) : st.fold.add(k); renderSheet(); return; }
+  const ob = e.target.closest("[data-open]");
+  if (ob) {
+    const s = st.view.sheets[st.sheet], m = s.layout[Number(ob.dataset.open)];
+    const det = s.layout.find((x) => x.k === "d" && x.x !== undefined && m.members.includes(x.r));
+    if (det) { const k = st.sheet + ":" + det.x; st.open.has(k) ? st.open.delete(k) : st.open.add(k); renderSheet(); }
+    return;
+  }
   const h = e.target.closest("[data-col]");
   if (h) {
     const col = Number(h.dataset.col);
+    if (st.view.sheets[st.sheet].layout) return;   // 分组、合并的表按显示次序，不排序
     st.sort = !st.sort || st.sort.col !== col ? { col, dir: 1 } : st.sort.dir > 0 ? { col, dir: -1 } : null;
     renderSheet();
     return;
@@ -412,7 +463,7 @@ function render(m) {
   document.documentElement.classList.toggle("embed-view", embed);
   $("#embed").hidden = !embed;
   $("#shell").hidden = embed;
-  st.view = v; st.sheet = 0; st.sort = null; st.q = ""; st.shown = PAGE;
+  st.view = v; st.sheet = 0; st.sort = null; st.q = ""; st.shown = PAGE; st.fold = new Set(); st.open = new Set();
   if (v) styleCss(v);
   if (!v) {
     const msg = `<div class="empty">表较大，没有随来数据。可以从下载菜单取得文件。</div>`;

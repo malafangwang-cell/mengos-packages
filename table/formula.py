@@ -10,6 +10,11 @@
     ROUND(x,14-INT(LOG10(ABS(x)+(x=0))))；
   · 另给一个双精度求值（float_eval），build 时用来找“在 Excel 里重算可能不同”的格（只用于告警，不改结果）。
 旧函数 round、abs、min、max 的求值与 Excel 写法不变。
+
+2.2.0（执行令 table 包 2.2.0 G10、G17）：
+  · 格公式（输入列的格写 {"$expr": 式}）可引用别的格：本表别行 @行id.列，别表 @表id/行id.列（与引擎从式里抽数的写法一致）；
+  · 整列跨表汇总：sumif(表id.条件列, 本行的值, 表id.求和列)、countif(表id.条件列, 本行的值)、total(表id.列)；
+  · 取整函数的步长、位数可省：roundup(x)、rounddown(x)、round(x) 取到整数，ceiling(x)、floor(x) 取到 1 的倍数；导出 Excel 时补全。
 """
 from __future__ import annotations
 
@@ -22,15 +27,17 @@ FUNCS = {"round": (1, 2), "abs": (1, 1), "min": (2, 8), "max": (2, 8),
          "roundup": (1, 2), "rounddown": (1, 2), "ceiling": (1, 2), "floor": (1, 2),
          "and": (2, 8), "or": (2, 8), "not": (1, 1), "if": (3, 3)}
 AGG = ("total", "cumsum")
+XFUNCS = ("sumif", "countif")
 EXCEL_FUNC = {"round": "ROUND", "abs": "ABS", "min": "MIN", "max": "MAX", "roundup": "ROUNDUP", "rounddown": "ROUNDDOWN",
               "ceiling": "CEILING", "floor": "FLOOR", "and": "AND", "or": "OR", "not": "NOT", "if": "IF"}
 DISCONTINUOUS = ("roundup", "rounddown", "ceiling", "floor")
 CMP = (">=", "<=", "<>", "!=", "==", ">", "<", "=")
 CMP_NORM = {"!=": "<>", "==": "="}
-TOKEN = re.compile(r"\s*(?:(?P<num>\d+(?:\.\d+)?%?)|(?P<str>\"[^\"]*\"|“[^”]*”)|(?P<id>[^\W\d][\w]*)"
+TOKEN = re.compile(r"\s*(?:(?P<num>\d+(?:\.\d+)?%?)|(?P<str>\"[^\"]*\"|“[^”]*”)|(?P<ref>@\w+(?:/\w+)?\.\w+)"
+                   r"|(?P<qid>[^\W\d]\w*\.\w+)|(?P<id>[^\W\d][\w]*)"
                    r"|(?P<cmp>>=|<=|<>|!=|==|>|<|=)|(?P<op>[-+*/(),]))", re.UNICODE)
 DATE_LIT = re.compile(r"^(\d{4})-(\d{1,2})-(\d{1,2})$")
-FN_LIST = "round、abs、min、max、roundup、rounddown、ceiling、floor、and、or、not、if、total、cumsum"
+FN_LIST = "round、abs、min、max、roundup、rounddown、ceiling、floor、and、or、not、if、total、cumsum、sumif、countif"
 MAX_LEN = 500
 MAX_DEPTH = 40
 SIG = 15
@@ -71,8 +78,9 @@ class _Parser:
     """式 := 加减 (比较符 加减)?；加减 := 项 (('+'|'-') 项)*；项 := 因子 (('*'|'/') 因子)*；
     因子 := ('-'|'+') 因子 | 数[%] | "文字" | 列 | 函数(参数…) | (式)"""
 
-    def __init__(self, toks, resolve):
+    def __init__(self, toks, resolve, resolve_ref=None, resolve_q=None):
         self.t, self.i, self.resolve, self.depth = toks, 0, resolve, 0
+        self.resolve_ref, self.resolve_q = resolve_ref, resolve_q
 
     def peek(self):
         return self.t[self.i] if self.i < len(self.t) else (None, None)
@@ -135,6 +143,15 @@ class _Parser:
         if k == "str":
             self.take()
             return ("str", v[1:-1])
+        if k == "ref":
+            self.take()
+            if self.resolve_ref is None:
+                raise FormulaError(f"{v}：引用某一格只能写在格公式（{{\"$expr\": 式}}）里；列公式整列同算，引用同一行的列")
+            body, _, col = v[1:].rpartition(".")
+            sid, _, rid = body.rpartition("/")
+            return ("cref", self.resolve_ref(sid or None, rid, col))
+        if k == "qid":
+            raise FormulaError(f"{v}：表id.列 只能写在 sumif、countif、total 的参数里")
         if k == "id":
             self.take()
             if self.peek() == ("op", "("):
@@ -142,13 +159,31 @@ class _Parser:
                 if name in AGG:
                     self.take("op", "(")
                     kk, vv = self.peek()
+                    if kk == "qid" and name == "total":
+                        self.take()
+                        self.take("op", ")")
+                        return ("xagg", "total", self._q(vv))
                     if kk != "id":
-                        raise FormulaError(f"{name} 的参数是一列的名字，例如 {name}(金额)")
+                        raise FormulaError(f"{name} 的参数是一列的名字，例如 {name}(金额)" + ("；别的表写 total(表id.列)" if name == "total" else ""))
                     self.take()
                     if self.peek() != ("op", ")"):
                         raise FormulaError(f"{name} 的参数是一列的名字，例如 {name}(金额)")
                     self.take("op", ")")
                     return ("agg", name, self.resolve(vv))
+                if name in XFUNCS:
+                    self.take("op", "(")
+                    cond = self._qarg(name)
+                    self.take("op", ",")
+                    key = self.expr()
+                    if name == "countif":
+                        self.take("op", ")")
+                        return ("countif", cond, key)
+                    self.take("op", ",")
+                    tot = self._qarg(name)
+                    self.take("op", ")")
+                    if tot[0] != cond[0]:
+                        raise FormulaError("sumif 的条件列与求和列要在同一张表")
+                    return ("sumif", cond, key, tot)
                 if name not in FUNCS:
                     raise FormulaError(f"不认识的函数 {v}（可用：{FN_LIST}）")
                 self.take("op", "(")
@@ -174,9 +209,61 @@ class _Parser:
         raise FormulaError("公式不完整" if k is None else f"公式这里不能是 {v}")
 
 
-def parse(src: str, resolve):
-    """resolve(名字) → 列 key；找不到时抛 FormulaError。"""
-    return _Parser(tokenize(src), resolve).parse()
+    def _qarg(self, name):
+        kk, vv = self.peek()
+        if kk != "qid":
+            raise FormulaError(f"{name} 的这个参数写 表id.列，例如 {name}(detail.科目, 科目{', detail.金额' if name == 'sumif' else ''})")
+        self.take()
+        return self._q(vv)
+
+    def _q(self, v):
+        if self.resolve_q is None:
+            raise FormulaError(f"{v}：这里不能引用别的表")
+        sid, _, col = v.partition(".")
+        return self.resolve_q(sid, col)
+
+
+def parse(src: str, resolve, resolve_ref=None, resolve_q=None):
+    """resolve(名字) → 列 key；找不到时抛 FormulaError。
+    resolve_ref(表id 或 None, 行id, 列) → 一格的定位（只在格公式里给）；resolve_q(表id, 列) → (表id, 列 key)（跨表汇总用）。"""
+    return _Parser(tokenize(src), resolve, resolve_ref, resolve_q).parse()
+
+
+def cell_refs(node, acc=None):
+    """式里引用的格（cref 的定位）。"""
+    acc = [] if acc is None else acc
+    tag = node[0]
+    if tag == "cref":
+        acc.append(node[1])
+    for k in _kids(node):
+        cell_refs(k, acc)
+    return acc
+
+
+def sheet_refs(node, acc=None):
+    """式里用到的别的表（跨表汇总）。"""
+    acc = set() if acc is None else acc
+    tag = node[0]
+    if tag == "xagg":
+        acc.add(node[2][0])
+    elif tag in ("sumif", "countif"):
+        acc.add(node[1][0])
+    for k in _kids(node):
+        sheet_refs(k, acc)
+    return acc
+
+
+def _kids(node):
+    tag = node[0]
+    if tag == "neg":
+        return [node[1]]
+    if tag in ("bin", "cmp"):
+        return [node[2], node[3]]
+    if tag == "fn":
+        return list(node[2])
+    if tag in ("sumif", "countif"):
+        return [node[2]]
+    return []
 
 
 def refs(node, acc=None, rows=None):
@@ -197,6 +284,8 @@ def refs(node, acc=None, rows=None):
     elif tag == "fn":
         for a in node[2]:
             refs(a, acc, rows)
+    elif tag in ("sumif", "countif"):
+        refs(node[2], acc, rows)
     return acc
 
 
@@ -213,8 +302,7 @@ def uses(node, names):
         return True
     if tag in names:
         return True
-    kids = {"neg": lambda: [node[1]], "bin": lambda: node[2:], "cmp": lambda: node[2:], "fn": lambda: node[2]}.get(tag)
-    return any(uses(k, names) for k in kids()) if kids else False
+    return any(uses(k, names) for k in _kids(node))
 
 
 def divides_by_column(node):
@@ -222,8 +310,7 @@ def divides_by_column(node):
     tag = node[0]
     if tag == "bin" and node[1] == "/" and refs(node[3]):
         return True
-    kids = {"neg": lambda: [node[1]], "bin": lambda: node[2:], "cmp": lambda: node[2:], "fn": lambda: node[2]}.get(tag)
-    return any(divides_by_column(k) for k in kids()) if kids else False
+    return any(divides_by_column(k) for k in _kids(node))
 
 
 # ---------------------------------------------------------------- 类型
@@ -241,6 +328,20 @@ def kind_of(node, kinds, where="公式"):
     if tag == "agg":
         if kinds[node[2]] != "num":
             raise FormulaError(f"{node[1]} 只能用于数值列")
+        return "num"
+    if tag == "cref":
+        return kinds[node[1]]
+    if tag == "xagg":
+        if kinds[node[2]] != "num":
+            raise FormulaError("total 只能用于数值列")
+        return "num"
+    if tag in ("sumif", "countif"):
+        k = _lit_as(kind_of(node[2], kinds), "text")
+        ck = kinds[node[1]]
+        if ck == "num" and k != "num" or ck != "num" and k == "num":
+            raise FormulaError(f"{tag} 的条件列与本行的值要同一类")
+        if tag == "sumif" and kinds[node[3]] != "num":
+            raise FormulaError("sumif 的求和列要是数值列")
         return "num"
     if tag == "neg":
         _need_num(kind_of(node[1], kinds), "取负")
@@ -269,7 +370,7 @@ def kind_of(node, kinds, where="公式"):
                 raise FormulaError("if 的第一个参数要是条件，例如 if(执行率 > 100%, \"超支\", \"正常\")")
             out = []
             for x, k in zip(args[1:], ks[1:]):
-                if k == "num" and not refs(x):
+                if k == "num" and not refs(x) and not cell_refs(x):
                     raise FormulaError("if 的两支暂不收数字常数：写一个引用列的算式，或写双引号里的文字")
                 if k not in ("num", "textlit", "datelit", "empty"):
                     raise FormulaError("if 的两支是算式或双引号里的文字")
@@ -317,16 +418,49 @@ def sig(d: Decimal) -> Decimal:
         return d.quantize(Decimal(1).scaleb(d.adjusted() - (SIG - 1)), rounding=ROUND_HALF_UP)
 
 
-def evaluate(node, row, cols=None, ri=0):
+def evaluate(node, row, cols=None, ri=0, ext=None):
     """row: key → Decimal | str | bool | None。cols: key → 整列的值（total、cumsum 用），ri 为本行序号。
+    ext：格公式与跨表汇总的取值——ext.cell(定位) → 那一格的值；ext.column((表id, 列 key)) → 那张表那一列的值。
     返回 Decimal | str | bool | None；除以零抛 DivZero。"""
     with localcontext() as ctx:
         ctx.prec = 34
-        return _ev(node, row, cols, ri)
+        return _ev(node, row, cols, ri, ext)
 
 
-def _ev(node, row, cols, ri):
+def match_key(v):
+    """跨表汇总的等值匹配：文字不分大小写（与 Excel 的 = 相同），数照数比。"""
+    if isinstance(v, str):
+        return ("s", v.casefold())
+    if isinstance(v, Decimal):
+        return ("n", v)
+    return ("o", v)
+
+
+def _xsum(ext, cond, key, tot):
+    if key is None:
+        return None
+    want = match_key(key)
+    cv = ext.column(cond)
+    sv = ext.column(tot) if tot is not None else None
+    s, n = Decimal(0), 0
+    for i, v in enumerate(cv):
+        if v is not None and match_key(v) == want:
+            n += 1
+            if sv is not None and isinstance(sv[i], Decimal):
+                s += sv[i]
+    ext.matched(n)
+    return s if tot is not None else Decimal(n)
+
+
+def _ev(node, row, cols, ri, ext=None):
     tag = node[0]
+    if tag == "cref":
+        return ext.cell(node[1])
+    if tag == "xagg":
+        return sum((v for v in ext.column(node[2]) if isinstance(v, Decimal)), Decimal(0))
+    if tag in ("sumif", "countif"):
+        k = _ev(node[2], row, cols, ri, ext)
+        return _xsum(ext, node[1], k, node[3] if tag == "sumif" else None)
     if tag == "num":
         return node[1]
     if tag == "str":
@@ -337,10 +471,10 @@ def _ev(node, row, cols, ri):
         vals = [v for v in (cols[node[2]] if node[1] == "total" else cols[node[2]][:ri + 1]) if isinstance(v, Decimal)]
         return sum(vals, Decimal(0))
     if tag == "neg":
-        v = _ev(node[1], row, cols, ri)
+        v = _ev(node[1], row, cols, ri, ext)
         return None if v is None else -v
     if tag == "bin":
-        a, b = _ev(node[2], row, cols, ri), _ev(node[3], row, cols, ri)
+        a, b = _ev(node[2], row, cols, ri, ext), _ev(node[3], row, cols, ri, ext)
         if a is None or b is None:
             return None
         op = node[1]
@@ -354,18 +488,18 @@ def _ev(node, row, cols, ri):
             raise DivZero
         return a / b
     if tag == "cmp":
-        a, b = _ev(node[2], row, cols, ri), _ev(node[3], row, cols, ri)
+        a, b = _ev(node[2], row, cols, ri, ext), _ev(node[3], row, cols, ri, ext)
         if a is None or b is None:
             return None
         return _compare(node[1], a, b, sig)
     if tag == "fn":
         name = node[1]
         if name == "if":
-            c = _ev(node[2][0], row, cols, ri)
+            c = _ev(node[2][0], row, cols, ri, ext)
             if c is None:
                 return None
-            return _ev(node[2][1] if c else node[2][2], row, cols, ri)
-        args = [_ev(x, row, cols, ri) for x in node[2]]
+            return _ev(node[2][1] if c else node[2][2], row, cols, ri, ext)
+        args = [_ev(x, row, cols, ri, ext) for x in node[2]]
         if any(a is None for a in args):
             return None
         if name == "and":
@@ -417,11 +551,12 @@ def _as_date(v):
 
 
 # ---------------------------------------------------------------- 双精度求值（G4 检测）
-def float_eval(node, row, cols=None, ri=0):
-    """照 Excel 的双精度直接算一遍（不做 15 位归整）。返回 (值, 是否经过不连续的函数或比较)。"""
+def float_eval(node, row, cols=None, ri=0, ext=None):
+    """照 Excel 的双精度直接算一遍（不做 15 位归整）。返回 (值, 是否经过不连续的函数或比较)。
+    别的格、跨表汇总取产出台的值（双精度化），只比本格这一步。"""
     hit = [False]
     try:
-        v = _fv(node, {k: _flt(x) for k, x in row.items()}, cols, ri, hit)
+        v = _fv(node, {k: _flt(x) for k, x in row.items()}, cols, ri, hit, ext)
     except ZeroDivisionError:
         v = None
     except (OverflowError, ValueError):
@@ -433,8 +568,12 @@ def _flt(v):
     return float(v) if isinstance(v, Decimal) else v
 
 
-def _fv(node, row, cols, ri, hit):
+def _fv(node, row, cols, ri, hit, ext=None):
     tag = node[0]
+    if tag in ("cref", "xagg", "sumif", "countif"):
+        with localcontext() as c:
+            c.prec = 34
+            return _flt(_ev(node, {k: (Decimal(repr(v)) if isinstance(v, float) else v) for k, v in row.items()}, cols, ri, ext))
     if tag == "num":
         return float(node[1])
     if tag == "str":
@@ -449,27 +588,27 @@ def _fv(node, row, cols, ri, hit):
                 s += float(v)
         return s
     if tag == "neg":
-        v = _fv(node[1], row, cols, ri, hit)
+        v = _fv(node[1], row, cols, ri, hit, ext)
         return None if v is None else -v
     if tag == "bin":
-        a, b = _fv(node[2], row, cols, ri, hit), _fv(node[3], row, cols, ri, hit)
+        a, b = _fv(node[2], row, cols, ri, hit, ext), _fv(node[3], row, cols, ri, hit, ext)
         if a is None or b is None:
             return None
         return {"+": lambda: a + b, "-": lambda: a - b, "*": lambda: a * b, "/": lambda: a / b}[node[1]]()
     if tag == "cmp":
         hit[0] = True
-        a, b = _fv(node[2], row, cols, ri, hit), _fv(node[3], row, cols, ri, hit)
+        a, b = _fv(node[2], row, cols, ri, hit, ext), _fv(node[3], row, cols, ri, hit, ext)
         if a is None or b is None:
             return None
         return _compare(node[1], a, b, lambda x: x)
     if tag == "fn":
         name = node[1]
         if name == "if":
-            c = _fv(node[2][0], row, cols, ri, hit)
+            c = _fv(node[2][0], row, cols, ri, hit, ext)
             if c is None:
                 return None
-            return _fv(node[2][1] if c else node[2][2], row, cols, ri, hit)
-        args = [_fv(x, row, cols, ri, hit) for x in node[2]]
+            return _fv(node[2][1] if c else node[2][2], row, cols, ri, hit, ext)
+        args = [_fv(x, row, cols, ri, hit, ext) for x in node[2]]
         if any(a is None for a in args):
             return None
         if name == "and":
@@ -513,7 +652,11 @@ def to_excel(node, cell_of, kinds=None, agg_of=None):
         return cell_of(node[1])
     if tag == "agg":
         return agg_of(node[1], node[2])
-    if tag == "neg":
+    if tag == "cref":
+        return cell_of(node[1])
+    if tag in ("xagg", "sumif", "countif"):
+        key = to_excel(node[2], cell_of, kinds, agg_of) if tag != "xagg" else None
+        return agg_of(tag, node, key)
         return "-" + _paren(node[1], cell_of, kinds, agg_of)
     if tag == "bin":
         return f"{_paren(node[2], cell_of, kinds, agg_of)}{node[1]}{_paren(node[3], cell_of, kinds, agg_of)}"

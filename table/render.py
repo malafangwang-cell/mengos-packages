@@ -186,6 +186,12 @@ def _view_styles(sh, s):
         s["totals_styles"] = tots
     if head is not None:
         s["header_style"] = head
+    ks = {}
+    for kind in ("subtotal", "group"):
+        if sh.row_styles.get(kind):
+            ks[kind] = idx(sh.row_styles[kind])
+    if ks:
+        s["_kind_styles"] = ks
     if table:
         s["styles"] = table
     if sh.rules:
@@ -198,7 +204,8 @@ def to_view(t: Table) -> dict:
     sheets = []
     for sh in t.sheets:
         cols = [{"key": c.key, "title": c.title, "header": header(c, lang), "type": c.type, "align": c.align,
-                 **({"unit": c.unit} if c.unit else {}), **({"formula": c.formula, "formula_display": formula_text(sh, c)} if c.formula else {})} for c in sh.columns]
+                 **({"unit": c.unit} if c.unit else {}), **({"formula": c.formula, "formula_display": formula_text(sh, c)} if c.formula else {}),
+                 **({"numbering": c.numbering} if c.numbering else {})} for c in sh.columns]
         s = {"name": sh.name, "columns": cols,
              "rows": [[display(c, v, lang) for c, v in zip(sh.columns, r)] for r in sh.rows],
              "keys": [[sort_key(c, v) for c, v in zip(sh.columns, r)] for r in sh.rows]}
@@ -209,6 +216,7 @@ def to_view(t: Table) -> dict:
             if any(f not in (None, "sum") for f in fns) or any(fn != "sum" for _, fn, _ in sh.totals):
                 s["totals_fn"] = fns
         _view_styles(sh, s)
+        _view_structure(sh, s, lang)
         if sh.caption:
             s["caption"] = sh.caption
         if sh.note:
@@ -227,6 +235,97 @@ def to_view(t: Table) -> dict:
     if t.assumptions:
         v["assumptions"] = list(t.assumptions)
     return v
+
+
+LAYOUT_KIND = {"data": "d", "group": "g", "subtotal": "s", "merged": "m"}
+
+
+def layout_label_col(sh):
+    from model import _label_col
+    return next(j for j, c in enumerate(sh.columns) if c.key == _label_col(sh))
+
+
+def layout_cells(sh, e, lang):
+    """生成的行（组头、小计、合并行）每格的显示文字。"""
+    n = len(sh.columns)
+    if e["kind"] == "group":
+        out = [""] * n
+        out[layout_label_col(sh)] = e["label"] or ""
+        return out
+    if e["kind"] == "merged":
+        return [display(c, v, lang) for c, v in zip(sh.columns, e["values"])]
+    fns = {x["column"]: x["fn"] for x in sh.subtotals}
+    out = [display(c, v, lang, fns.get(c.key) == "count") for c, v in zip(sh.columns, e["values"])]
+    j = layout_label_col(sh)
+    if not out[j]:
+        out[j] = ((e["label"] + " ") if e.get("label") else "") + ("小计" if lang != "en" else "Subtotal")
+    return out
+
+
+def _view_structure(sh, s, lang):
+    """2.2.0：分组、小计、合并的显示次序（layout），格公式的原式（exprs），派生表的来历。只有用到时才出这些字段。"""
+    kinds_style = s.pop("_kind_styles", {})
+    if sh.exprs:
+        s["exprs"] = [[ri, j, expr_text(sh, src)] for (ri, j), (src, _) in sorted(sh.exprs.items())]
+    if sh.derive:
+        s["derive"] = derive_text(sh)
+    if not sh.has_layout():
+        return
+    out = []
+    for e in sh.layout:
+        o = {"k": LAYOUT_KIND[e["kind"]]}
+        if e.get("group") is not None:
+            o["g"] = e["group"]
+        if e["kind"] == "data":
+            o["r"] = e["ri"]
+            if e.get("head"):
+                o["h"] = True
+            if "detail" in e:
+                o["x"] = e["detail"]
+        else:
+            o["cells"] = layout_cells(sh, e, lang)
+            if e["kind"] == "merged":
+                o["members"] = list(sh.merged[e["mi"]]["members"])
+            if e["kind"] in kinds_style:
+                o["st"] = kinds_style[e["kind"]]
+        out.append(o)
+    s["layout"] = out
+    if sh.merge_rows:
+        s["merge"] = merge_text(sh)
+
+
+def merge_text(sh):
+    """合并的口径逐列写出（产出台说明区与 Excel 说明表共用）。"""
+    title = {c.key: c.title for c in sh.columns}
+    m = sh.merge_rows
+    parts = [f"按{'、'.join(title[k] for k in m['by'])}合并同名同规格的行" + ("（只在组内）" if m["scope"] == "group" else "")]
+    for c in sh.columns:
+        how = m["agg"].get(c.key)
+        if how == "sum":
+            parts.append(f"{c.title} = 明细之和")
+        elif how == "formula":
+            parts.append(f"{c.title} = 合并后按本列公式重算")
+    if m["join"]:
+        parts.append("、".join(title[k] for k in m["join"]) + " 用“；”连起来")
+    return "；".join(parts)
+
+
+def derive_text(sh):
+    title = {c.key: c.title for c in sh.columns}
+    d = sh.derive
+    s = f"由表 {'、'.join(d['from'])} 里" + (f"符合“{d['where']}”的" if d.get("where") else "") + \
+        f"行按{'、'.join(title[k] for k in d['by'])}合并而成"
+    if d["agg"]:
+        s += "；" + "、".join(c.title for c in sh.columns if c.key in d["agg"]) + " 是各来源之和"
+    return s
+
+
+def eff_entries(sh):
+    """看得见的数据行（CSV、Markdown 写这些）：没有分组合并时就是全部数据行。"""
+    if not sh.has_layout():
+        return [("row", r) for r in sh.rows]
+    return [("row", sh.rows[e["ri"]]) if e["kind"] == "data" else ("merged", e["values"])
+            for e in sh.layout if e["kind"] == "merged" or (e["kind"] == "data" and "detail" not in e)]
 
 
 def _md_cell(s: str) -> str:
@@ -249,8 +348,17 @@ def to_markdown(t: Table) -> str:
             out += [f"**{_md_cell(sh.caption)}**", ""]
         out.append("| " + " | ".join(_md_cell(header(c, lang)) for c in sh.columns) + " |")
         out.append("|" + "|".join({"left": " --- ", "center": " :-: ", "right": " --: "}[c.align] for c in sh.columns) + "|")
-        for r in sh.rows:
-            out.append("| " + " | ".join(_md_cell(display(c, v, lang)) for c, v in zip(sh.columns, r)) + " |")
+        if sh.has_layout():
+            for e in sh.layout:
+                if e["kind"] == "data" and "detail" in e:
+                    continue             # 合并掉的明细不写，写合并行
+                cells = [display(c, v, lang) for c, v in zip(sh.columns, sh.rows[e["ri"]])] if e["kind"] == "data" \
+                    else layout_cells(sh, e, lang)
+                bold = e["kind"] in ("group", "subtotal")
+                out.append("| " + " | ".join(f"**{_md_cell(x)}**" if bold and x else _md_cell(x) for x in cells) + " |")
+        else:
+            for r in sh.rows:
+                out.append("| " + " | ".join(_md_cell(display(c, v, lang)) for c, v in zip(sh.columns, r)) + " |")
         tr = totals_row(sh, lang)
         if tr is not None:
             out.append("| " + " | ".join(f"**{_md_cell(x)}**" if x else "" for x in tr) + " |")
@@ -259,6 +367,10 @@ def to_markdown(t: Table) -> str:
         if formulas:
             label = "公式" if lang != "en" else "Formulas"
             out += [f"{label}：" + "；".join(f"{c.title} = {formula_text(sh, c)}" for c in formulas), ""]
+        if sh.merge_rows:
+            out += [merge_text(sh) + "。", ""]
+        if sh.derive:
+            out += [derive_text(sh) + "。", ""]
         if sh.note:
             out += [sh.note, ""]
     if t.sources:
@@ -290,6 +402,6 @@ def to_csv(sh, lang) -> bytes:
     w = csv.writer(buf, lineterminator="\r\n", quoting=csv.QUOTE_MINIMAL)
     w.writerow([header(c, lang) + ("（%）" if lang != "en" else " (%)") if c.type == "percent" and not c.unit else header(c, lang)
                 for c in sh.columns])
-    for r in sh.rows:
+    for _, r in eff_entries(sh):         # 有合并时写合并行、不写明细；生成的组头与小计不写（CSV 只放数据）
         w.writerow([csv_value(c, v) for c, v in zip(sh.columns, r)])
     return b"\xef\xbb\xbf" + buf.getvalue().encode("utf-8")

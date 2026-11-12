@@ -15,7 +15,7 @@ import xlsxwriter
 from xlsxwriter.utility import xl_col_to_name, xl_rowcol_to_cell
 
 import formula as F
-from model import DATE_FORMATS, NUMERIC, Table, aggregate_decimals, dec_str, hex_of, static_style
+from model import DATE_FORMATS, NUMERIC, SUBTOTAL_CODE, Table, aggregate_decimals, dec_str, hex_of, static_style
 from render import display, formula_text, header, rule_text, totals_row
 
 EPOCH = _dt.datetime(2000, 1, 1)
@@ -149,6 +149,8 @@ def to_xlsx(t: Table) -> bytes:
                 p["align"] = align
             if kind == "total":
                 p.update({"bold": True, "top": 1})
+            if kind in ("group", "subtotal"):
+                p.update({"bold": True})
             if kind == "head":
                 p.update({"bold": True, "bg_color": "#F2F2EF", "bottom": 1, "text_wrap": True})
             if st:
@@ -157,10 +159,15 @@ def to_xlsx(t: Table) -> bytes:
         return cache[k]
 
     used = set()
+    plans = {id(sh): _plan(sh) for sh in t.sheets}
     for sh in t.sheets:
         used.add(sh.name.lower())
         ws = wb.add_worksheet(sh.name)
         ncol, nrow = len(sh.columns), len(sh.rows)
+        plan = plans[id(sh)]
+        if plan["lines"] is not None:
+            _write_layout_sheet(wb, ws, t, sh, plans, fmt, f_head, lang)
+            continue
         nums = [_num_format(c, [r[j] for r in sh.rows]) for j, c in enumerate(sh.columns)]
         hs = sh.header_style
         for j, c in enumerate(sh.columns):
@@ -168,7 +175,9 @@ def to_xlsx(t: Table) -> bytes:
         col_of = {c.key: j for j, c in enumerate(sh.columns)}
         styled = any(sh.displays) or any(c.style for c in sh.columns)
 
-        def agg_of(name, k, _i=None):
+        def agg_of(name, k, _i=None, _key=None):
+            if name in ("xagg", "sumif", "countif"):
+                return _xsheet(t, plans, k, _key)
             col = xl_col_to_name(col_of[k])
             last = f"${col}${nrow + 1}" if name == "total" else f"${col}{_i + 1}"
             return f"SUM(${col}$2:{last})"
@@ -182,8 +191,12 @@ def to_xlsx(t: Table) -> bytes:
                 f = fmt("cell", nums[j], c.align, static_style(sh, i - 1, j) if styled else None)
                 if c.formula is not None:
                     expr = _formula_excel(sh, c, lambda k, _i=i: xl_rowcol_to_cell(_i, col_of[k]),
-                                          lambda name, k, _i=i: agg_of(name, k, _i), guards[j])
+                                          lambda name, k, key=None, _i=i: agg_of(name, k, _i, key), guards[j])
                     ws.write_formula(i, j, "=" + expr, f, _cache(v))
+                elif (i - 1, j) in sh.exprs:
+                    ws.write_formula(i, j, "=" + _expr_excel(t, sh, plans, i - 1, j), f, _cache(v))
+                elif (i - 1) in sh.derive_src and c.key in sh.derive_src[i - 1]:
+                    _write_derived(ws, t, plans, sh, i - 1, j, i, f, v)
                 elif v is None:
                     ws.write_blank(i, j, None, f)
                 elif c.type in NUMERIC:
@@ -241,6 +254,261 @@ def to_xlsx(t: Table) -> bytes:
     return buf.getvalue()
 
 
+def _plan(sh):
+    """每张表的数据行在 Excel 里的行号（0 起，表头是 0）。有分组、合并时另给显示次序 lines：[(行号, 条目)]。"""
+    if not sh.has_layout():
+        return {"pos": {ri: ri + 1 for ri in range(len(sh.rows))}, "lines": None, "last": len(sh.rows)}
+    pos, lines = {}, []
+    for k, e in enumerate(sh.layout, start=1):
+        if e["kind"] == "data":
+            pos[e["ri"]] = k
+        lines.append((k, e))
+    return {"pos": pos, "lines": lines, "last": len(lines)}
+
+
+def _segments(rows):
+    """Excel 行号（0 起）→ 连续的段 [(起, 止)]。"""
+    out = []
+    for r in sorted(rows):
+        if out and r == out[-1][1] + 1:
+            out[-1][1] = r
+        else:
+            out.append([r, r])
+    return [tuple(x) for x in out]
+
+
+def _qname(name):
+    return "'" + name.replace("'", "''") + "'"
+
+
+def _col_ranges(sheet_prefix, j, segs, absolute=True):
+    col = xl_col_to_name(j)
+    d = "$" if absolute else ""
+    return [f"{sheet_prefix}{d}{col}{d}{a + 1}" if a == b else f"{sheet_prefix}{d}{col}{d}{a + 1}:{d}{col}{d}{b + 1}" for a, b in segs]
+
+
+def _xsheet(t, plans, node, key):
+    """跨表汇总（G10）的 Excel 写法：等值匹配的 SUMPRODUCT（不用 SUMIF：它把 * ? ~ 当通配符、把 > = 开头的文字当比较式）。"""
+    tag = node[0]
+    ref = node[2] if tag == "xagg" else node[1]
+    o = next(x for x in t.sheets if x.id == ref[0])
+    pos = plans[id(o)]["pos"]
+    segs = _segments(pos.values())
+    pre = _qname(o.name) + "!"
+    jc = next(k for k, c in enumerate(o.columns) if c.key == ref[1])
+    if not segs:
+        return "0"
+    cond = _col_ranges(pre, jc, segs)
+    if tag == "xagg":
+        return f"SUM({','.join(cond)})"
+    if tag == "countif":
+        return "+".join(f"SUMPRODUCT(--({r}={key}))" for r in cond)
+    js = next(k for k, c in enumerate(o.columns) if c.key == node[3][1])
+    sums = _col_ranges(pre, js, segs)
+    return "+".join(f"SUMPRODUCT(--({r}={key}),{q})" for r, q in zip(cond, sums))
+
+
+def _expr_excel(t, sh, plans, ri, j):
+    """格公式（G17）：每格写它自己的公式。本表别行的格写 G2，别表的格写 '01立柱'!G2；引用的格有空时外包 IF(COUNT…)。"""
+    src, node = sh.exprs[(ri, j)]
+    pos = plans[id(sh)]["pos"]
+    col_of = {c.key: k for k, c in enumerate(sh.columns)}
+
+    def cell_of(x):
+        if isinstance(x, tuple):
+            o = t.book[x[1]]
+            ref = xl_rowcol_to_cell(plans[id(o)]["pos"][x[2]], x[3])
+            return ref if o is sh else _qname(o.name) + "!" + ref
+        return xl_rowcol_to_cell(pos[ri], col_of[x])
+    kinds = {c.key: c.kind for c in sh.columns}
+
+    class K(dict):
+        def __missing__(self, k):
+            return t.book[k[1]].columns[k[3]].kind
+    expr = F.to_excel(node, cell_of, K(kinds))
+    cells = [x for x in F.cell_refs(node)] + [k for k in F.row_refs(node)]
+    vals = [t.book[x[1]].rows[x[2]][x[3]] if isinstance(x, tuple) else sh.rows[ri][col_of[x]] for x in cells]
+    if any(v is None for v in vals):
+        expr = f'IF(COUNT({",".join(cell_of(x) for x in cells)})={len(cells)},{expr},"")'
+    return expr
+
+
+def _write_derived(ws, t, plans, sh, ri, j, row, f, v):
+    """派生表的数（G10）：引用各来源格的求和公式，分部改了跟着变。"""
+    srcs = sh.derive_src[ri][sh.columns[j].key]
+    refs = []
+    for o, sri, sj in srcs:
+        if isinstance(o.rows[sri][sj], Decimal):
+            refs.append(_qname(o.name) + "!" + xl_rowcol_to_cell(plans[id(o)]["pos"][sri], sj))
+    if refs:
+        ws.write_formula(row, j, "=" + "+".join(refs), f, _cache(v))
+    else:
+        ws.write_blank(row, j, None, f)
+
+
+def _write_layout_sheet(wb, ws, t, sh, plans, fmt, f_head, lang):
+    """有分组、小计、合并的表（G7、G9）：按显示次序写。组员设分级显示 1 级，合并掉的明细 2 级并折叠；
+    小计、合计写 SUBTOTAL(…, 看得见的数据行)：合并掉的明细不算，合并行算，小计行本身被 SUBTOTAL 跳过。"""
+    from render import layout_cells, layout_label_col
+    plan = plans[id(sh)]
+    pos, lines = plan["pos"], plan["lines"]
+    nums = [_num_format(c, [r[j] for r in sh.rows]) for j, c in enumerate(sh.columns)]
+    hs = sh.header_style
+    for j, c in enumerate(sh.columns):
+        ws.write_string(0, j, header(c, lang), fmt("head", None, None, hs) if hs else f_head)
+    col_of = {c.key: j for j, c in enumerate(sh.columns)}
+    styled = any(sh.displays) or any(c.style for c in sh.columns)
+    data_segs = _segments(pos.values())
+    guards = {}
+    for j, c in enumerate(sh.columns):
+        if c.formula is not None:
+            ks = [col_of[k] for k in F.row_refs(c.node)]
+            guards[j] = any(r[k] is None for r in sh.rows for k in ks)
+    ws.outline_settings(True, False, True, False)
+    eff_rows = {}
+    for r, e in lines:
+        if e["kind"] == "merged" or (e["kind"] == "data" and "detail" not in e):
+            eff_rows.setdefault(e.get("group"), []).append(r)
+    label_j = layout_label_col(sh)
+    sub_fn = {x["column"]: x["fn"] for x in sh.subtotals}
+    for r, e in lines:
+        kind = e["kind"]
+        if kind == "data":
+            ri = e["ri"]
+            level = 2 if "detail" in e else 1 if (e.get("group") is not None and not e.get("head")) else 0
+            ws.set_row(r, None, None, {"level": level, "hidden": "detail" in e})
+            for j, c in enumerate(sh.columns):
+                v = sh.rows[ri][j]
+                f = fmt("cell", nums[j], c.align, static_style(sh, ri, j) if styled else None)
+
+                def agg_of(name, k, key=None, _r=r):
+                    if name in ("xagg", "sumif", "countif"):
+                        return _xsheet(t, plans, k, key)
+                    segs = data_segs if name == "total" else [(a, min(b, _r)) for a, b in data_segs if a <= _r]
+                    return "SUM(" + ",".join(_col_ranges("", col_of[k], segs)) + ")"     # cumsum：本行及以上的数据行
+                if c.formula is not None:
+                    expr = _formula_excel(sh, c, lambda k, _r=r: xl_rowcol_to_cell(_r, col_of[k]), agg_of, guards[j])
+                    ws.write_formula(r, j, "=" + expr, f, _cache(v))
+                elif (ri, j) in sh.exprs:
+                    ws.write_formula(r, j, "=" + _expr_excel(t, sh, plans, ri, j), f, _cache(v))
+                elif ri in sh.derive_src and c.key in sh.derive_src[ri]:
+                    _write_derived(ws, t, plans, sh, ri, j, r, f, v)
+                else:
+                    _write_value(ws, r, j, c, v, f)
+            continue
+        kst = sh.row_styles.get(kind) if kind in ("subtotal", "group") else None
+        if kind == "group":
+            ws.set_row(r, None, None, {"level": 0})
+            cells = layout_cells(sh, e, lang)
+            for j, c in enumerate(sh.columns):
+                f = fmt("group", None, "left" if j == label_j else c.align, kst)
+                if cells[j]:
+                    ws.write_string(r, j, cells[j], f)
+                else:
+                    ws.write_blank(r, j, None, f)
+            continue
+        if kind == "merged":
+            m = sh.merged[e["mi"]]
+            ws.set_row(r, None, None, {"level": 1 if e.get("group") is not None else 0, "collapsed": True})
+            detail_rows = [pos[ri] for ri in m["members"]]
+            for j, c in enumerate(sh.columns):
+                v = e["values"][j]
+                f = fmt("cell", nums[j], c.align, None)
+                how = sh.merge_rows["agg"].get(c.key)
+                if how == "formula":
+                    expr = _formula_excel(sh, c, lambda k, _r=r: xl_rowcol_to_cell(_r, col_of[k]), None, any(
+                        e["values"][col_of[k]] is None for k in F.row_refs(c.node)))
+                    ws.write_formula(r, j, "=" + expr, f, _cache(v))
+                elif how == "sum":
+                    ws.write_formula(r, j, "=SUM(" + ",".join(xl_rowcol_to_cell(x, j) for x in detail_rows) + ")", f, _cache(v))
+                else:
+                    _write_value(ws, r, j, c, v, f)
+            continue
+        # 小计
+        ws.set_row(r, None, None, {"level": 0})
+        cells = layout_cells(sh, e, lang)
+        segs = _segments(eff_rows.get(e.get("group"), []))
+        for j, c in enumerate(sh.columns):
+            fn = sub_fn.get(c.key)
+            v = e["values"][j]
+            num = "#,##0" if fn == "count" else nums[j]
+            f = fmt("subtotal", num, "right" if fn else ("left" if j == label_j else c.align), kst)
+            if fn == "formula":
+                keys = F.row_refs(c.node)
+                if any(sub_fn.get(k) in (None, "count") for k in keys):
+                    ws.write_blank(r, j, None, f)
+                else:
+                    expr = _formula_excel(sh, c, lambda k, _r=r: xl_rowcol_to_cell(_r, col_of[k]), None,
+                                          any(e["values"][col_of[k]] is None for k in keys))
+                    ws.write_formula(r, j, "=" + expr, f, _cache(v))
+            elif fn and segs:
+                ws.write_formula(r, j, "=" + _subtotal(fn, j, segs, c, sh, e), f, _cache(v))
+            elif cells[j] and not fn:
+                ws.write_string(r, j, cells[j], f)
+            else:
+                ws.write_blank(r, j, None, f)
+    last = plan["last"]
+    tr = totals_row(sh, lang)
+    ov = sh.styles() if (sh.row_styles or styled) else {"totals": {}}
+    if tr is not None:
+        tot = {k: (fn, v) for k, fn, v in sh.totals}
+        row = last + 1
+        segs = _segments([r for rows in eff_rows.values() for r in rows])
+        for j, c in enumerate(sh.columns):
+            tst = ov["totals"].get(j)
+            if c.key in tot:
+                fn, v = tot[c.key]
+                num = "#,##0" if fn == "count" else nums[j]
+                f = fmt("total", num, "right", tst)
+                if fn == "none":
+                    ws.write_blank(row, j, None, f)
+                elif fn == "formula":
+                    _total_formula(ws, sh, c, row, j, v, f, tot, col_of)
+                elif segs:
+                    ws.write_formula(row, j, "=" + _subtotal(fn, j, segs, c, sh, None), f, "" if v is None else _num(v))
+                else:
+                    ws.write_number(row, j, _num(v) if v is not None else 0, f)
+            elif tr[j]:
+                ws.write_string(row, j, tr[j], fmt("total", None, "left", tst))
+            else:
+                ws.write_blank(row, j, None, fmt("total", None, None, tst))
+    if sh.rows and sh.rules:
+        _rules(wb, ws, sh, col_of, len(sh.rows), _segments(pos.values()))
+    for j, c in enumerate(sh.columns):
+        if c.width is not None:
+            w = c.width
+        else:
+            texts = [header(c, lang)] + [display(c, r[j], lang) for r in sh.rows[:1000]]
+            w = max(6, min(60, max(_width(x) for x in texts) + 2))
+        ws.set_column(j, j, w)
+    ws.freeze_panes(1, sh.freeze_cols)
+    ws.autofilter(0, 0, last, len(sh.columns) - 1)
+
+
+def _subtotal(fn, j, segs, c, sh, e):
+    """SUBTOTAL(代码, 看得见的数据行)；平均值等按合计的位数外包 ROUND（精度口径 b）。"""
+    expr = f"SUBTOTAL({SUBTOTAL_CODE[fn]},{','.join(_col_ranges('', j, segs, absolute=False))})"
+    if fn != "count":
+        rows = sh.eff_rows() if e is None else [x["values"] if x["kind"] == "merged" else sh.rows[x["ri"]] for x in e["rows"]]
+        d = aggregate_decimals([r[j] for r in rows if isinstance(r[j], Decimal)], fn, c)
+        if isinstance(d, int) and not isinstance(d, bool):
+            expr = f"ROUND({expr},{d})"
+    return expr
+
+
+def _write_value(ws, r, j, c, v, f):
+    if v is None:
+        ws.write_blank(r, j, None, f)
+    elif isinstance(v, Decimal):
+        ws.write_number(r, j, _num(v), f)
+    elif c.type == "date":
+        ws.write_datetime(r, j, _dt.datetime.fromisoformat(v), f)
+    elif isinstance(v, bool):
+        ws.write_boolean(r, j, v, f)
+    else:
+        ws.write_string(r, j, v, f)
+
+
 def _total_formula(ws, sh, c, row, j, v, f, tot, col_of):
     """G3：fn 为 formula 的合计格，写本列公式的合计行版本（引用合计行上各列的合计）。被引用的列没有合计时留空。"""
     keys = F.row_refs(c.node)
@@ -252,36 +520,44 @@ def _total_formula(ws, sh, c, row, j, v, f, tot, col_of):
     ws.write_formula(row, j, "=" + _formula_excel(sh, c, cell_of, None, need), f, _cache(v))
 
 
-def _ranges(cols, nrow):
-    """列号 → Excel 范围（相邻的列并成一段），数据行 2..nrow+1。"""
+def _ranges(cols, nrow, segs=None):
+    """列号 → Excel 范围（相邻的列并成一段），数据行 2..nrow+1；有分组时按数据行所在的段。"""
+    segs = segs or [(1, nrow)]
     out, start = [], None
     for k, j in enumerate(cols):
         if start is None:
             start = j
         if k + 1 == len(cols) or cols[k + 1] != j + 1:
-            out.append(f"{xl_col_to_name(start)}2:{xl_col_to_name(j)}{nrow + 1}")
+            for a, b in segs:
+                out.append(f"{xl_col_to_name(start)}{a + 1}:{xl_col_to_name(j)}{b + 1}")
             start = None
     return out
 
 
-def _rules(wb, ws, sh, col_of, nrow):
+def _rules(wb, ws, sh, col_of, nrow, segs=None):
     """G1：规则按次序写成条件格式（XlsxWriter 按添加次序定优先级，先加的优先），范围只含数据行。
     C2 退路：不写恒真规则；条件规则压过单元格的静态格式，与 Excel、LibreOffice 的默认相同。"""
     kinds = {c.key: c.kind for c in sh.columns}
-    cell_of = lambda k: f"${xl_col_to_name(col_of[k])}2"
+    top = (segs[0][0] + 1) if segs else 2
+    cell_of = lambda k: f"${xl_col_to_name(col_of[k])}{top}"
 
-    def agg_of(name, k):
+    def agg_of(name, k, key=None):
         col = xl_col_to_name(col_of[k])
+        if segs:
+            rngs = ",".join(f"${col}${a + 1}:${col}${b + 1}" for a, b in segs)
+            return f"SUM({rngs})" if name == "total" else f"SUM(${col}${top}:${col}{top})"
         return f"SUM(${col}$2:${col}${nrow + 1})" if name == "total" else f"SUM(${col}$2:${col}2)"
     for r in sh.rules:
         if r["kind"] == "scale":
             key, a, b = r["scale"]
-            rng = _ranges([col_of[key]], nrow)[0]
-            ws.conditional_format(rng, {"type": "2_color_scale", "min_type": "min", "max_type": "max",
-                                        "min_color": hex_of(a), "max_color": hex_of(b)})
+            rngs = _ranges([col_of[key]], nrow, segs)
+            opts = {"type": "2_color_scale", "min_type": "min", "max_type": "max", "min_color": hex_of(a), "max_color": hex_of(b)}
+            if len(rngs) > 1:
+                opts["multi_range"] = " ".join(rngs)
+            ws.conditional_format(rngs[0], opts)
             continue
         cols = list(range(len(sh.columns))) if r["apply"] == "row" else sorted(col_of[k] for k in r["apply"])
-        rngs = _ranges(cols, nrow)
+        rngs = _ranges(cols, nrow, segs)
         cond = F.to_excel(r["node"], cell_of, kinds, agg_of)
         keys = [c.key for c in sh.columns if c.key in F.row_refs(r["node"])]
         g = _guard(sh, keys, cell_of)

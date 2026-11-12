@@ -397,6 +397,324 @@ case("err_text_formula_type", "结果是文字的公式列要写 type text", "ta
      C_([{"title": "状态", "formula": "if(执行率 > 100%, \"超支\", \"正常\")"}]),
      {"error.code": "BAD_INPUT", "error.where": "table.sheets[0].columns[6].type"})
 
+# ---------------------------------------------------------------- 2.2.0：测试集条目（G7–G11、G17），期望值按测试集各条手算
+B2_COLS = [{"key": "code", "title": "编号", "numbering": "outline"}, {"key": "cat", "title": "类别", "type": "text"}] + B_COLS[1:] + [
+    {"key": "cut", "title": "下料数量", "type": "integer", "formula": "roundup(总数量 * (1 + 损耗率))"}, {"key": "memo", "title": "备注", "type": "text"}]
+B_CAT = ["组件", "子件", "子件", "子件", "组件", "子件", "子件", "五金件", "五金件", "五金件", "五金件"]
+B_MEMO = ["组件行", None, None, None, "组件行", None, None, "五金件", "五金件，立柱用", "五金件，横梁用", "五金件"]
+
+
+def B2(sets=(24, 96), **kw):
+    """表 B 按 #717 §六 第 1 点加一列“类别”（组件、子件、五金件），编号由工具按层级编。"""
+    rows = []
+    for k, (cat, r, memo) in enumerate(zip(B_CAT, B_ROWS, B_MEMO)):
+        r = list(r[1:])
+        if r[5] in (24, 96):
+            r[5] = sets[0] if k < 4 or k in (7, 8) else sets[1]
+        rows.append([cat] + r + [memo])
+    t = {"title": "钢货架分包分解单", "columns": B2_COLS, "rows": rows,
+         "outline_from": {"column": "类别", "levels": {"组件": 1, "子件": 2}}}
+    t.update(kw)
+    return {"table": t}
+
+
+B_GROUP = {"by": "outline", "rest_label": "五金件"}
+B_MERGE = {"by": ["名称", "规格"], "agg": {"总数量": "sum", "总重": "formula", "下料数量": "formula"}, "join": ["备注"]}
+SUB_STYLE = {"kind": "subtotal", "style": {"fill": "浅灰", "bold": True}}
+DET_ROWS = [["2026-11-03", "差旅费", "销售部", 12000, "张三"], ["2026-11-08", "差旅费", "销售部", 9500, "李四"],
+            ["2026-11-20", "差旅费", "销售部", 13000, "张三"], ["2026-11-05", "招待费", "销售部", 7800, "李四"],
+            ["2026-11-18", "招待费", "销售部", 5000, "王五"], ["2026-11-02", "办公用品", "行政部", 2650, "赵六"],
+            ["2026-11-12", "办公用品", "行政部", 3000, "赵六"], ["2026-11-25", "办公用品", "行政部", 2000, "赵六"],
+            ["2026-11-01", "房租水电", "行政部", 45000, "赵六"], ["2026-11-15", "培训费", "人力部", 21000, "孙七"],
+            ["2026-11-10", "软件订阅", "研发部", 13200, "周八"], ["2026-11-28", "软件订阅", "研发部", 12000, "周八"]]
+DET_COLS = [{"key": "day", "title": "日期", "type": "date"}, {"key": "subj", "title": "科目", "type": "text"},
+            {"key": "dept", "title": "部门", "type": "text"}, {"key": "amt", "title": "金额", "type": "money"}, {"key": "who", "title": "经办人"}]
+C_SUMIF = [*C_COLS[:3], {**C_COLS[3], "formula": "sumif(detail.科目, 科目, detail.金额)"}, *C_COLS[4:]]
+C_BUDGET_ONLY = [[r[0], r[1], r[2]] for r in C_ROWS]
+
+
+def C2(det_name="费用明细", det_rows=None, extra_sheets=(), order=None, det_rules=None, budget_rules=None):
+    det = {"id": "detail", "name": det_name, "columns": DET_COLS, "rows": DET_ROWS if det_rows is None else det_rows, "totals": ["金额"]}
+    if det_rules:
+        det["rules"] = det_rules
+    bud = {"id": "budget", "name": "预算表", "columns": C_SUMIF, "rows": C_BUDGET_ONLY, "totals": C_TOTALS}
+    if budget_rules:
+        bud["rules"] = budget_rules
+    t = {"title": "2026 年 11 月部门费用预算", "sheets": [bud, det, *extra_sheets]}
+    if order:
+        t["sheet_order"] = order
+    return {"table": t}
+
+
+SUMMARY = {"id": "summary", "name": "汇总", "columns": [{"key": "dept", "title": "部门", "type": "text"},
+                                                       {"key": "budget", "title": "预算", "type": "money"},
+                                                       {"key": "actual", "title": "实际", "type": "money"}],
+           "derive": {"from": ["budget"], "by": ["部门"], "agg": {"预算": "sum", "实际": "sum"}}, "totals": ["预算", "实际"]}
+D_COLS = [{"key": "no", "title": "序号", "numbering": "outline"}, {"key": "code", "title": "产品编号"}, {"key": "name", "title": "产品名称", "type": "text"},
+          {"key": "dwg", "title": "图纸号"}, {"key": "spec", "title": "规格", "type": "text"}, {"key": "mat", "title": "材质", "type": "text"},
+          {"key": "qty", "title": "数量", "type": "integer"}, {"key": "unit", "title": "单位"}, {"key": "color", "title": "颜色1"},
+          {"key": "role", "title": "产品角色", "type": "text"}, {"key": "memo", "title": "备注"},
+          {"key": "uw", "title": "单重/面积", "type": "number"}, {"key": "tw", "title": "总重", "type": "number"}]
+D_OL = {"column": "产品角色", "levels": {"主件": 1, "焊接子件": 2}}
+
+
+def drow(rid, name, dwg, spec, qty, role, mat="Q235B"):
+    o = {"产品名称": name, "图纸号": dwg, "规格": spec, "数量": qty, "产品角色": role, "材质": mat}
+    if rid:
+        o["$id"] = rid
+    return o
+
+
+def D_s01(hw="ceiling(@r1.数量*{k}*1.005)", extra=None, qty0={"$expr": "6*28"}):
+    rows = [drow("r1", "立柱", "GK-LZ-100", "100×70×2.0 L=9000", qty0, "主件"),
+            drow("r2", "立柱型材", "GK-LZ-101", "100×70×2.0 L=8990", {"$expr": "@r1.数量"}, "焊接子件"),
+            drow("r3", "底板", "GK-LZ-102", "150×150×10", {"$expr": "@r1.数量"}, "焊接子件"),
+            drow("r4", "护脚", None, "400×120×5", {"$expr": "6*2"}, "主件"),
+            drow("r5", "膨胀螺栓", None, "M12×100", {"$expr": hw.format(k=4)}, "五金", "8.8 级"),
+            drow("r6", "螺栓", None, "M10×25", {"$expr": hw.format(k=6)}, "五金", "8.8 级")]
+    if extra:
+        rows[2:2] = [extra]
+    return {"id": "s01", "name": "01立柱", "columns": D_COLS, "outline_from": D_OL, "rows": rows}
+
+
+def D_s02(hw="ceiling(@r1.数量*{k}*1.005)", mat_r3="Q235B"):
+    return {"id": "s02", "name": "02横梁", "columns": D_COLS, "outline_from": D_OL, "rows": [
+        drow("r1", "横梁", "GK-HL-2700", "100×50×1.5 L=2700", {"$expr": "6*27*8"}, "主件"),
+        drow("r2", "梁管", "GK-HL-2701", "100×50×1.5 L=2690", {"$expr": "@r1.数量"}, "焊接子件"),
+        drow("r3", "挂片", "GK-HL-2702", "三爪 t=4", {"$expr": "@r1.数量*2"}, "焊接子件", mat_r3),
+        drow("r4", "加强连接板", None, "200×80×6", {"$expr": "6*4"}, "主件"),
+        drow("r5", "安全销", None, "Φ6", {"$expr": hw.format(k=2)}, "五金", "8.8 级"),
+        drow("r6", "螺栓", None, "M10×25", {"$expr": hw.format(k=4)}, "五金", "8.8 级")]}
+
+
+def D_s00(qty_hl="@s02/r1.数量"):
+    return {"id": "s00", "name": "总清单", "columns": D_COLS, "outline_from": D_OL, "rows": [
+        drow(None, "立柱", "GK-LZ-100", "100×70×2.0 L=9000", {"$expr": "@s01/r1.数量"}, "主件"),
+        drow(None, "护脚", None, "400×120×5", {"$expr": "@s01/r4.数量"}, "主件"),
+        drow(None, "横梁", "GK-HL-2700", "100×50×1.5 L=2700", {"$expr": qty_hl} if isinstance(qty_hl, str) else qty_hl, "主件"),
+        drow(None, "加强连接板", None, "200×80×6", {"$expr": "@s02/r4.数量"}, "主件")]}
+
+
+D_S99 = {"id": "s99", "name": "标准件", "columns": D_COLS, "outline_from": D_OL,
+         "derive": {"from": ["s01", "s02"], "where": "产品角色 = \"五金\"", "by": ["产品名称", "规格"], "agg": {"数量": "sum"}}}
+D_EMPTY = [{"id": sid, "name": name, "columns": D_COLS, "outline_from": D_OL} for sid, name in
+           (("s03", "03背交叉"), ("s04", "04吊梁天轨"), ("s06", "06地轨"), ("s07", "07撞头"))]
+D_ORDER = ["s00", "s01", "s02", "s03", "s04", "s05", "s06", "s07", "s99"]
+
+
+def D(*sheets, order=None):
+    t = {"title": "SO260415005 立库分包分解清单", "sheets": list(sheets)}
+    if order:
+        t["sheet_order"] = order
+    return {"table": t}
+
+
+S1 = "xl/worksheets/sheet1.xml"
+S2 = "xl/worksheets/sheet2.xml"
+S3 = "xl/worksheets/sheet3.xml"
+# —— G7 分组、小计
+case("t3_07_group_subtotal", "T3-07 按供应商出小计、最后出总计：同一供应商排在一起；小计 21360、14480、1260；总计 37100 不重复计小计（G7）", "table.build",
+     A(group={"by": "供应商"}, subtotals=["金额"]),
+     {"model": {"sheets[0].rows[3][1]": "会议桌", "sheets[0].rows[4][1]": "投影仪"},
+      "view": {"sheets[0].layout[0]": {"k": "g", "g": 0, "cells": ["", "宏达家具", "", "", "", "", "", "", ""]},
+               "sheets[0].layout[5].cells[6]": "21,360.00", "sheets[0].layout[5].cells[1]": "宏达家具 小计",
+               "sheets[0].layout[9].cells[6]": "14,480.00", "sheets[0].layout[13].cells[6]": "1,260.00"},
+      "sheets[0].totals[0].value": "37100",
+      "xlsx_contains": {S: ["<f>SUBTOTAL(9,G3:G6)</f><v>21360</v>", "<f>SUBTOTAL(9,G3:G6,G9:G10,G13:G14)</f><v>37100</v>"]}})
+case("t3_07_group_add_row", "T3-07 往讯联电子组加一行（投影幕 1500）：该组小计 15980、总计 38600 跟着变", "table.build",
+     A(rows=[*A_ROWS, [9, "投影幕", "120 寸", "块", 1, 1500, "讯联电子", "2026-11-18"]], group={"by": "供应商"}, subtotals=["金额"]),
+     {"view": {"sheets[0].layout[10].cells[6]": "15,980.00"}, "sheets[0].totals[0].value": "38600"})
+case("t4_05_kind_styles", "T4-05 小计行灰底加粗、总计行更深：样式按行种类写，新出的小计行自动带上（G1+G7）", "table.build",
+     A(group={"by": "供应商"}, subtotals=["金额"], row_styles=[SUB_STYLE, {"kind": "total", "style": {"fill": "灰", "bold": True}}]),
+     {"view": {"sheets[0].layout[5].st": 1, "sheets[0].layout[9].st": 1, "sheets[0].layout[13].st": 1, "sheets[0].totals_styles[0]": [0, 0],
+               "sheets[0].styles[1]": {**LGRAY_FILL, "bold": True}, "sheets[0].styles[0]": {"fill": "#808080", "fill_dark": "#4A4A47", "bold": True}}})
+case("t5_01_group_outline", "T5-01 按组件分组：立柱组件 3 行、横梁组件 2 行、五金件 4 行；组件行自己是组头（仍是数据行），五金件另出组头；能折叠（G7）", "table.build",
+     B2(group=B_GROUP, totals=["总重"]),
+     {"view": {"sheets[0].layout[0]": {"k": "d", "g": 0, "r": 0, "h": True}, "sheets[0].layout[4]": {"k": "d", "g": 1, "r": 4, "h": True},
+               "sheets[0].layout[7].k": "g", "sheets[0].layout[7].cells[2]": "五金件", "sheets[0].layout[8]": {"k": "d", "g": 2, "r": 7},
+               "sheets[0].layout[11]": {"k": "d", "g": 2, "r": 10}},
+      "sheets[0].totals[0].value": "2116.8",
+      "xlsx_contains": {S: ['<row r="3" spans="1:14" outlineLevel="1">', '<row r="2" spans="1:14">']}})
+# —— G8 编号
+case("t5_02_outline_numbering", "T5-02 编号重排：组件 1、2，子件 1.1、1.2…，五金件不编号；编号是文字（G8）", "table.build",
+     B2(),
+     {"model": {"sheets[0].rows[0][0]": "1", "sheets[0].rows[1][0]": "1.1", "sheets[0].rows[3][0]": "1.3", "sheets[0].rows[4][0]": "2",
+                "sheets[0].rows[6][0]": "2.2", "sheets[0].rows[7][0]": None, "sheets[0].rows[10][0]": None},
+      "view": {"sheets[0].columns[0].numbering": "outline"}})
+case("t5_02_insert_shifts", "T5-02 在 1.1 与 1.2 之间插一行后，后面顺延成 1.3、1.4；第 10 个子件是 1.10（编号每次重算）", "table.build",
+     {"table": {"title": "编号", "columns": [{"title": "编号", "numbering": "outline"}, {"title": "类别", "type": "text"}, {"title": "名称"}],
+                "outline_from": {"column": "类别", "levels": {"组件": 1, "子件": 2}},
+                "rows": [["组件", "甲"]] + [["子件", f"子{i}"] for i in range(1, 11)] + [["组件", "乙"]]}},
+     {"model": {"sheets[0].rows[2][0]": "1.2", "sheets[0].rows[10][0]": "1.10", "sheets[0].rows[11][0]": "2"}})
+case("t2_02_seq_after_delete", "T2-02 删掉文件柜（整表重写）：序号由工具连续编 1–7，合计 34380（G8 seq）", "table.build",
+     A(rows=[r for r in A_ROWS if r[1] != "文件柜"], columns=[{**A_COLS[0], "numbering": "seq"}, *A_COLS[1:]]),
+     {"model": {"sheets[0].rows[2][0]": "3", "sheets[0].rows[2][1]": "投影仪", "sheets[0].rows[6][0]": "7"},
+      "sheets[0].totals[0].value": "34380", "warning_codes": ["formula_value_ignored"]})
+# —— G9 合并
+case("t5_03_merge_formula", "T5-03 同名同规格的螺栓合并：总数量 576、总重 17.28、下料合并后再取整 605；总重合计仍 2116.8；口径写进说明（G9）", "table.build",
+     {**B2(merge_rows=B_MERGE, totals=["总重"]), "formats": ["xlsx", "csv"]},
+     {"view": {"sheets[0].layout[10].k": "m", "sheets[0].layout[10].members": [8, 9], "sheets[0].layout[10].cells[8]": "576",
+               "sheets[0].layout[10].cells[10]": "17.28", "sheets[0].layout[10].cells[12]": "605",
+               "sheets[0].layout[8]": {"k": "d", "r": 8, "x": 0},
+               "sheets[0].merge": "按名称、规格合并同名同规格的行；总数量 = 明细之和；总重 = 合并后按本列公式重算；下料数量 = 合并后按本列公式重算；备注 用“；”连起来"},
+      "sheets[0].totals[0].value": "2116.8", "warning_codes": ["merge_blank", "merge_blank"],
+      "csv_contains": [",螺栓,M10×25,8.8 级,套,,,576,0.03,17.28,5,605,五金件，立柱用；五金件，横梁用\r\n"],
+      "md_contains": ["| 螺栓 | M10×25 | 8.8 级 | 套 |  |  | 576 | 0.03 | 17.28 | 5% | 605 |"]})
+case("t8_01_full", "T8-01 分解单正式版：分组编号、五金合并、下料向上取整、每组重量小计与总计、小计行灰底加粗（G7、G8、G9）", "table.build",
+     B2(group=B_GROUP, subtotals=["总重"], merge_rows=B_MERGE, totals=["总重"], row_styles=[SUB_STYLE]),
+     {"view": {"sheets[0].layout[4].cells[10]": "1083.84", "sheets[0].layout[8].cells[10]": "1002.24", "sheets[0].layout[15].cells[10]": "30.72",
+               "sheets[0].layout[13].cells[12]": "605", "sheets[0].layout[4].st": 0, "sheets[0].layout[9]": {"k": "g", "g": 2, "cells": ["", "", "五金件", "", "", "", "", "", "", "", "", "", "", ""]}},
+      "model": {"sheets[0].rows[1][12]": "50", "sheets[0].rows[2][12]": "49", "sheets[0].rows[3][12]": "149", "sheets[0].rows[5][12]": "99",
+                "sheets[0].rows[6][12]": "196", "sheets[0].rows[7][12]": "101", "sheets[0].rows[10][12]": "202", "sheets[0].rows[0][0]": "1", "sheets[0].rows[6][0]": "2.2"},
+      "sheets[0].totals[0].value": "2116.8",
+      "xlsx_contains": {S: ["ROUNDUP(", "<f>SUBTOTAL(9,K2:K5)</f><v>1083.84</v>", "<f>SUM(I13,I14)</f><v>576</v>", '<row r="13" spans="1:14" hidden="1" outlineLevel="2">', '<row r="15" spans="1:14" outlineLevel="1" collapsed="1">']}})
+case("t8_06_rescale", "T8-06 换规模：立柱组件 36 套、横梁组件 144 套，规则不变，只变了数（G7、G9）", "table.build",
+     B2(sets=(36, 144), group=B_GROUP, subtotals=["总重"], merge_rows=B_MERGE, totals=["总重"], row_styles=[SUB_STYLE]),
+     {"model": {"sheets[0].rows[1][8]": "72", "sheets[0].rows[3][8]": "216", "sheets[0].rows[5][8]": "144", "sheets[0].rows[6][8]": "288",
+                "sheets[0].rows[1][12]": "75", "sheets[0].rows[2][12]": "74", "sheets[0].rows[3][12]": "223", "sheets[0].rows[5][12]": "149",
+                "sheets[0].rows[6][12]": "294", "sheets[0].rows[7][12]": "152", "sheets[0].rows[10][12]": "303"},
+      "view": {"sheets[0].layout[13].cells[8]": "864", "sheets[0].layout[13].cells[12]": "908", "sheets[0].layout[4].cells[10]": "1625.76",
+               "sheets[0].layout[8].cells[10]": "1503.36", "sheets[0].layout[15].cells[10]": "46.08"},
+      "sheets[0].totals[0].value": "3175.2"})
+# —— G10 跨表
+case("t6_02_sumif", "T6-02 预算表的实际从明细按科目加出来：值不变；Excel 里是跨表的等值求和（SUMPRODUCT），改明细预算表跟着变（G10）", "table.build",
+     C2(),
+     {"model": {"sheets[0].rows[0][3]": "34500", "sheets[0].rows[1][3]": "12800", "sheets[0].rows[2][3]": "7650", "sheets[0].rows[3][3]": "45000",
+                "sheets[0].rows[4][3]": "21000", "sheets[0].rows[5][3]": "25200", "sheets[0].rows[0][5]": "1.15"},
+      "sheets[0].totals[1].value": "146150", "sheets[0].totals[2].value": "2150", "warning_codes": [],
+      "xlsx_contains": {S: ["<f>SUMPRODUCT(--('费用明细'!$B$2:$B$13=A2),'费用明细'!$D$2:$D$13)</f><v>34500</v>"]}})
+case("t6_04_derive_summary", "T6-04 加一张按部门的汇总表：4 行，合计 144000 / 146150；每格引用预算表，联动（G10 derive）", "table.build",
+     C2(extra_sheets=[SUMMARY]),
+     {"model": {"sheets[2].rows": [["销售部", "50000", "47300"], ["行政部", "53000", "52650"], ["人力部", "15000", "21000"], ["研发部", "26000", "25200"]]},
+      "sheets[2].totals[0].value": "144000", "sheets[2].totals[1].value": "146150",
+      "xlsx_contains": {S3: ["<f>'预算表'!C2+'预算表'!C3</f><v>50000</v>", "<f>'预算表'!D6</f><v>21000</v>"]}})
+case("t6_05_rename_reorder", "T6-05 费用明细改名“11月流水”并放到最前：id 不变，引用不断，Excel 公式里是新名（G10 sheet_order）", "table.build",
+     C2(det_name="11月流水", order=["detail", "budget"]),
+     {"sheets[0].name": "11月流水", "sheets[1].name": "预算表", "model": {"sheets[1].rows[0][3]": "34500"},
+      "xlsx_contains": {"xl/workbook.xml": ['<sheet name="11月流水" sheetId="1"', '<sheet name="预算表" sheetId="2"'],
+                        S2: ["SUMPRODUCT(--('11月流水'!$B$2:$B$13=A2),'11月流水'!$D$2:$D$13)"]}})
+case("t8_03_linked", "T8-03 实际从明细汇过来、执行率超 100% 整行红、低于 70% 整行黄、按部门汇总；Excel 里是原生公式与条件格式（G1+G10）", "table.build",
+     C2(extra_sheets=[SUMMARY], budget_rules=[{"when": "执行率 > 100%", "apply_to": "row", "style": {"fill": "浅红"}},
+                                              {"when": "执行率 < 70%", "apply_to": "row", "style": {"fill": "浅黄"}}]),
+     {"view": {"sheets[0].cell_styles[0]": [0, 0, 0], "sheets[0].cell_styles[6]": [1, 0, 1], "sheets[0].cell_styles[12]": [4, 0, 0],
+               "sheets[0].cell_styles[18]": "<缺席>"},
+      "model": {"sheets[2].rows[0]": ["销售部", "50000", "47300"]}, "sheets[2].totals[1].value": "146150",
+      "xlsx_contains": {S: ['<conditionalFormatting sqref="A2:F7">', "SUMPRODUCT(--('费用明细'!$B$2:$B$13=A2)"]}})
+case("t8_03_after_edit", "T8-03 明细的招待费 5000 改成 9000：预算表招待费实际 16800、执行率 84.0%、不再标黄；汇总销售部实际 51300", "table.build",
+     C2(det_rows=[r if r[3] != 5000 else [*r[:3], 9000, r[4]] for r in DET_ROWS], extra_sheets=[SUMMARY],
+        budget_rules=[{"when": "执行率 > 100%", "apply_to": "row", "style": {"fill": "浅红"}}, {"when": "执行率 < 70%", "apply_to": "row", "style": {"fill": "浅黄"}}]),
+     {"model": {"sheets[0].rows[1][3]": "16800", "sheets[0].rows[1][5]": "0.84", "sheets[2].rows[0][2]": "51300"},
+      "view": {"sheets[0].cell_styles[6]": [4, 0, 0]}})
+_DET312 = DET_ROWS + [["2026-11-30", "差旅费", "销售部", 100, "张三"]] * 300
+case("t8_07_append_300", "T8-07 明细追加 300 行（每笔 100 元差旅费）：预算表差旅费实际 64500；规则与汇总范围在 Excel 里含新行（G1+G10）", "table.build",
+     C2(det_rows=_DET312, det_rules=[{"when": "金额 > 10000", "style": {"color": "红"}}]),
+     {"model": {"sheets[0].rows[0][3]": "64500", "sheets[1].rows[11][3]": "12000"}, "sheets[1].rows": 312,
+      "xlsx_contains": {S: ["SUMPRODUCT(--('费用明细'!$B$2:$B$313=A2),'费用明细'!$D$2:$D$313)"],
+                        S2: ['<conditionalFormatting sqref="D2:D313">']}})
+# —— G17 格公式
+case("t9_01_ceiling_cells", "T9-01 五金数量 = 基数 × 1.005 向上取整：676、1014、2605、5210；主件、子件不受影响；Excel 里每格是 CEILING 公式（G17+G2）", "table.build",
+     D(D_s01(hw="ceiling({b}*1.005)".replace("{b}", "@r1.数量*{k}")), D_s02()),
+     {"view": {"sheets[0].rows[4][6]": "676", "sheets[0].rows[5][6]": "1,014", "sheets[1].rows[4][6]": "2,605", "sheets[1].rows[5][6]": "5,210",
+               "sheets[0].rows[0][6]": "168", "sheets[0].rows[1][6]": "168", "sheets[0].rows[4][0]": ""},
+      "model": {"sheets[0].rows[4].qty": {"$expr": "ceiling(@r1.数量*4*1.005)"}, "sheets[0].rows[4].$id": "r5", "sheets[0].rows[4].no": None},
+      "warning_codes": [],
+      "xlsx_contains": {S1: ["<f>CEILING(ROUND(((G2*4)*1.005),14-INT(LOG10(ABS(((G2*4)*1.005))+(((G2*4)*1.005)=0)))),1)</f><v>676</v>"]}})
+case("t9_04_sheet_order", "T9-04 加一张“05三脚架”、只要表头：排在 04 与 06 之间；表名以数字开头；整本次序固定（G10 sheet_order）", "table.build",
+     D(D_s00(), D_s01(), D_s02(), *D_EMPTY, D_S99, {"id": "s05", "name": "05三脚架", "columns": D_COLS, "outline_from": D_OL}, order=D_ORDER),
+     {"sheets[5].name": "05三脚架", "sheets[5].rows": 0, "sheets[0].name": "总清单", "sheets[8].name": "标准件",
+      "xlsx_contains": {"xl/workbook.xml": ['<sheet name="04吊梁天轨" sheetId="5" r:id="rId5"/><sheet name="05三脚架" sheetId="6" r:id="rId6"/><sheet name="06地轨"']}})
+case("t9_05_insert_ref", "T9-05 立柱下插入焊接子件“加强筋”（每根立柱 2 块）：数量 = 立柱那一格 × 2 = 336；序号 1、1.1、1.2 加强筋、1.3 底板、2；引用按 id 找，不漂（G17+G8）", "table.build",
+     D(D_s01(extra=drow("r7", "加强筋", None, "80×60×6", {"$expr": "@r1.数量*2"}, "焊接子件"))),
+     {"view": {"sheets[0].rows[2][2]": "加强筋", "sheets[0].rows[2][6]": "336", "sheets[0].rows[2][0]": "1.2", "sheets[0].rows[3][0]": "1.3",
+               "sheets[0].rows[4][0]": "2", "sheets[0].rows[5][0]": "", "sheets[0].rows[3][6]": "168", "sheets[0].rows[5][6]": "676"},
+      "xlsx_contains": {S1: ["<f>G2*2</f><v>336</v>", "<f>G2</f><v>168</v>"]}})
+case("t9_07_cell_exprs", "T9-07 主件写乘式 6×28、6×27×8；子件、五金引用主件那一格；总清单引用各分部主件格；Excel 里都是公式（G17）", "table.build",
+     D(D_s00(), D_s01(), D_s02()),
+     {"model": {"sheets[1].rows[0].qty": {"$expr": "6*28"}},
+      "view": {"sheets[0].rows[0][6]": "168", "sheets[0].rows[2][6]": "1,296", "sheets[2].rows[2][6]": "2,592",
+               "sheets[1].exprs[0]": [0, 6, "6 × 28"], "sheets[0].exprs[2]": [2, 6, "@s02/r1.数量"]},
+      "xlsx_contains": {S1: ["<f>'01立柱'!G2</f><v>168</v>", "<f>'02横梁'!G5</f><v>24</v>"], S2: ["<f>6*28</f><v>168</v>"],
+                        S3: ["<f>(6*27)*8</f><v>1296</v>", "<f>G2*2</f><v>2592</v>"]}})
+case("t9_08_derive_std", "T9-08 标准件：各分部五金按名称加规格合并；螺栓 M10×25 = 1014 + 5210 = 6224（取整后相加，不是 6223）；每格是引用分部格的求和（G10 derive）", "table.build",
+     D(D_s01(), D_s02(), D_S99),
+     {"model": {"sheets[2].rows[0][2]": "膨胀螺栓", "sheets[2].rows[0][6]": "676", "sheets[2].rows[1][6]": "6224", "sheets[2].rows[2][6]": "2605",
+                "sheets[2].rows[3]": "<缺席>"},
+      "view": {"sheets[2].rows[1][6]": "6,224", "sheets[2].derive": "由表 s01、s02 里符合“产品角色 = \"五金\"”的行按产品名称、规格合并而成；数量 是各来源之和"},
+      "warning_codes": [],
+      "xlsx_contains": {S3: ["<f>'01立柱'!G7+'02横梁'!G7</f><v>6224</v>"]}})
+_S02_NEAR = D_s02()
+_S02_NEAR["rows"][5] = {**_S02_NEAR["rows"][5], "规格": "M10x25"}
+case("t9_08_near_key", "T9-08 名称、规格写法有细小差别（M10x25 与 M10×25）：不合并，告警点名两种写法（G9 键规则）", "table.build",
+     D(D_s01(), _S02_NEAR, D_S99),
+     {"warning_codes": ["merge_key_near"], "warnings_contain": ["“螺栓、M10×25”与“螺栓、M10x25”写法相近而不同"], "model": {"sheets[2].rows[3][4]": "M10x25"}})
+_T911 = D(D_s00(), D_s01(), D_s02(), *D_EMPTY, D_S99, {"id": "s05", "name": "05三脚架", "columns": D_COLS, "outline_from": D_OL}, order=D_ORDER)
+case("t9_11_deliverable", "T9-11 整份分解清单交 Excel：9 张表次序固定，各 13 列；取整、乘式、跨表引用、派生求和都是公式（G10、G17）", "table.build",
+     _T911,
+     {"stats.sheets": 9, "sheets[8].columns": [c["title"] for c in D_COLS], "file_count": 4,
+      "xlsx_contains": {"xl/workbook.xml": ['<sheet name="总清单" sheetId="1"', '<sheet name="标准件" sheetId="9"'],
+                        "xl/worksheets/sheet9.xml": ["<f>'01立柱'!G7+'02横梁'!G7</f><v>6224</v>"]}})
+# —— G11 核对
+_T909 = D(D_s00(qty_hl=1290), D_s01(), D_s02(mat_r3=None), {"id": "s99", "name": "标准件", "columns": D_COLS, "outline_from": D_OL, "rows": [
+    drow(None, "膨胀螺栓", None, "M12×100", 676, "五金", "8.8 级"), drow(None, "螺栓", None, "M10×25", 3000, "五金", "8.8 级"),
+    drow(None, "螺栓", None, "M10×25", 3223, "五金", "8.8 级"), drow(None, "安全销", None, "Φ6", 2605, "五金", "8.8 级")]})
+_EXP909 = "\n".join(["optional 产品编号 图纸号 颜色1 单位 备注 单重/面积 总重 sheet=*",
+                     "match 数量 sheet=s00 key=产品名称 against=s01,s02 where=产品角色:主件",
+                     "sum_equal 数量 sheet=s99 by=产品名称,规格 from=s01,s02 where=产品角色:五金",
+                     "nonempty 材质 sheet=*", "unique 产品名称 规格 sheet=s99"])
+case("t9_09_cross_checks", "T9-09 交付前按四条规则核：四处错误各报一条，写明表、行、现值、应值；只核对，不改表（G11）", "table.check",
+     {**_T909, "expect": _EXP909},
+     {"verdict": "fail", "summary": "4 条核对不通过，共 5 处问题",
+      "checks[8].verdict": "pass", "checks[9].problems[0].actual": "1,290", "checks[9].problems[0].expected": "1,296（02横梁 第 1 行）",
+      "checks[9].problems[0].cell": "总清单!G4",
+      "checks[10].problems[0].actual": "螺栓、M10×25：6223", "checks[10].problems[0].expected": "6224（01立柱、02横梁之和）",
+      "checks[11].problems[0].cell": "02横梁!F4", "checks[12].problems[0].sheet": "标准件", "checks[12].problems[0].row": 2,
+      "checks[12].problems[1].row": 3})
+_T910 = D(D_s00(), D_s01(), D_s02(), {"id": "s99", "name": "标准件", "columns": D_COLS, "outline_from": D_OL, "rows": [
+    drow(None, "膨胀螺栓", None, "M12×100", 676, "五金", "8.8 级"), drow(None, "螺栓", None, "M10×25", 6224, "五金", "8.8 级"),
+    drow(None, "安全销", None, "Φ6", 2605, "五金", "8.8 级")]})
+case("t9_10_all_pass", "T9-10 改正后再核：四条全过，回执写明全部通过，不生成空的问题表（G11）", "table.check",
+     {**_T910, "expect": _EXP909},
+     {"verdict": "pass", "summary": "全部通过（期望清单 5 条）", "checks[9].verdict": "pass", "checks[10].verdict": "pass",
+      "checks[11].verdict": "pass", "checks[12].verdict": "pass"})
+case("t8_02_issue_rules", "T8-02 主表标红材质为空与同名同规格未合并的格；核对回执列出 2 条问题（问题表由模型照回执写成普通表）（G11+G1）", "table.check",
+     {**B2(rules=[{"when": "材质 = \"—\"", "apply_to": ["材质"], "style": {"color": "红"}}]),
+      "expect": "unique 名称 规格\nnonempty 材质"},
+     {"verdict": "fail", "checks[2].problems[0].row": 9, "checks[2].problems[1].row": 10, "checks[2].where": ["钢货架分包分解单!C10", "钢货架分包分解单!D10", "钢货架分包分解单!C11", "钢货架分包分解单!D11"]})
+case("t2_03_blank_row", "T2-03 插一行空行待填：金额为空不是 0；核对不把空行当错，只提示“有空行”（G11）", "table.check",
+     {"table": {"title": "办公室装修采购清单", "columns": A_COLS, "rows": [*A_ROWS[:3], [None] * 8, *A_ROWS[3:]], "totals": ["金额"]}},
+     {"verdict": "pass", "checks[2].kind": "empty_row", "checks[2].verdict": "pass", "checks[2].where": ["办公室装修采购清单 第 4 行"],
+      "summary": "全部通过"})
+case("g11_unique_whole_book", "G11 sheet=* 下 unique 把各表合起来查重（图纸号不重号）", "table.check",
+     {**D(D_s01(), D_s02()), "expect": "optional 产品编号 颜色1 单位 备注 单重/面积 总重 sheet=*\nunique 图纸号 sheet=*"},
+     {"verdict": "pass"})
+# —— 报错
+case("err_expr_in_formula_col", "公式列的格不收 $expr（17 TL-30b：工具算出的字段不得收式）", "table.build",
+     A(rows=[{**dict(zip(A_KEYS, A_ROWS[0])), "金额": {"$expr": "1+1"}}]),
+     {"error.code": "BAD_INPUT", "error.where": "table.rows[0].金额"})
+case("err_expr_missing_row", "格公式引用的行 id 不存在", "table.build",
+     D({**D_s01(), "rows": [drow("r1", "立柱", None, "x", {"$expr": "@r9.数量"}, "主件")]}),
+     {"error.code": "BAD_INPUT", "error.where": "table.sheets[0].rows[0][6]"})
+case("err_expr_cycle", "格公式成环", "table.build",
+     D({**D_s01(), "rows": [drow("r1", "甲", None, "x", {"$expr": "@r2.数量"}, "主件"), drow("r2", "乙", None, "x", {"$expr": "@r1.数量+1"}, "主件")]}),
+     {"error.code": "BAD_INPUT"})
+case("err_expr_integer", "整数列的格公式算出小数", "table.build",
+     D({**D_s01(), "rows": [drow("r1", "立柱", None, "x", {"$expr": "672*1.005"}, "主件")]}),
+     {"error.code": "BAD_INPUT", "error.where": "table.sheets[0].rows[0][6]"})
+case("err_merge_round_agg", "含取整的公式列合并时没写口径", "table.build",
+     B2(merge_rows={"by": ["名称", "规格"], "agg": {"总数量": "sum", "总重": "formula"}}),
+     {"error.code": "BAD_INPUT", "error.where": "table.merge_rows.agg"})
+case("err_outline_numeric", "层级来源要是一列文字，不收整数层级列", "table.build",
+     {"table": {"title": "T", "columns": [{"title": "层级", "type": "integer"}, {"title": "名称"}], "rows": [[1, "甲"]],
+                "outline_from": {"column": "层级", "levels": {"1": 1}}}},
+     {"error.code": "BAD_INPUT", "error.where": "table.outline_from.column"})
+case("err_sheet_order_id", "sheet_order 里有不存在的表 id", "table.build",
+     C2(order=["detail", "nope"]),
+     {"error.code": "BAD_INPUT", "error.where": "table.sheet_order"})
+case("err_sumif_sheet", "跨表汇总引用了不存在的表", "table.build",
+     {"table": {"title": "T", "sheets": [{"id": "a", "columns": [{"key": "k", "title": "科目", "type": "text"},
+                                                                {"title": "实际", "type": "money", "formula": "sumif(nope.科目, 科目, nope.金额)"}], "rows": [["x"]]}]}},
+     {"error.code": "BAD_INPUT"})
+
 # ---------------------------------------------------------------- table.check
 case("c_pass", "列、唯一、非空、合计、行数全过", "table.check",
      {"table": BOM, "expect": "columns 零件 数量 单价 金额\nunique 零件\nnonempty *\ntotal 金额 sum=3741\nrows min=3 max=3"},
@@ -409,7 +727,7 @@ case("c_total_tol", "带误差：3741 与 3740 差 1，tol=1 判过", "table.che
      {"verdict": "pass"})
 case("c_unique_fail", "主键重复：第 3 行与第 1 行同名，位置 钢材!A4", "table.check",
      {"table": {**STEEL, "rows": [["Q235", 235, 4200], ["Q355", 355, 4550], ["Q235", 240, 4300]]}, "expect": "unique 牌号"},
-     {"verdict": "fail", "checks[2].where": ["钢材!A4"]})
+     {"verdict": "fail", "checks[2].where": ["钢材!A2", "钢材!A4"]})   # 2.2.0 G11：unique 报出每组重复的每一行
 case("c_nonempty_fail", "空格子：列出位置", "table.check",
      {"table": {"title": "排班", "columns": ["日期", "早班", "晚班"], "rows": [["10-27", "张敏", None], ["10-28", None, "王强"]]},
       "expect": "nonempty 早班 晚班"},

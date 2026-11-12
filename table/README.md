@@ -1,4 +1,14 @@
-# table 2.1.0 — 表格交付物包
+# table 2.2.0 — 表格交付物包
+
+> 2.2.0（执行令《首发后-table包2.2.0》，调度 11-12 派单；依据 mengosv2 #710 §5.5–§5.8、§6.3、§6.3a，#711 §2.5–§2.7、§六，返工稿 #717（§六 调度已定：层级按一列文字映射、合并行不算格级覆盖、T9-06 判部分），kernel-spec v0.2.98 08 PD-1e、17 TL-30/TL-30b，引擎 #719 对包的两条要求）：G7–G11 与 G17 的包内一项。**只放宽**：只加可选字段、枚举值、函数、核对项、告警码与输出字段；不带新字段的合规输入，表模型、Markdown、CSV 照旧逐字节相同（`tests/test_contribution.py`；入参 schema 剥掉 2.1.0、2.2.0 的新增项后与 1.0.1 逐键相同）。
+> - **G17 格公式**：输入列的格可写 `{"$expr": 式}`（数、函数、本行的列、`@行id.列`、`@表id/行id.列`），行带保留键 `$id`；`rows` 上声明 `"x-mengos-expr": true`（引擎沿 properties/items 可达），格的 schema 收 `{"$expr"}`；公式列、编号列的格写 `$expr` 回 BAD_INPUT（工具把关）。整本表一起算、成环报错；每格在 Excel 里写自己的公式（别表加引号）。取整的步长、位数可省（`ceiling(x)`、`roundup(x)`、`round(x)`），导出时补全为 `CEILING(…,1)` 等。不连续函数照 G4 用双精度再算一遍，不同就告警。
+> - **G8 编号**：`numbering: seq | outline`；层级来源 `outline_from {column: 一列文字, levels: {文字: 1–4}}`，不收整数层级列。编号每次重算，存为文字（1.10 不会变成 1.1），层级为空不编。
+> - **G7 分组与小计**：`group {by: 列}`（组头由工具生成，同组的行排到一起）或 `{by: "outline", rest_label}`（层级 1 的行自己就是组头，仍是数据行）；`subtotals`；行种类 group、subtotal 可在 `row_styles` 着色。Excel：分级显示，小计与合计写 `SUBTOTAL(…, 看得见的数据行)`。
+> - **G9 按键合并**：`merge_rows {by, scope, agg: {列: sum | formula}, join}`；含取整的公式列不写 agg 回 BAD_INPUT；带式的列只能 sum；键按 NFKC 去首尾空白后逐字比，写法相近（大小写、x/X/*/＊ 与 ×）的不合并、告警 `merge_key_near`；各行不同又没写口径的列留空、告警 `merge_blank`。明细保留，视图与 Excel 默认折叠在合并行上方；CSV 只写看得见的行；口径逐列写进说明。
+> - **G10 跨表**：`sumif(表id.条件列, 本行的列, 表id.求和列)`、`countif`、`total(表id.列)`，按依赖次序算、成环报错，对不上告警 `ref_no_match`；Excel 写等值匹配的 SUMPRODUCT（不用 SUMIF）。派生表 `derive {from, where, by, agg: sum}`，每格是引用来源格的求和公式。`sheet_order` 定表序。
+> - **G11 核对**：unique 报出每组重复的每一行；有整行为空的行时内置提示（pass）；`sheet=*`；跨表 `match`、`sum_equal`；`optional 列…` 标明按规定可以整列为空的列；每条问题带 表、行、格、现值、应值（`problems`），回执加一句 `summary`（“全部通过”或几条不通过）。不在 build 里生成问题表。
+> - 顺带修正 2.0.x 起的一处：从表模型（`.table.json`）再导出时，百分比列被再除了一次 100。
+> - 不做：G6、G12–G15；G16 随局部追问。上线次序：先引擎（#719 已在 main），后包。
 
 > 2.1.0（执行令《首发后-table包2.1.0》，立法者 11-12 批准开工；依据 mengosv2 #710 §6.2、#711、kernel-spec v0.2.98 #713）：G1–G5 与公共项。**只放宽**：只加可选字段、枚举值、函数、告警码与输出字段；不带新字段的合规输入，表模型、Markdown、CSV 与 1.0.1 逐字节相同，产出台数据只多 `totals_fn` 一个输出字段，xlsx 逐格的值不变（`tests/test_contribution.py`）。
 > - **第 0 步四个条件**：C1 样式跟着行走——行里的保留键 `$style`（`"x-mengos-display": true` 声明，17 TL-30 v0.2.98），不设按行号寻址的 `cell_styles`，`row_styles` 只按行种类（2.1.0 只有 total）。C2 恒真条件格式——LibreOffice 24.2.7.2 实测：两条规则同时命中同一格时**不按属性合并**（`readings/table-2.1.0-cf/读数-LibreOffice.md`），照 #711 §2.2 第 3 条退路：叠加口径改为与 Excel 相同（规则 > 格 > 行 > 列默认），**不写恒真规则**；Excel、WPS 的读数单在同目录，交本地施工方填。C3 取整与比较的参数按 15 位有效数字归整，Excel 一侧写 `ROUND(x,14-INT(LOG10(ABS(x)+(x=0))))`；不连续的函数再用双精度算一遍，不同就告警 `excel_float`，点名到格。C4 精度口径 b：公式列照旧逐行舍入，Excel 公式外包 `ROUND(…, 位数)`，合计行的平均值等也外包同样位数的 ROUND。
@@ -56,7 +66,7 @@
 ```
 uv sync --frozen
 .venv/bin/python -m pytest -q          # 单测
-.venv/bin/python tools/run_golden.py   # 金样 76 例
+.venv/bin/python tools/run_golden.py   # 金样 112 例
 .venv/bin/python tools/lo_roundtrip.py # Excel 往返：LibreOffice 无头重算读回逐格比（要 soffice 与系统 Python 的 uno）
 ```
 
