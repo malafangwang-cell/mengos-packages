@@ -349,7 +349,7 @@ def _strip_210(node):
     spec = importlib.util.spec_from_file_location("mr", ROOT / "tools" / "make_registration.py")
     mr = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mr)
-    added = mr.FORMULA_ADD + mr.STYLE_DESC + mr.TOT_ADD + ["改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。",
+    added = mr.FORMULA_ADD + mr.STYLE_DESC + mr.TOT_ADD + mr.NUMBER_ADD + ["改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。",
                                                         "产出台与 Excel 重算一致；个别取整或比较的边界值可能不一致时会告警，点名到格。"]
 
     def text(t):

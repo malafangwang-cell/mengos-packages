@@ -94,6 +94,7 @@ TABLE_DESC = (
         "百分比公式列算出来的也是小数（实际 / 预算）。"
         "rows 每行一个数组，按列的顺序，每格是字符串、数字、true/false 或 null（空格子）；有公式列时可以只写非公式列。"
         "数值写数字，不带单位；百分比写百分数（12.5 表示 12.5%）；日期写 YYYY-MM-DD。"
+        "表格里能读成数的值一律存为数字，可以计算；不提供把数字列改成文本。用户要文本，如实说明：下载后在 Excel 里改。"
         "totals 加末行合计：[{column, fn}]，fn 为 sum / avg / min / max / count，只写列名时按 sum；"
         "fn 写 formula 时合计行按本列公式重算（比率列：实际合计 ÷ 预算合计），写 none 留空。"
         "meta：lang（zh-CN 或 en，也可直接写在 table 顶层）、author、org、date、version。sources 列数据来源，assumptions 列数据成立的前提（如价格的时点）。"
@@ -122,6 +123,7 @@ TABLE_DESC_BUILD = (
     "rows 每行一个数组，按列的顺序，格数等于列数；有公式列时也可以只写非公式列，格数等于非公式列数；每格是字符串、数字、true/false 或 null（空格子）。"
     "行也可以写成对象（列的 key 或标题 → 值），缺的格子为空；分批追加行时请用对象行，改了列要把已有的数组行按新列重写。"
     "数值写数字，不带单位；百分比写百分数（12.5 表示 12.5%）；日期写 YYYY-MM-DD。"
+    "表格里能读成数的值一律存为数字，可以计算；不提供把数字列改成文本。用户要文本，如实说明：下载后在 Excel 里改。"
     "totals 加末行合计：[{column, fn}]，fn 为 sum / avg / min / max / count，只写列名时按 sum；"
     "fn 写 formula 时合计行按本列公式重算（比率列：实际合计 ÷ 预算合计），写 none 留空。"
     "meta：lang（zh-CN 或 en，也可直接写在 table 顶层）、author、org、date、version。sources 列数据来源，assumptions 列数据成立的前提（如价格的时点）。"
@@ -158,8 +160,9 @@ FORMULA_ADD = [
  "百分比公式列算出来的也是小数（实际 / 预算）。",
 ]
 TOT_ADD = ["fn 写 formula 时合计行按本列公式重算（比率列：实际合计 ÷ 预算合计），写 none 留空。"]
+NUMBER_ADD = ["表格里能读成数的值一律存为数字，可以计算；不提供把数字列改成文本。用户要文本，如实说明：下载后在 Excel 里改。"]   # 立法者 2026-11-12：表格数字默认就是数字（执行令 2.1.0 §一 补 第 1 条）
 BUILD_ONLY_ADD = ["改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。"]
-assert all(x in TABLE_DESC for x in FORMULA_ADD + TOT_ADD + STYLE_DESC)
+assert all(x in TABLE_DESC for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + NUMBER_ADD)
 assert all(x in TABLE_DESC_BUILD for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + BUILD_ONLY_ADD)
 
 
