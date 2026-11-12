@@ -1,4 +1,6 @@
-# document · 通用长文包 2.2.0
+# document · 通用长文包 2.3.0
+
+> 2.3.0（局部追问设计 r9.1 §三 / 施工项 A1，读数令 X8 P1）：`doc.build` 的产出加**块清单** `blocks`，供局部追问定位与拼回。给模型看的文字不改；输入 schema 不改；输出 schema 只加 `blocks` 一项。工具代码与登记变，lock 变，须重新认证。
 
 > 2.2.0（立法者 2026-11-09：长文图文能力与 PDF 进首发，合并为一个版本、认证一次；合并原定 2.1.0 的图文能力与 doc.export 的 PDF 格式）。给模型看的文字只改 doc.export 一件（加 PDF、删“不直接交 PDF”）；doc.build、doc.check 的说明与 schema 不动，doc.export 的 `format`/`formats` 词表只放宽（加 `pdf`），其余输入 schema 不变。工具代码、依赖、字体、登记都变，lock 变，须重新认证。
 >
@@ -117,6 +119,17 @@ stdout {"ok": true, "output": {..., "files": [{path, format, role, media_type, b
 ```
 
 `where` 是出错的位置，例如 `doc.sections[3].level`。期望清单出错时，`line` 给出行号。
+
+### 2.1 块清单（2.3.0）
+
+`doc.build` 的产出带 `blocks`：每节 `body` 里的顶层单元一块，按节、按出现顺序列出。
+
+- **切法**：与放置规则同一套——先按单独一行的 `[[fig:id]]`、`[[tab:id]]` 切开，再交 Markdown 解析器取顶层块。哪些行是段落以解析器为准。
+- **种类** `kind`：`paragraph`、`heading`（正文小标题）、`list`、`quote`、`code`、`md_table`（正文里的 Markdown 表格）、`hr`、`html`、`figure`（图放置行，带 `figure`: 图 id）、`table`（表放置行，带 `table`: 表 id）。
+- **起止** `start`、`end`：在规范化后的 `body`（换行统一为 `\n`，即 `.doc.json` 里那一份）里的字符位置，按 Unicode 码点计，左闭右开；`line_start`、`line_end` 是 1 起的行号（含）。块后的空行不算块内。
+- **块哈希** `hash`：`body[start:end]` 这段源文字（UTF-8）的 sha256。按源文字算，图表编号、目录、别的节变了，块哈希不变。
+- **块 id**：`<节 id>.b<序号>`，序号 1 起。同一份文档两次成型，块清单逐字节相同；段内改字只改这一块的哈希。
+- 只被引用、没有放置的图表补在第一次引用它的那一节末尾，这一块 `start = end = len(body)`、`auto: true`、哈希为空串的 sha256。
 
 ## 3 文档内容（`doc`）
 
@@ -338,6 +351,7 @@ uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider      # 项
 | `test_review_regressions.py` | 57 项。独立审查（另起的审查代理用对抗性输入找出 22 处缺陷）逐条钉住：<br>· 信封与预算的各种坏值不再让进程无输出退出；<br>· 坏图、非有限尺寸、实体解码出的控制字符、超长文件名不再导致内部错误，出错时不留半截文件；<br>· 两万行表格导出 Word 是线性耗时；<br>· 各种代码块里的记号不处理，跨块的行内代码不吞引用；<br>· Markdown 里的标题、表注不能注入结构，没闭合的代码块不吞后文；<br>· 十五种 SVG 绕过写法被拒；<br>· 核对的引号、参数与同名节 |
 | `test_contribution.py` | 60 项（另有 `test_legacy_default_ids.py` 3 项），贡献型接入预检（TL-30a）：标注合法、base 槽唯一、引擎合并金样（合并 / 触及键 / 空槽 / 骨架）；整体写法 schema 与 1.2.5 等价；带 base 的增量被接受；空槽中间版本被接受；分次合并出的文档与一次写成的交出同一份产物（文件逐字节相同）。夹具与参照实现见 `tests/fixtures/contribution/`、`tests/contribution_ref.py`；变异读数见 `tests/MUTANTS.md` |
 | `test_figures_embed.py` | 2.1.0 图文能力（图片全由 `tools/synth.py` 程序生成）：嵌入副本（2048²→1600² JPEG、800×600 不变、1600/1601 边界、透明合成白底、去 EXIF 与 ICC、字节确定、坏流拒收）；Word/网页/产出台/PDF/`.doc.json` 内嵌用副本，原图单独成文件、Markdown 引用它；单张 15 MB 收、16 MB 恰收、多 1 字节与 17 MB 拒（含图 id 与字节数）；原图合计与嵌入合计（36 MB）各自的上限与报错；像素上限；规范模型文件将超 48 MB 时输入阶段拒收；20 张 2K（可压缩与不可压缩各一）整篇成功，各产出文件 <48 MB，`.doc.json` 不含原图 base64、原图文件的 sha256 与 `original.sha256` 逐一相等；原图随 `doc.build` 恒出、随 `doc.export` 仅 md 与 json 出；同节多图顺序；孤立图 `figure_orphan` 提醒 |
+| `test_blocks.py` | 2.3.0 块清单：两次成型逐字节相同；段内改字只改一块的哈希；起止切回 body 与哈希相符；放置行成图块、表块；只被引用的表补在节末 |
 | `test_pdf.py` | 2.2.0 PDF：每份样例都能出 PDF 且双跑逐字节相同；跨进程、跨哈希种子一致；元数据无当前时间；中英文结构金样（页数区间、书签树与标题一致、目录页码与书签单调一致、页脚页码、图表题文字与位置、内部链接数、字体全是嵌入子集）；位图用嵌入副本；提纲、封面与目录开关；SVG 转不了时的占位框与提醒；缺字提醒；SVG 字体不查系统；超长表、代码、列表分页；单个超大单元格；`object` 入参；`doc.build` 不出 PDF；20 张 2K 图的体积与耗时 |
 | `test_safety.py` | 源码不执行代码；十种不合格 SVG 拒收且不写文件；正文里的原始 HTML 被转义、`javascript:` 链接失效；文件名不能越出 workdir；控制字符拒收；超时结构化 |
 

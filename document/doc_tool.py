@@ -202,7 +202,9 @@ def _warnings(a):
 
 # ---------------------------------------------------------------- 三件工具
 def doc_build(payload, workdir=None):
-    """内容 → 文档：编号、目录、引用、要求追溯；交付文档模型、产出台数据、Markdown，以及 Word（缺省）。"""
+    """内容 → 文档：编号、目录、引用、要求追溯；交付文档模型、产出台数据、Markdown，以及 Word（缺省）。
+    另发布块清单 blocks（局部追问用：块 id、种类、所在节、在 body 里的起止、块哈希；图块带 doc.figures 的 id）。"""
+    from assemble import block_list
     _allowed(payload, ["doc", "name", "formats"])
     a = _assembled(payload)
     name = _name(payload, a)
@@ -212,6 +214,7 @@ def doc_build(payload, workdir=None):
     return {
         "title": a.doc.title, "kind": a.doc.kind, "doc_sha256": a.sha, "name": name,
         "outline": outline, "stats": a.stats, "trace": a.trace, "warnings": _warnings(a),
+        "blocks": block_list(a),
         "files": _write(a, BUILD_ALWAYS + extra, name, workdir, with_originals=True),
     }
 

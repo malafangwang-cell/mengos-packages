@@ -1,6 +1,6 @@
 {
   "package": "document",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "publisher": "mengos",
   "scope": "public",
   "title": "长文档编排",
@@ -9,7 +9,7 @@
     "doc.check": "核对长文档交付要求",
     "doc.export": "导出长文档文件"
   },
-  "content_hash": "334afb80c4f43ab30c1ece7b16ebd1fbecca01bc7e22a73c67c9d6f627bbf56c",
+  "content_hash": "addf4c68111bb44846dbf72e710f02327bf7903c87caa947900894292aded10b",
   "types": [
     {
       "name": "document",
