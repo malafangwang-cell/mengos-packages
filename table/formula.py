@@ -305,6 +305,23 @@ def uses(node, names):
     return any(uses(k, names) for k in _kids(node))
 
 
+def live_refs(node):
+    """化简以后公式还依赖的列（乘以 0 的项不算）：用于告警“公式的结果不依赖任何一列”（17 TL-30 v0.2.99）。"""
+    tag = node[0]
+    if tag == "col":
+        return {node[1]}
+    if tag in ("agg",):
+        return {node[2]}
+    if tag in ("xagg", "sumif", "countif", "cref"):
+        return {"<ext>"}
+    if tag == "bin" and node[1] == "*" and any(x[0] == "num" and x[1] == 0 for x in (node[2], node[3])):
+        return set()
+    out = set()
+    for k in _kids(node):
+        out |= live_refs(k)
+    return out
+
+
 def divides_by_column(node):
     """式里有没有“除以某一列”（比率类）。除以常数（如换算单位的 / 1000）不算。"""
     tag = node[0]
@@ -371,7 +388,7 @@ def kind_of(node, kinds, where="公式"):
             out = []
             for x, k in zip(args[1:], ks[1:]):
                 if k == "num" and not refs(x) and not cell_refs(x):
-                    raise FormulaError("if 的两支暂不收数字常数：写一个引用列的算式，或写双引号里的文字")
+                    raise FormulaError("if 的两支不收数字常数（公式不把数据原样带进表）：要数就引用一列，或把数写在输入格里")
                 if k not in ("num", "textlit", "datelit", "empty"):
                     raise FormulaError("if 的两支是算式或双引号里的文字")
                 out.append("text" if k in ("textlit", "datelit") else k)

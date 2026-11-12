@@ -7,6 +7,7 @@
 > - **G9 按键合并**：`merge_rows {by, scope, agg: {列: sum | formula}, join}`；含取整的公式列不写 agg 回 BAD_INPUT；带式的列只能 sum；键按 NFKC 去首尾空白后逐字比，写法相近（大小写、x/X/*/＊ 与 ×）的不合并、告警 `merge_key_near`；各行不同又没写口径的列留空、告警 `merge_blank`。明细保留，视图与 Excel 默认折叠在合并行上方；CSV 只写看得见的行；口径逐列写进说明。
 > - **G10 跨表**：`sumif(表id.条件列, 本行的列, 表id.求和列)`、`countif`、`total(表id.列)`，按依赖次序算、成环报错，对不上告警 `ref_no_match`；Excel 写等值匹配的 SUMPRODUCT（不用 SUMIF）。派生表 `derive {from, where, by, agg: sum}`，每格是引用来源格的求和公式。`sheet_order` 定表序。
 > - **G11 核对**：unique 报出每组重复的每一行；有整行为空的行时内置提示（pass）；`sheet=*`；跨表 `match`、`sum_equal`；`optional 列…` 标明按规定可以整列为空的列；每条问题带 表、行、格、现值、应值（`problems`），回执加一句 `summary`（“全部通过”或几条不通过）。不在 build 里生成问题表。
+> - **§二 补（立法者 11-12，17 TL-30 v0.2.99、TL-30b）**：公式与着色规则里的数不标出处；“if 的两支不收数字常数”定为长期规则；公式的结果不依赖任何一列时告警 `formula_no_column`；列显式写 text 而值都是数时告警 `numeric_as_text`（编号列、`identifier: true`、像标识符的值、标题像编号的列不告警）；编号是标识符，存文字；`rows` 上与 `x-mengos-expr` 同层声明 `x-mengos-expr-params`（round、roundup、rounddown、ceiling、floor 的第 2 个参数），引擎（#734）按声明跳过。
 > - 顺带修正 2.0.x 起的一处：从表模型（`.table.json`）再导出时，百分比列被再除了一次 100。
 > - 不做：G6、G12–G15；G16 随局部追问。上线次序：先引擎（#719 已在 main），后包。
 

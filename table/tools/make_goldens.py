@@ -715,6 +715,22 @@ case("err_sumif_sheet", "跨表汇总引用了不存在的表", "table.build",
                                                                 {"title": "实际", "type": "money", "formula": "sumif(nope.科目, 科目, nope.金额)"}], "rows": [["x"]]}]}},
      {"error.code": "BAD_INPUT"})
 
+# —— 2.2.0 §二 补：标识符与公式里的数（立法者 11-12，17 TL-30 v0.2.99）
+case("err_if_numeric_branches", "补：if 的两支不收数字常数（长期规则）：if(名称=\"立柱\", 168, 1296) 回 BAD_INPUT，提示引用一列", "table.build",
+     {"table": {"title": "T", "columns": [{"title": "名称", "type": "text"}, {"title": "数量", "type": "integer", "formula": "if(名称 = \"立柱\", 168, 1296)"}],
+                "rows": [["立柱"]]}},
+     {"error.code": "BAD_INPUT", "error.where": "table.columns[1].formula"})
+case("w_formula_no_column", "补：公式的结果不依赖任何一列（数量*0+168）出告警 formula_no_column，只提示不拒收", "table.build",
+     {"table": {"title": "T", "columns": [{"title": "数量", "type": "integer"}, {"title": "单价", "type": "money"},
+                                       {"title": "甲", "type": "integer", "formula": "数量*0+168"}, {"title": "金额", "type": "money", "formula": "单价*数量"}],
+                "rows": [[2, 5]]}},
+     {"warning_codes": ["formula_no_column"], "warnings_contain": ["“甲”的公式“数量*0+168”不依赖任何一列"], "model": {"sheets[0].rows[0][2]": "168"}})
+case("w_numeric_as_text", "补：列显式写 text 而值都是数时告警 numeric_as_text；编号列、写了 identifier 的列、标题像编号的列不告警", "table.build",
+     {"table": {"title": "T", "columns": [{"title": "编号", "type": "text"}, {"title": "单价", "type": "text"},
+                                       {"title": "零件", "type": "text", "identifier": True}],
+                "rows": [["1", "12", "100"], ["1.1", "15.5", "200"]]}},
+     {"warning_codes": ["numeric_as_text"], "warnings_contain": ["“单价”写成了文字列"], "model": {"sheets[0].columns[2].identifier": True}})
+
 # ---------------------------------------------------------------- table.check
 case("c_pass", "列、唯一、非空、合计、行数全过", "table.check",
      {"table": BOM, "expect": "columns 零件 数量 单价 金额\nunique 零件\nnonempty *\ntotal 金额 sum=3741\nrows min=3 max=3"},
