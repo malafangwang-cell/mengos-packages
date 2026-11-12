@@ -154,6 +154,15 @@ CHECK = {"type": "object", "required": ["line", "src", "kind", "verdict"],
                         "where": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"},
                         "note": {"type": "string"}}}
 
+BLOCKS = {"type": "array", "items": {
+    "type": "object", "additionalProperties": False,
+    "required": ["id", "kind", "section", "start", "end", "line_start", "line_end", "hash"],
+    "properties": {"id": {"type": "string"},
+                   "kind": {"enum": ["paragraph", "heading", "list", "quote", "code", "md_table", "hr", "html", "figure", "table"]},
+                   "section": ID, "start": {"type": "integer", "minimum": 0}, "end": {"type": "integer", "minimum": 0},
+                   "line_start": {"type": "integer", "minimum": 0}, "line_end": {"type": "integer", "minimum": 0},
+                   "hash": SHA, "figure": ID, "table": ID, "auto": {"const": True}}}}
+
 EXPECT_DESC = (
     "expect：期望清单，一行一条（可省略，省略时只做内置核对）。标题含空格时加引号，也可写 id:节id。"
     "has 标题 [level=N]；order 标题A 标题B …（按此顺序出现）；length 标题|total min=N max=N [unit=words|chars]"
@@ -195,10 +204,10 @@ units = [
                 }},
             "output_schema": {
                 "type": "object", "additionalProperties": False,
-                "required": ["title", "kind", "doc_sha256", "name", "outline", "stats", "trace", "warnings", "files"],
+                "required": ["title", "kind", "doc_sha256", "name", "outline", "stats", "trace", "warnings", "blocks", "files"],
                 "properties": {"title": {"type": "string"}, "kind": {"enum": ["document", "outline"]}, "doc_sha256": SHA,
                                "name": {"type": "string"}, "outline": OUTLINE, "stats": STATS, "trace": TRACE,
-                               "warnings": WARN, "files": {"type": "array", "items": FILE_ITEM}}},
+                               "warnings": WARN, "blocks": BLOCKS, "files": {"type": "array", "items": FILE_ITEM}}},
         },
         "capability": {
             "ops": ["generate"], "in_types": ["doc_plan"], "out_types": ["document", "outline"],

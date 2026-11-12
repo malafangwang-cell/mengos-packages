@@ -1,7 +1,7 @@
 {
   "family": "document",
   "family_version": "2.0.0",
-  "lock_hash": "b3ae21a1147166cd",
+  "lock_hash": "fe130b7ae721185b",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。文件产出按 TL-9a：结果对象顶层的 files。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
@@ -485,6 +485,7 @@
             "stats",
             "trace",
             "warnings",
+            "blocks",
             "files"
           ],
           "properties": {
@@ -645,6 +646,77 @@
                 }
               }
             },
+            "blocks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "kind",
+                  "section",
+                  "start",
+                  "end",
+                  "line_start",
+                  "line_end",
+                  "hash"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "enum": [
+                      "paragraph",
+                      "heading",
+                      "list",
+                      "quote",
+                      "code",
+                      "md_table",
+                      "hr",
+                      "html",
+                      "figure",
+                      "table"
+                    ]
+                  },
+                  "section": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$"
+                  },
+                  "start": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "end": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "line_start": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "line_end": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "hash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "figure": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$"
+                  },
+                  "table": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$"
+                  },
+                  "auto": {
+                    "const": true
+                  }
+                }
+              }
+            },
             "files": {
               "type": "array",
               "items": {
@@ -752,7 +824,7 @@
           "不做脚注、尾注、参考文献格式与公式排版"
         ]
       },
-      "version": "b3ae21a1147166cd"
+      "version": "fe130b7ae721185b"
     },
     {
       "tool_id": "doc.check",
@@ -1247,7 +1319,7 @@
           "document_meets_spec"
         ]
       },
-      "version": "b3ae21a1147166cd"
+      "version": "fe130b7ae721185b"
     },
     {
       "tool_id": "doc.export",
@@ -1786,7 +1858,7 @@
           "不读入已有的 Word 文件"
         ]
       },
-      "version": "b3ae21a1147166cd"
+      "version": "fe130b7ae721185b"
     }
   ]
 }

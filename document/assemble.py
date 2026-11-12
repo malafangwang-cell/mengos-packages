@@ -569,3 +569,65 @@ def _placeholders(doc, outs, warnings, cap=50):
     hit("title", doc.title + " " + doc.subtitle, "标题")
     for o in outs:
         hit(f"sections[{o.sec.index}]", o.sec.heading + "\n" + o.text, f"第 {o.sec.index + 1} 节（{o.sec.id}）")
+
+
+# ---------------------------------------------------------------- 块清单（局部追问设计 r9.1 §三、r8 §3.1）
+# 块 = 节 body 里一个顶层单元：段落、正文小标题、列表、引用、代码、Markdown 表格、分隔线、HTML，
+# 以及单独一行的图、表放置。哪些行是段落以解析器为准，与 split_body 同一套切法：先按放置行切开，
+# 再逐段交解析器取顶层块。起止是规范化后的 body（.doc.json 里的那一份，换行已统一为 \n）里的
+# 字符位置（Unicode 码点，左闭右开）；块哈希是这段源文字的 sha256（按 body 源文字算，不受编号影响）。
+# 块 id 按节内出现顺序编号：<节 id>.b<序号>（1 起），同一份文档两次成型逐字节相同。
+_BLOCK_KIND = {"paragraph_open": "paragraph", "heading_open": "heading", "bullet_list_open": "list",
+               "ordered_list_open": "list", "blockquote_open": "quote", "fence": "code", "code_block": "code",
+               "table_open": "md_table", "hr": "hr", "html_block": "html"}
+
+
+def block_list(a: "Assembled") -> list[dict]:
+    """→ [{id, kind, section, start, end, line_start, line_end, hash, figure? | table? , auto?}]（按节、按出现顺序）。"""
+    import hashlib
+    out: list[dict] = []
+    for o in a.sections:
+        body = o.sec.body
+        lines = body.split("\n")
+        starts, pos = [], 0
+        for ln in lines:
+            starts.append(pos)
+            pos += len(ln) + 1
+
+        def span(l0: int, l1: int) -> tuple[int, int]:
+            """行号（0 起，左闭右开）→ 字符起止（不含末行换行）。"""
+            return starts[l0], starts[l1 - 1] + len(lines[l1 - 1])
+
+        items: list[tuple[str, int, int, dict]] = []
+        for kind, payload, line in split_body(body):
+            if kind in ("fig", "tab"):
+                items.append(("figure" if kind == "fig" else "table", line - 1, line,
+                              {"figure" if kind == "fig" else "table": payload}))
+                continue
+            base = line - 1
+            depth = 0
+            for t in MD.parse(payload):
+                if depth == 0 and t.type in _BLOCK_KIND and t.map:
+                    items.append((_BLOCK_KIND[t.type], base + t.map[0], base + t.map[1], {}))
+                depth += t.nesting
+        n = 0
+        for kind, l0, l1, extra in items:
+            # 末尾的空行不算块内（列表、引用的 map 会带上尾随空行）
+            while l1 - 1 > l0 and not lines[l1 - 1].strip():
+                l1 -= 1
+            s0, s1 = span(l0, l1)
+            src = body[s0:s1]
+            n += 1
+            b = {"id": f"{o.sec.id}.b{n}", "kind": kind, "section": o.sec.id, "start": s0, "end": s1,
+                 "line_start": l0 + 1, "line_end": l1, "hash": hashlib.sha256(src.encode("utf-8")).hexdigest()}
+            b.update(extra)
+            out.append(b)
+        # 只被引用、没有放置的图表：放在第一次引用它的那一节末尾（README 规则 1），不占 body 文字
+        for sg in o.segs:
+            if sg.kind in ("fig", "tab") and sg.line == 0:
+                n += 1
+                key = "figure" if sg.kind == "fig" else "table"
+                out.append({"id": f"{o.sec.id}.b{n}", "kind": key, "section": o.sec.id,
+                            "start": len(body), "end": len(body), "line_start": 0, "line_end": 0,
+                            "hash": hashlib.sha256(b"").hexdigest(), key: sg.ref, "auto": True})
+    return out
