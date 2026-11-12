@@ -55,6 +55,24 @@
   },
   {
     "tool_id": "table.build",
+    "task": "把分包分解单按组件分组编号，同名同规格的五金合并，每组出重量小计",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.build",
+    "task": "立库分解清单：主件数量写成 6 排 × 28 根的乘式，子件引用主件那一格，另出一张标准件汇总表",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.build",
     "task": "写一份老旧小区充电桩加装技术方案",
     "ops": [
       "generate"
@@ -118,6 +136,15 @@
   },
   {
     "tool_id": "table.check",
+    "task": "核对分解清单：各分部的主件与总清单一致，标准件合计等于各分部五金之和",
+    "ops": [
+      "check"
+    ],
+    "required_type": "verdict",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "table.check",
     "task": "做一张供应商报价对比表",
     "ops": [
       "generate"
@@ -157,6 +184,15 @@
   {
     "tool_id": "table.check",
     "task": "把预算表里超支的科目标红",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "table.check",
+    "task": "出一张标准件汇总表，把各分部的五金合并",
     "ops": [
       "generate"
     ],

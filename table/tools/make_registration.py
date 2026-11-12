@@ -13,9 +13,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from model import COLOR_NAMES, DATE_FORMATS, DISPLAY_KEY, MAX_RULES, ROW_KINDS  # noqa: E402  闭集与代码同一处定义
+from model import COLOR_NAMES, DATE_FORMATS, DISPLAY_KEY, EXPR_KEY, ID_KEY, MAX_LEVEL, MAX_RULES, NUMBERINGS, ROW_KINDS  # noqa: E402  闭集与代码同一处定义
 ID = {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$"}
-CELL = {"type": ["string", "number", "boolean", "null"]}
+CELL_PLAIN = {"type": ["string", "number", "boolean", "null"]}
+# 2.2.0 G17：输入列的格可以是保留的式 {"$expr": 式}（08 PD-1e v0.2.98、17 TL-30b；在 rows 这一层写 "x-mengos-expr": true）
+EXPR = {"type": "object", "required": [EXPR_KEY], "additionalProperties": False,
+        "properties": {EXPR_KEY: {"type": "string", "minLength": 1, "maxLength": 500}}}
+CELL = {"anyOf": [CELL_PLAIN, EXPR]}
 NAME = {"type": "string", "pattern": "^[^/\\\\.:*?\"<>|\\s]{1,64}$", "description": "交付文件的名字（不含扩展名）；缺省取标题。"}
 
 # 2.1.0 G1：样式值（四种属性，颜色取命名色板）；都不是数据字段（17 TL-30），不标 x-mengos-data
@@ -36,6 +40,27 @@ RULE = {"oneOf": [
             "column": {"type": "string", "minLength": 1}, "from": {"enum": list(COLOR_NAMES)}, "to": {"enum": list(COLOR_NAMES)}}},
         "label": {"type": "string", "maxLength": 200}}},
 ]}
+COLREF = {"type": "string", "minLength": 1, "maxLength": 200}
+COLREFS = {"type": "array", "minItems": 1, "maxItems": 20, "items": COLREF}
+STRUCT_PROPS = {     # 2.2.0 G7–G9：都是设计参数，不是数据字段（17 TL-30），不标 x-mengos-data
+    "outline_from": {"type": "object", "required": ["column", "levels"], "additionalProperties": False, "properties": {
+        "column": COLREF,
+        "levels": {"type": "object", "minProperties": 1, "maxProperties": 50,
+                   "additionalProperties": {"type": "integer", "minimum": 1, "maximum": MAX_LEVEL}}}},
+    "group": {"type": "object", "required": ["by"], "additionalProperties": False, "properties": {
+        "by": COLREF, "rest_label": {"type": "string", "minLength": 1, "maxLength": 100}, "label_column": COLREF}},
+    "subtotals": {"type": "array", "maxItems": 200, "items": {"oneOf": [
+        {"type": "string", "minLength": 1},
+        {"type": "object", "required": ["column"], "additionalProperties": False, "properties": {
+            "column": COLREF, "fn": {"enum": ["sum", "avg", "min", "max", "count", "formula"]}}}]}},
+    "merge_rows": {"type": "object", "required": ["by"], "additionalProperties": False, "properties": {
+        "by": COLREFS, "scope": {"enum": ["sheet", "group"]},
+        "agg": {"type": "object", "maxProperties": 200, "additionalProperties": {"enum": ["sum", "formula"]}},
+        "join": {"type": "array", "maxItems": 50, "items": COLREF}}},
+}
+DERIVE = {"type": "object", "required": ["from", "by"], "additionalProperties": False, "properties": {
+    "from": {"type": "array", "minItems": 1, "maxItems": 20, "items": ID}, "where": {"type": "string", "minLength": 1, "maxLength": 500},
+    "by": COLREFS, "agg": {"type": "object", "maxProperties": 200, "additionalProperties": {"const": "sum"}}}}
 ROW_STYLES = {"type": "array", "maxItems": len(ROW_KINDS), "items": {
     "type": "object", "required": ["kind"], "additionalProperties": False,
     "properties": {"kind": {"enum": list(ROW_KINDS)}, "style": STYLE}}}
@@ -55,12 +80,14 @@ COLUMN = {
             "style": STYLE,
             "date_format": {"enum": list(DATE_FORMATS)},
             "thousands": {"type": "boolean"},
+            "numbering": {"enum": list(NUMBERINGS)},
         }},
     ]
 }
-ROWS = {"type": "array", "maxItems": 100000, "x-mengos-data": True, "items": {"oneOf": [
+ROW_ID = {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$", "description": "稳定的行 id：格公式用 @行id.列 引用这一行"}
+ROWS = {"type": "array", "maxItems": 100000, "x-mengos-data": True, "x-mengos-expr": True, "items": {"oneOf": [
     {"type": "array", "maxItems": 200, "items": CELL},
-    {"type": "object", "properties": {DISPLAY_KEY: DISPLAY}, "additionalProperties": CELL},
+    {"type": "object", "properties": {DISPLAY_KEY: DISPLAY, ID_KEY: ROW_ID}, "additionalProperties": CELL},
 ]}}
 ROWS_BUILD = {**ROWS, "x-mengos-merge": {"mode": "append"}}
 TOTALS = {"type": "array", "maxItems": 200, "items": {"oneOf": [
@@ -80,6 +107,7 @@ SHEET_PROPS = {
     "header_style": STYLE,
     "rules": {"type": "array", "maxItems": MAX_RULES, "items": RULE},
     "row_styles": ROW_STYLES,
+    **STRUCT_PROPS,
 }
 TABLE_DESC = (
         "table：一张或几张数据表。title 标题（必填）。单张表直接写 columns 与 rows；几张表写 sheets，"
@@ -107,6 +135,13 @@ TABLE_DESC = (
         "apply_to 缺省给条件里的列着色，写 \"row\" 整行着色，或写列名数组；色阶写 {scale: {column, from, to}}。"
         "规则只管数据行；同一属性先命中的规则先得；规则压过格、行、列上的样式（与 Excel 相同）。rules 给了就整组替换：要加一条，把原有的连同新的按次序一起写出。"
         "日期列可写 date_format（YYYY-MM-DD / YYYY/MM/DD / YYYY年M月D日 / M月D日 / YYYY.MM.DD），只改显示，Excel 里仍是日期；数值列可写 thousands true/false 定千分位。"
+        "2.2.0 起：只有个别格算法不同时，把这一列当输入列（不写 formula），在格里写式 {\"$expr\": \"6*28\"}；式里可用数、函数（取整的步长、位数可省，如 ceiling(x)）、"
+        "本行的列，引用别的行写 @行id.列、别的表写 @表id/行id.列，被引用的行写 \"$id\"（如 \"r1\"）；式里每个数都要有出处。整列算法相同的一律用列公式。"
+        "跨表汇总写 sumif(表id.条件列, 本行的列, 表id.求和列)、countif(表id.条件列, 本行的列)、total(表id.列)；sheet_order [表id…] 定表的次序。"
+        "层级：outline_from {column: 一列文字, levels: {主件: 1, 焊接子件: 2}}（不收整数层级列）；编号列写 numbering: outline（1、1.1…，层级为空不编）或 seq（1…n），值由工具编。"
+        "分组 group {by: 列}（组头由工具生成）或 {by: \"outline\", rest_label: \"五金件\"}（层级 1 的行自己就是组头）；subtotals [{column, fn}] 每组出小计；"
+        "合并 merge_rows {by: [名称, 规格], agg: {列: \"sum\" | \"formula\"}, join: [备注]}：sum 是各行相加，formula 是合并后按本列公式重算，含取整的公式列必须写明；"
+        "派生表 derive {from: [表id…], where: 条件式, by: [键列], agg: {列: \"sum\"}} 由工具从各表生成行。row_styles 的 kind 另有 subtotal、group。"
 )
 TABLE_DESC_BUILD = (
     "table：一张或几张数据表。title 标题。单张表直接写 columns 与 rows；几张表写 sheets，"
@@ -136,6 +171,13 @@ TABLE_DESC_BUILD = (
     "apply_to 缺省给条件里的列着色，写 \"row\" 整行着色，或写列名数组；色阶写 {scale: {column, from, to}}。"
     "规则只管数据行；同一属性先命中的规则先得；规则压过格、行、列上的样式（与 Excel 相同）。rules 给了就整组替换：要加一条，把原有的连同新的按次序一起写出。"
     "日期列可写 date_format（YYYY-MM-DD / YYYY/MM/DD / YYYY年M月D日 / M月D日 / YYYY.MM.DD），只改显示，Excel 里仍是日期；数值列可写 thousands true/false 定千分位。"
+    "2.2.0 起：只有个别格算法不同时，把这一列当输入列（不写 formula），在格里写式 {\"$expr\": \"6*28\"}；式里可用数、函数（取整的步长、位数可省，如 ceiling(x)）、"
+    "本行的列，引用别的行写 @行id.列、别的表写 @表id/行id.列，被引用的行写 \"$id\"（如 \"r1\"）；式里每个数都要有出处。整列算法相同的一律用列公式。"
+    "跨表汇总写 sumif(表id.条件列, 本行的列, 表id.求和列)、countif(表id.条件列, 本行的列)、total(表id.列)；sheet_order [表id…] 定表的次序。"
+    "层级：outline_from {column: 一列文字, levels: {主件: 1, 焊接子件: 2}}（不收整数层级列）；编号列写 numbering: outline（1、1.1…，层级为空不编）或 seq（1…n），值由工具编。"
+    "分组 group {by: 列}（组头由工具生成）或 {by: \"outline\", rest_label: \"五金件\"}（层级 1 的行自己就是组头）；subtotals [{column, fn}] 每组出小计；"
+    "合并 merge_rows {by: [名称, 规格], agg: {列: \"sum\" | \"formula\"}, join: [备注]}：sum 是各行相加，formula 是合并后按本列公式重算，含取整的公式列必须写明；"
+    "派生表 derive {from: [表id…], where: 条件式, by: [键列], agg: {列: \"sum\"}} 由工具从各表生成行。row_styles 的 kind 另有 subtotal、group。"
     "改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。"
 )
 
@@ -161,9 +203,11 @@ FORMULA_ADD = [
 ]
 TOT_ADD = ["fn 写 formula 时合计行按本列公式重算（比率列：实际合计 ÷ 预算合计），写 none 留空。"]
 NUMBER_ADD = ["表格里能读成数的值一律存为数字，可以计算；不提供把数字列改成文本。用户要文本，如实说明：下载后在 Excel 里改。"]   # 立法者 2026-11-12：表格数字默认就是数字（执行令 2.1.0 §一 补 第 1 条）
+STRUCT_DESC = ['2.2.0 起：只有个别格算法不同时，把这一列当输入列（不写 formula），在格里写式 {\"$expr\": \"6*28\"}；式里可用数、函数（取整的步长、位数可省，如 ceiling(x)）、', '本行的列，引用别的行写 @行id.列、别的表写 @表id/行id.列，被引用的行写 \"$id\"（如 \"r1\"）；式里每个数都要有出处。整列算法相同的一律用列公式。', '跨表汇总写 sumif(表id.条件列, 本行的列, 表id.求和列)、countif(表id.条件列, 本行的列)、total(表id.列)；sheet_order [表id…] 定表的次序。', '层级：outline_from {column: 一列文字, levels: {主件: 1, 焊接子件: 2}}（不收整数层级列）；编号列写 numbering: outline（1、1.1…，层级为空不编）或 seq（1…n），值由工具编。', '分组 group {by: 列}（组头由工具生成）或 {by: \"outline\", rest_label: \"五金件\"}（层级 1 的行自己就是组头）；subtotals [{column, fn}] 每组出小计；', '合并 merge_rows {by: [名称, 规格], agg: {列: \"sum\" | \"formula\"}, join: [备注]}：sum 是各行相加，formula 是合并后按本列公式重算，含取整的公式列必须写明；', '派生表 derive {from: [表id…], where: 条件式, by: [键列], agg: {列: \"sum\"}} 由工具从各表生成行。row_styles 的 kind 另有 subtotal、group。']   # 2.2.0 新增的说明句
 BUILD_ONLY_ADD = ["改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。"]
 assert all(x in TABLE_DESC for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + NUMBER_ADD)
-assert all(x in TABLE_DESC_BUILD for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + BUILD_ONLY_ADD)
+assert all(x in TABLE_DESC_BUILD for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + BUILD_ONLY_ADD + STRUCT_DESC)
+assert all(x in TABLE_DESC for x in STRUCT_DESC)
 
 
 def table_def(build=False):
@@ -171,7 +215,7 @@ def table_def(build=False):
     rows = ROWS_BUILD if build else ROWS
     sheet_props = {**SHEET_PROPS, "rows": rows}
     sheet = {"type": "object", "required": ["id"] if build else ["columns"], "additionalProperties": False,
-             "properties": {"id": ID, "name": {"type": "string", "maxLength": 200}, **sheet_props,
+             "properties": {"id": ID, "name": {"type": "string", "maxLength": 200}, **sheet_props, "derive": DERIVE,
                             "sources": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000},
                                         "description": "写在这里也行，并入整张表的 sources"},
                             "assumptions": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000},
@@ -197,6 +241,7 @@ def table_def(build=False):
             "date": {"type": "string", "pattern": "^(\\d{4}-\\d{2}-\\d{2})?$"},
             "version": {"type": "string", "maxLength": 200}}},
         "sheets": sheets,
+        "sheet_order": {"type": "array", "maxItems": 20, "items": ID, "description": "表的次序（表 id 的数组）；没列进去的表排在后面"},
         **sheet_props,
         "sources": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000}},
         "assumptions": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000}},
@@ -285,7 +330,10 @@ BUILD = {
         "constraints": {"max_sheets": 20, "max_columns": 200, "max_rows": 100000, "max_cells": 1000000,
                         "column_types": ["text", "integer", "number", "money", "percent", "date", "bool"],
                         "formula_functions": ["round", "abs", "min", "max", "roundup", "rounddown", "ceiling", "floor",
-                                              "and", "or", "not", "if", "total", "cumsum"],
+                                              "and", "or", "not", "if", "total", "cumsum", "sumif", "countif"],
+                        "cell_expr": "输入列的格可写 {\"$expr\": 式}：数、函数、本行的列、@行id.列、@表id/行id.列；公式列与编号列不收",
+                        "numbering": list(NUMBERINGS), "max_outline_level": MAX_LEVEL,
+                        "merge_agg": ["sum", "formula"], "derive_agg": ["sum"],
                         "formula_operators": ["+", "-", "*", "/", ">", ">=", "<", "<=", "=", "<>"],
                         "totals": ["sum", "avg", "min", "max", "count", "formula", "none"],
                         "style_properties": ["fill", "color", "bold", "italic"],
@@ -305,12 +353,17 @@ BUILD = {
         "non_goals": [
             "不替你找数据：表里的数据都由调用方给出，工具只整理、计算与排版",
             "不写成文的报告：表只是文章里的一部分时，交给长文工具",
-            "不画图表，不做跨表公式与数据透视",
+            "不画图表，不做数据透视；跨表引用只在同一份工作簿内，不引用别的产出",
             "不读入已有的 Excel 文件",
             "不直接交 PDF",
         ],
     },
 }
+
+CHECK_EXPECT_ADD = ("2.2.0 起：sheet=* 管整本工作簿（nonempty、range 逐表核，unique 各表合起来查重）；"
+                    "match 列 sheet=目标表 key=键列 against=表,表 [where=列:值]（按键比一列，如各分部的主件与总清单一致）；"
+                    "sum_equal 列 sheet=目标表 by=键列,键列 from=表,表 [where=列:值]（按键之和相等，如标准件等于各分部五金之和）；"
+                    "optional 列 …（这些列按规定可以整列为空）。每条问题写明表、行、现值、应值。要一张问题表时，把回执写成一张普通的表交 table.build。")
 
 CHECK = {
     "tool_id": "table.check",
@@ -333,7 +386,8 @@ CHECK = {
                     "expect：期望清单，一行一条（可省略，省略时只做内置核对）。列名用列标题或 key，含空格时加引号；每条都可以加 sheet=表名（行首行尾都行），也可单独一行写 sheet=表名、管到下一个这样的行；都不写时核对第一张表。"
                     "columns 列A 列B …（这些列都在）；order 列A 列B …（按此顺序）；rows min=N max=N（行数）；unique 列A [列B …]（合起来不重复）；"
                     "nonempty 列A … 或 nonempty *（没有空格子）；range 列 min=X max=Y（数值范围，百分比列写百分数）；"
-                    "total 列 sum=V（或 avg= / min= / max= / count=，可加 tol=误差）；sorted 列 asc|desc（已排序）。")},
+                    "total 列 sum=V（或 avg= / min= / max= / count=，可加 tol=误差）；sorted 列 asc|desc（已排序）。"
+                    + CHECK_EXPECT_ADD)},
             },
         },
         "output_schema": {
@@ -344,8 +398,12 @@ CHECK = {
                 "checks": {"type": "array", "items": {"type": "object", "required": ["line", "src", "kind", "verdict"], "properties": {
                     "line": {"type": "integer"}, "src": {"type": "string"}, "kind": {"type": "string"},
                     "verdict": {"enum": ["pass", "fail", "unknown"]}, "expected": {}, "actual": {},
-                    "where": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"}}}},
+                    "where": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"},
+                    "problems": {"type": "array", "items": {"type": "object", "required": ["sheet", "rule"], "properties": {
+                        "sheet": {"type": "string"}, "row": {"type": "integer"}, "cell": {"type": "string"}, "rule": {"type": "string"},
+                        "actual": {}, "expected": {}}}}}}},
                 "table_sha256": SHA,
+                "summary": {"type": "string", "description": "一句话：全部通过，或几条不通过"},
                 "assumptions": {"type": "array", "items": {"type": "string"}},
             },
         },
@@ -355,7 +413,8 @@ CHECK = {
         "in_types": ["table"],
         "out_types": ["verdict"],
         "constraints": {"three_valued": True, "max_expect_lines": 300,
-                        "kinds": ["columns", "order", "rows", "unique", "nonempty", "range", "total", "sorted"],
+                        "kinds": ["columns", "order", "rows", "unique", "nonempty", "range", "total", "sorted", "match", "sum_equal", "optional"],
+                        "sheet_scope": ["表名或 id", "*"],
                         "latency_note": "约 0.1 s"},
         "examples": [
             {"input": "核对物料清单的金额合计是不是 128,600 元", "output": "total 金额 sum=128600 → pass"},
@@ -414,7 +473,7 @@ EXPORT = {
 
 REG = {
     "family": "table",
-    "family_version": "2.1.0",
+    "family_version": "2.2.0",
     "lock_hash": "",
     "note": ("字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。"
              "选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。"

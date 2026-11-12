@@ -42,28 +42,44 @@ def _dec(x):
     return x
 
 
-def compare(model, path):
+def compare(model_json, path):
+    """按包自己的排布（xlsx_writer._plan）逐格比：数据行、合并行、小计行、合计行。值取包重新规范化表模型以后的值。"""
+    sys.path.insert(0, str(ROOT))
+    import model as M
+    from xlsx_writer import _plan
+    t = M.normalize(model_json)
     wb = openpyxl.load_workbook(path, data_only=True)
     bad, n = [], 0
-    for sh in model["sheets"]:
-        ws = wb[sh["name"]]
-        cols = sh["columns"]
-        rows = [r if isinstance(r, list) else [r.get(c["key"]) for c in cols] for r in sh["rows"]]
-        tot = {t["column"]: t for t in sh.get("totals", [])}
-        lines = [(i + 2, r) for i, r in enumerate(rows)]
-        if tot:
-            lines.append((len(rows) + 2, [tot[c["key"]]["value"] if c["key"] in tot else None for c in cols]))
-        for excel_row, r in lines:
-            is_total = excel_row == len(rows) + 2 and tot
-            for j, c in enumerate(cols):
-                if is_total and c["key"] not in tot:
+    for sh in t.sheets:
+        ws = wb[sh.name]
+        plan = _plan(sh)
+        cols = [{"title": c.title, "type": c.type} for c in sh.columns]
+        lines = []                                  # (Excel 行号 0 起, [值…], 是否合计行)
+        if plan["lines"] is None:
+            lines = [(plan["pos"][ri], r, None) for ri, r in enumerate(sh.rows)]
+        else:
+            fns = {x["column"]: x["fn"] for x in sh.subtotals}
+            for r, e in plan["lines"]:
+                if e["kind"] == "data":
+                    lines.append((r, sh.rows[e["ri"]], None))
+                elif e["kind"] == "merged":
+                    lines.append((r, e["values"], None))
+                elif e["kind"] == "subtotal":
+                    lines.append((r, e["values"], {c.key for c in sh.columns if c.key in fns}))
+        if sh.totals:
+            tot = {k: v for k, _, v in sh.totals}
+            lines.append((plan["last"] + 1, [tot.get(c.key) for c in sh.columns], set(tot)))
+        for excel_row, values, only in lines:
+            for j, c in enumerate(sh.columns):
+                if only is not None and c.key not in only:
                     continue
-                want = r[j]
-                got = ws.cell(row=excel_row, column=j + 1).value
+                want = values[j]
+                want = None if want is None else (M.dec_str(want) if hasattr(want, "as_tuple") else want)
+                got = ws.cell(row=excel_row + 1, column=j + 1).value
                 n += 1
-                if not _same(c, want, got):
-                    bad.append({"sheet": sh["name"], "cell": f"{openpyxl.utils.get_column_letter(j + 1)}{excel_row}",
-                                "column": c["title"], "model": want, "libreoffice": got if not hasattr(got, "isoformat") else got.isoformat()})
+                if not _same(cols[j], want, got):
+                    bad.append({"sheet": sh.name, "cell": f"{openpyxl.utils.get_column_letter(j + 1)}{excel_row + 1}",
+                                "column": c.title, "model": want, "libreoffice": got if not hasattr(got, "isoformat") else got.isoformat()})
     return n, bad
 
 
