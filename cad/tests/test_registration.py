@@ -54,3 +54,21 @@ def test_golden_payloads_follow_schemas(tmp_path):
         if case["expect"]["ok"]:
             jsonschema.validate(case["payload"], sig["input_schema"])
             jsonschema.validate(res["output"], sig["output_schema"])
+
+
+def test_registration_has_no_integral_floats():
+    """2.6.1：安装器（引擎，JS）按 JSON.stringify 规范化登记重算 lock，1254.0 写成 1254；lock.py（Python）写成 1254.0。
+    两边对整数值的浮点写法不同 ⟹ 重算不符、安装被拒。登记里的数一律写成整数或非整数小数。"""
+    bad = []
+
+    def walk(v, path):
+        if isinstance(v, float) and v.is_integer():
+            bad.append(path)
+        elif isinstance(v, dict):
+            for k, x in v.items():
+                walk(x, f"{path}.{k}")
+        elif isinstance(v, list):
+            for i, x in enumerate(v):
+                walk(x, f"{path}[{i}]")
+    walk(REG, "")
+    assert not bad, bad

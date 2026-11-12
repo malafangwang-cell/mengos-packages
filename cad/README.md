@@ -1,5 +1,7 @@
 # cad v2（W3 的 CAD 工具包）
 
+> 2.6.1（修 2.6.0 不能安装）：cad.compare 登记样例里的两个质量写成了整数值浮点（`1254.0`、`1395.0`）。lock.py（Python）规范化写成 `1254.0`，引擎安装器（JS `JSON.stringify`）写成 `1254`，安装器重算 lock 得 `3625f3c31608de88`，与包里写的 `4af64ad614891a58` 不符，按 TL-25a 拒装。改为整数 `1254`、`1395`；加包内测试 `test_registration_has_no_integral_floats`（在 2.6.0 上红）。工具行为、输出、金样都不变；registration 在 lock 内，lock 随之变，见 PR。2.6.0 未在任何环境装上过。
+
 > 2.6.0（mengosv2《执行令-局部追问-cad包补强-2026-11-12》K1–K14；设计《局部追问 r9.2》§五 C1–C9；终审 M7；交互定稿 #728）：给“只改零件里的一处”补包内的东西。**只放宽**：只加输出字段、告警与一件新工具；2.5.2 已有的输出字段逐字节不变，35 条金样一字未动、全过（`tests/test_local_edit.py` 拿 2.5.2 的实跑输出逐样件比对：STEP、STL、3MF、SVG、DXF 的 sha256 不变，GLB 去掉新加的 `extras.faces` 后逐字节相同）。
 > - **K1 行行有名**：cad.build 对无名的特征行（实体、加工、圆角、倒角、抽壳、阵列、镜像）出告警 `{line, code: "unnamed_feature", feature: "chamfer#1", message}`，排在原有告警之后；plan 的说明由“想以后还能改的特征都写上名字”改为要求。只告警，不拒收（拒收留到大版本）。
 > - **K2、K11 全行表**：输出加 `lines`，计划里每一行一项 `{line, name?, op?, kind: feature|declaration|modifier|copy|comment, feature_id?, selectable, why_not?, scope?}`；`let`、`material`、`units`（具名也一样）为 declaration、不可选；每个特征行恰好对应一个特征 id。特征表每项加 `selectable` 与 `why_not`（`unnamed`；0 面特征仍可选，`faces = 0`）。另加 `part: {material, density, mass}`。
@@ -291,7 +293,7 @@ feature boss                         # 这个特征还在零件上
 ## 8 测试
 
 ```
-uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 224 条，约 150 s
+uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 225 条，约 150 s
 ```
 
 不要用不带 `--frozen` 的 `uv sync` / `uv run`：环境变量里配了别的索引（例如国内镜像）时，uv 会重新解析并改写 `uv.lock`，工具版本（lock hash）与 content_hash 随之失配。安装区里只用环境解释器跑，不运行 uv。
