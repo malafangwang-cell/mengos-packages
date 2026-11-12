@@ -305,10 +305,10 @@ units = [
         "input_example": {
             "old": {"features": [{"id": "boss", "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
                                   "face_digest": [["C|0.0|0.0|1.0|0.0|0.0|0.0|30.0", 3392.92]]}],
-                    "part": {"material": "Q235", "density": 7.85, "mass": 1254.0}},
+                    "part": {"material": "Q235", "density": 7.85, "mass": 1254}},
             "new": {"features": [{"id": "boss", "src": "boss: cylinder d=70 h=18 at=(0,0,12)",
                                   "face_digest": [["C|0.0|0.0|1.0|0.0|0.0|0.0|35.0", 3958.41]]}],
-                    "part": {"material": "Q235", "density": 7.85, "mass": 1395.0}}},
+                    "part": {"material": "Q235", "density": 7.85, "mass": 1395}}},
         "signature": {
             "input_schema": {"type": "object", "required": ["old", "new"], "additionalProperties": False,
                              "properties": {"old": FEATURE_TABLE, "new": FEATURE_TABLE}},

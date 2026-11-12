@@ -1,7 +1,7 @@
 {
   "family": "cad",
   "family_version": "2.6.0",
-  "lock_hash": "4af64ad614891a58",
+  "lock_hash": "3625f3c31608de88",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。入参写法写在 signature.input_schema 的 description 里；选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25），引擎不含这些名字；verdict 为平台类型。文件产出按 TL-9a。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
@@ -602,7 +602,7 @@
           "不标注尺寸与公差（三视图只有图线、中心线与标题栏）"
         ]
       },
-      "version": "4af64ad614891a58"
+      "version": "3625f3c31608de88"
     },
     {
       "tool_id": "cad.check",
@@ -774,7 +774,7 @@
           "cad_model_meets_spec"
         ]
       },
-      "version": "4af64ad614891a58"
+      "version": "3625f3c31608de88"
     },
     {
       "tool_id": "cad.export",
@@ -976,7 +976,7 @@
           "不做格式间的反向转换（不读入文件）"
         ]
       },
-      "version": "4af64ad614891a58"
+      "version": "3625f3c31608de88"
     },
     {
       "tool_id": "cad.compare",
@@ -1009,7 +1009,7 @@
           "part": {
             "material": "Q235",
             "density": 7.85,
-            "mass": 1254.0
+            "mass": 1254
           }
         },
         "new": {
@@ -1028,7 +1028,7 @@
           "part": {
             "material": "Q235",
             "density": 7.85,
-            "mass": 1395.0
+            "mass": 1395
           }
         }
       },
@@ -1271,7 +1271,7 @@
           "不比较两个不同零件"
         ]
       },
-      "version": "4af64ad614891a58"
+      "version": "3625f3c31608de88"
     }
   ],
   "local_patch": {
