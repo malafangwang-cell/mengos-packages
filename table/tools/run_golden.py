@@ -58,6 +58,13 @@ def get(obj, path):
     return obj
 
 
+def _get_or_missing(obj, path):
+    try:
+        return get(obj, path)
+    except (KeyError, IndexError, TypeError):
+        return "<缺席>"
+
+
 def _file(out, wd, fmt):
     f = next((f for f in out["files"] if f["format"] == fmt), None)
     assert f is not None, f"没有 {fmt} 文件"
@@ -104,6 +111,22 @@ def check(case):
                 xml = z.read(part).decode("utf-8")
             for s in texts:
                 assert s in xml, f"xlsx {part} 缺少：{s!r}"
+        if "view" in exp:                       # 2.1.0：产出台数据里的路径与值
+            view = json.loads(_file(out, wd, "view").decode("utf-8"))
+            for k, v in exp.pop("view").items():
+                got = _get_or_missing(view, k)
+                assert got == v, f"view {k}={got}，期望 {v}"
+        if "model" in exp:                      # 2.1.0：表模型里的路径与值
+            model = json.loads(_file(out, wd, "json").decode("utf-8"))
+            for k, v in exp.pop("model").items():
+                got = _get_or_missing(model, k)
+                assert got == v, f"model {k}={got}，期望 {v}"
+        if "warning_codes" in exp:              # 2.1.0：告警码（按出现次序，逐个相同）
+            want = exp.pop("warning_codes")
+            got = [w["code"] for w in out["warnings"]]
+            assert got == want, f"告警码 {got}，期望 {want}"
+        for sub in exp.pop("warnings_contain", []):
+            assert any(sub in w["message"] for w in out["warnings"]), f"告警里没有：{sub!r}"
         for k, v in exp.items():
             assert get(out, k) == v, f"{k}={get(out, k)}，期望 {v}"
 

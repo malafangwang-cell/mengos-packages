@@ -8,12 +8,37 @@
 顺序：改本文件 → python tools/make_registration.py → python lock.py → python tools/make_package.py。
 """
 import json
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from model import COLOR_NAMES, DATE_FORMATS, DISPLAY_KEY, MAX_RULES, ROW_KINDS  # noqa: E402  闭集与代码同一处定义
 ID = {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$"}
 CELL = {"type": ["string", "number", "boolean", "null"]}
 NAME = {"type": "string", "pattern": "^[^/\\\\.:*?\"<>|\\s]{1,64}$", "description": "交付文件的名字（不含扩展名）；缺省取标题。"}
+
+# 2.1.0 G1：样式值（四种属性，颜色取命名色板）；都不是数据字段（17 TL-30），不标 x-mengos-data
+STYLE = {"type": "object", "additionalProperties": False, "properties": {
+    "fill": {"enum": list(COLOR_NAMES)}, "color": {"enum": list(COLOR_NAMES)},
+    "bold": {"type": "boolean"}, "italic": {"type": "boolean"}}}
+# 行里的保留键：本行、本格的显示设置，跟着这一行走（17 TL-30 v0.2.98，"x-mengos-display": true 声明它不是数据字段）
+DISPLAY = {"type": "object", "x-mengos-display": True, "additionalProperties": False,
+           "description": "这一行的显示设置：row 整行的样式，cells {列名: 这一格的样式}；排序、插行、删行以后仍属这一行",
+           "properties": {"row": STYLE, "cells": {"type": "object", "maxProperties": 200, "additionalProperties": STYLE}}}
+RULE = {"oneOf": [
+    {"type": "object", "required": ["when", "style"], "additionalProperties": False, "properties": {
+        "when": {"type": "string", "minLength": 1, "maxLength": 500},
+        "apply_to": {"oneOf": [{"const": "row"}, {"type": "array", "minItems": 1, "maxItems": 200, "items": {"type": "string", "minLength": 1}}]},
+        "style": STYLE, "label": {"type": "string", "maxLength": 200}}},
+    {"type": "object", "required": ["scale"], "additionalProperties": False, "properties": {
+        "scale": {"type": "object", "required": ["column"], "additionalProperties": False, "properties": {
+            "column": {"type": "string", "minLength": 1}, "from": {"enum": list(COLOR_NAMES)}, "to": {"enum": list(COLOR_NAMES)}}},
+        "label": {"type": "string", "maxLength": 200}}},
+]}
+ROW_STYLES = {"type": "array", "maxItems": len(ROW_KINDS), "items": {
+    "type": "object", "required": ["kind"], "additionalProperties": False,
+    "properties": {"kind": {"enum": list(ROW_KINDS)}, "style": STYLE}}}
 
 COLUMN = {
     "oneOf": [
@@ -27,19 +52,22 @@ COLUMN = {
             "formula": {"type": "string", "minLength": 1, "maxLength": 500},
             "width": {"type": "integer", "minimum": 4, "maximum": 100},
             "align": {"enum": ["left", "center", "right"]},
+            "style": STYLE,
+            "date_format": {"enum": list(DATE_FORMATS)},
+            "thousands": {"type": "boolean"},
         }},
     ]
 }
 ROWS = {"type": "array", "maxItems": 100000, "x-mengos-data": True, "items": {"oneOf": [
     {"type": "array", "maxItems": 200, "items": CELL},
-    {"type": "object", "additionalProperties": CELL},
+    {"type": "object", "properties": {DISPLAY_KEY: DISPLAY}, "additionalProperties": CELL},
 ]}}
 ROWS_BUILD = {**ROWS, "x-mengos-merge": {"mode": "append"}}
 TOTALS = {"type": "array", "maxItems": 200, "items": {"oneOf": [
     {"type": "string", "minLength": 1},
     {"type": "object", "required": ["column"], "additionalProperties": False, "properties": {
         "column": {"type": "string", "minLength": 1},
-        "fn": {"enum": ["sum", "avg", "min", "max", "count"]},
+        "fn": {"enum": ["sum", "avg", "min", "max", "count", "formula", "none"]},
         "value": {}}},
 ]}}
 SHEET_PROPS = {
@@ -49,6 +77,9 @@ SHEET_PROPS = {
     "caption": {"type": "string", "maxLength": 500},
     "note": {"type": "string", "maxLength": 2000},
     "freeze_cols": {"type": "integer", "minimum": 0, "maximum": 10},
+    "header_style": STYLE,
+    "rules": {"type": "array", "maxItems": MAX_RULES, "items": RULE},
+    "row_styles": ROW_STYLES,
 }
 TABLE_DESC = (
         "table：一张或几张数据表。title 标题（必填）。单张表直接写 columns 与 rows；几张表写 sheets，"
@@ -57,10 +88,24 @@ TABLE_DESC = (
         "type（text 文字 / integer 整数 / number 数 / money 金额 / percent 百分比 / date 日期 / bool 是否；不写时按内容推断）、"
         "unit 单位（如 MPa、元/吨）、decimals 显示几位小数、formula 公式（同一行里数值列的 + - * / 与括号，可用 round、abs、min、max，"
         "用列的 key 或标题引用，例如 \"单价 * 数量\"；公式列的值由工具算，行里不用写）。列也可以只写标题字符串。"
+        "公式还可用 roundup、rounddown（向上、向下取整，例如 roundup(总数量 * (1 + 损耗率))）、ceiling(x, 倍数)、floor(x, 倍数)，"
+        "比较 > >= < <= = <> 与 and、or、not、if(条件, 甲, 乙)（状态这类文字列写 if，type 写 text，两支写双引号里的文字，不写数字常数），"
+        "total(列) 取本列合计、cumsum(列) 从首行累加到本行。百分比列在公式里是小数：12.5% 是 0.125，100% 可直接写成 100%；"
+        "百分比公式列算出来的也是小数（实际 / 预算）。"
         "rows 每行一个数组，按列的顺序，每格是字符串、数字、true/false 或 null（空格子）；有公式列时可以只写非公式列。"
         "数值写数字，不带单位；百分比写百分数（12.5 表示 12.5%）；日期写 YYYY-MM-DD。"
-        "totals 加末行合计：[{column, fn}]，fn 为 sum / avg / min / max / count，只写列名时按 sum。"
+        "totals 加末行合计：[{column, fn}]，fn 为 sum / avg / min / max / count，只写列名时按 sum；"
+        "fn 写 formula 时合计行按本列公式重算（比率列：实际合计 ÷ 预算合计），写 none 留空。"
         "meta：lang（zh-CN 或 en，也可直接写在 table 顶层）、author、org、date、version。sources 列数据来源，assumptions 列数据成立的前提（如价格的时点）。"
+        "2.1.0 起：样式 style 写 {fill 底色, color 字色, bold, italic}，颜色取色板：红、橙、黄、绿、蓝、深蓝、灰、浅灰、白、黑、浅红、浅黄。"
+        "列的默认样式写在 columns[].style；表头写 header_style；合计行写 row_styles [{kind: \"total\", style}]。"
+        "某一行、某一格的样式写在那一行里：行写成对象，加保留键 \"$style\": {row: 整行样式, cells: {列名: 这一格的样式}}，例如 "
+        "{\"品名\": \"投影仪\", \"单价\": 12800, \"$style\": {\"cells\": {\"单价\": {\"fill\": \"黄\"}}}}；样式跟着行走，排序、插行、删行都不用改行号。"
+        "条件规则 rules 按次序写 [{when 条件, apply_to, style}]：when 与公式同一种写法，例如 \"金额 > 10000\"、\"实际 > 预算\"、\"执行率 > 100%\"，"
+        "日期写在双引号里（到货日期 > 后接双引号括起的 2026-11-20）；"
+        "apply_to 缺省给条件里的列着色，写 \"row\" 整行着色，或写列名数组；色阶写 {scale: {column, from, to}}。"
+        "规则只管数据行；同一属性先命中的规则先得；规则压过格、行、列上的样式（与 Excel 相同）。rules 给了就整组替换：要加一条，把原有的连同新的按次序一起写出。"
+        "日期列可写 date_format（YYYY-MM-DD / YYYY/MM/DD / YYYY年M月D日 / M月D日 / YYYY.MM.DD），只改显示，Excel 里仍是日期；数值列可写 thousands true/false 定千分位。"
 )
 TABLE_DESC_BUILD = (
     "table：一张或几张数据表。title 标题。单张表直接写 columns 与 rows；几张表写 sheets，"
@@ -70,12 +115,52 @@ TABLE_DESC_BUILD = (
     "被公式或合计引用的列必须写 type，只做 count 的列也要写 type（text 即可））、"
     "unit 单位（如 MPa、元/吨）、decimals 显示几位小数、formula 公式（同一行里数值列的 + - * / 与括号，可用 round、abs、min、max，"
     "用列的 key 或标题引用，例如 \"单价 * 数量\"；公式列的值由工具算，行里不用写）。列也可以只写标题字符串。"
+    "公式还可用 roundup、rounddown（向上、向下取整，例如 roundup(总数量 * (1 + 损耗率))）、ceiling(x, 倍数)、floor(x, 倍数)，"
+    "比较 > >= < <= = <> 与 and、or、not、if(条件, 甲, 乙)（状态这类文字列写 if，type 写 text，两支写双引号里的文字，不写数字常数），"
+    "total(列) 取本列合计、cumsum(列) 从首行累加到本行。百分比列在公式里是小数：12.5% 是 0.125，100% 可直接写成 100%；"
+    "百分比公式列算出来的也是小数（实际 / 预算）。"
     "rows 每行一个数组，按列的顺序，格数等于列数；有公式列时也可以只写非公式列，格数等于非公式列数；每格是字符串、数字、true/false 或 null（空格子）。"
     "行也可以写成对象（列的 key 或标题 → 值），缺的格子为空；分批追加行时请用对象行，改了列要把已有的数组行按新列重写。"
     "数值写数字，不带单位；百分比写百分数（12.5 表示 12.5%）；日期写 YYYY-MM-DD。"
-    "totals 加末行合计：[{column, fn}]，fn 为 sum / avg / min / max / count，只写列名时按 sum。"
+    "totals 加末行合计：[{column, fn}]，fn 为 sum / avg / min / max / count，只写列名时按 sum；"
+    "fn 写 formula 时合计行按本列公式重算（比率列：实际合计 ÷ 预算合计），写 none 留空。"
     "meta：lang（zh-CN 或 en，也可直接写在 table 顶层）、author、org、date、version。sources 列数据来源，assumptions 列数据成立的前提（如价格的时点）。"
+    "2.1.0 起：样式 style 写 {fill 底色, color 字色, bold, italic}，颜色取色板：红、橙、黄、绿、蓝、深蓝、灰、浅灰、白、黑、浅红、浅黄。"
+    "列的默认样式写在 columns[].style；表头写 header_style；合计行写 row_styles [{kind: \"total\", style}]。"
+    "某一行、某一格的样式写在那一行里：行写成对象，加保留键 \"$style\": {row: 整行样式, cells: {列名: 这一格的样式}}，例如 "
+    "{\"品名\": \"投影仪\", \"单价\": 12800, \"$style\": {\"cells\": {\"单价\": {\"fill\": \"黄\"}}}}；样式跟着行走，排序、插行、删行都不用改行号。"
+    "条件规则 rules 按次序写 [{when 条件, apply_to, style}]：when 与公式同一种写法，例如 \"金额 > 10000\"、\"实际 > 预算\"、\"执行率 > 100%\"，"
+    "日期写在双引号里（到货日期 > 后接双引号括起的 2026-11-20）；"
+    "apply_to 缺省给条件里的列着色，写 \"row\" 整行着色，或写列名数组；色阶写 {scale: {column, from, to}}。"
+    "规则只管数据行；同一属性先命中的规则先得；规则压过格、行、列上的样式（与 Excel 相同）。rules 给了就整组替换：要加一条，把原有的连同新的按次序一起写出。"
+    "日期列可写 date_format（YYYY-MM-DD / YYYY/MM/DD / YYYY年M月D日 / M月D日 / YYYY.MM.DD），只改显示，Excel 里仍是日期；数值列可写 thousands true/false 定千分位。"
+    "改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。"
 )
+
+
+# 2.1.0 新增的说明句（上面两段说明里原样出现；tests/test_contribution.py 按它们剥回 1.0.1 的说明，证明只加不改）
+Q = '"'
+STYLE_DESC = [
+ "2.1.0 起：样式 style 写 {fill 底色, color 字色, bold, italic}，颜色取色板：红、橙、黄、绿、蓝、深蓝、灰、浅灰、白、黑、浅红、浅黄。",
+ f"列的默认样式写在 columns[].style；表头写 header_style；合计行写 row_styles [{{kind: {Q}total{Q}, style}}]。",
+ f"某一行、某一格的样式写在那一行里：行写成对象，加保留键 {Q}$style{Q}: {{row: 整行样式, cells: {{列名: 这一格的样式}}}}，例如 ",
+ f"{{{Q}品名{Q}: {Q}投影仪{Q}, {Q}单价{Q}: 12800, {Q}$style{Q}: {{{Q}cells{Q}: {{{Q}单价{Q}: {{{Q}fill{Q}: {Q}黄{Q}}}}}}}}}；样式跟着行走，排序、插行、删行都不用改行号。",
+ f"条件规则 rules 按次序写 [{{when 条件, apply_to, style}}]：when 与公式同一种写法，例如 {Q}金额 > 10000{Q}、{Q}实际 > 预算{Q}、{Q}执行率 > 100%{Q}，",
+ "日期写在双引号里（到货日期 > 后接双引号括起的 2026-11-20）；",
+ f"apply_to 缺省给条件里的列着色，写 {Q}row{Q} 整行着色，或写列名数组；色阶写 {{scale: {{column, from, to}}}}。",
+ "规则只管数据行；同一属性先命中的规则先得；规则压过格、行、列上的样式（与 Excel 相同）。rules 给了就整组替换：要加一条，把原有的连同新的按次序一起写出。",
+ "日期列可写 date_format（YYYY-MM-DD / YYYY/MM/DD / YYYY年M月D日 / M月D日 / YYYY.MM.DD），只改显示，Excel 里仍是日期；数值列可写 thousands true/false 定千分位。",
+]
+FORMULA_ADD = [
+ "公式还可用 roundup、rounddown（向上、向下取整，例如 roundup(总数量 * (1 + 损耗率))）、ceiling(x, 倍数)、floor(x, 倍数)，",
+ "比较 > >= < <= = <> 与 and、or、not、if(条件, 甲, 乙)（状态这类文字列写 if，type 写 text，两支写双引号里的文字，不写数字常数），",
+ "total(列) 取本列合计、cumsum(列) 从首行累加到本行。百分比列在公式里是小数：12.5% 是 0.125，100% 可直接写成 100%；",
+ "百分比公式列算出来的也是小数（实际 / 预算）。",
+]
+TOT_ADD = ["fn 写 formula 时合计行按本列公式重算（比率列：实际合计 ÷ 预算合计），写 none 留空。"]
+BUILD_ONLY_ADD = ["改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。"]
+assert all(x in TABLE_DESC for x in FORMULA_ADD + TOT_ADD + STYLE_DESC)
+assert all(x in TABLE_DESC_BUILD for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + BUILD_ONLY_ADD)
 
 
 def table_def(build=False):
@@ -159,8 +244,9 @@ BUILD = {
             "description": (
                 "要交付一张表格时用：清单、台账、明细、对照表、报价单、排班表，或要 Excel、CSV 文件。"
                 "你把数据写进 table：各列、各行的值，需要的公式列与合计；任务只给了要求时，数据由你按要求整理。"
-                "本工具统一各列的类型、单位与小数位，按公式算出公式列和合计；交付 Excel 文件（表头、冻结首行、筛选、数字格式、能重算的公式），"
-                "以及产出台上可排序查看的版本和 Markdown 原文。任务要 CSV 时，在与 table 并列的 formats 里写 [\"xlsx\", \"csv\"]。"),
+                "本工具统一各列的类型、单位与小数位，按公式算出公式列和合计；交付 Excel 文件（表头、冻结首行、筛选、数字格式、能重算的公式、样式与条件格式），"
+                "以及产出台上可排序查看的版本和 Markdown 原文。任务要 CSV 时，在与 table 并列的 formats 里写 [\"xlsx\", \"csv\"]。"
+                "产出台与 Excel 重算一致；个别取整或比较的边界值可能不一致时会告警，点名到格。"),
             "properties": {
                 "base": BASE_SLOT,
                 "table": TABLE_BUILD,
@@ -195,7 +281,15 @@ BUILD = {
         "out_types": ["table"],
         "constraints": {"max_sheets": 20, "max_columns": 200, "max_rows": 100000, "max_cells": 1000000,
                         "column_types": ["text", "integer", "number", "money", "percent", "date", "bool"],
-                        "formula_functions": ["round", "abs", "min", "max"], "totals": ["sum", "avg", "min", "max", "count"],
+                        "formula_functions": ["round", "abs", "min", "max", "roundup", "rounddown", "ceiling", "floor",
+                                              "and", "or", "not", "if", "total", "cumsum"],
+                        "formula_operators": ["+", "-", "*", "/", ">", ">=", "<", "<=", "=", "<>"],
+                        "totals": ["sum", "avg", "min", "max", "count", "formula", "none"],
+                        "style_properties": ["fill", "color", "bold", "italic"],
+                        "palette": list(COLOR_NAMES[:12]),
+                        "rule_kinds": ["when", "scale"], "max_rules": MAX_RULES, "row_style_kinds": list(ROW_KINDS),
+                        "date_formats": list(DATE_FORMATS),
+                        "excel_recalc": "产出台与 Excel 重算一致；取整、比较的参数先归整到 15 位有效数字，个别边界值不一致时告警（excel_float）",
                         "deterministic_files": True,
                         "latency_note": "几百行约 0.1 s；一万行约 1 s（含 Excel）"},
         "examples": [
@@ -203,11 +297,12 @@ BUILD = {
             {"input": "导出这台减速机的物料清单，带数量、单价和金额合计", "output": "金额列 formula=\"数量 * 单价\"，totals [金额] → 带合计行的 Excel"},
             {"input": "把斐波那契数列前 30 项列成表，另给一份 CSV", "output": "两列 n、F(n)，30 行，formats [xlsx, csv]"},
             {"input": "排一张客服组下周的值班表，七天三班倒", "output": "列：日期、早班、中班、晚班；7 行"},
+            {"input": "预算表里执行率超过 100% 的标红，合计行的执行率按公式算", "output": "rules [{when: \"执行率 > 100%\", style: {color: 红}}]，totals 里执行率 fn formula"},
         ],
         "non_goals": [
             "不替你找数据：表里的数据都由调用方给出，工具只整理、计算与排版",
             "不写成文的报告：表只是文章里的一部分时，交给长文工具",
-            "不画图表，不做条件格式、跨表公式与数据透视",
+            "不画图表，不做跨表公式与数据透视",
             "不读入已有的 Excel 文件",
             "不直接交 PDF",
         ],
@@ -316,7 +411,7 @@ EXPORT = {
 
 REG = {
     "family": "table",
-    "family_version": "2.0.0",
+    "family_version": "2.1.0",
     "lock_hash": "",
     "note": ("字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。"
              "选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。"
