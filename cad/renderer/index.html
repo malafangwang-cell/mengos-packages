@@ -15,6 +15,7 @@
   --ink: #141414; --ink-2: #3A3A38; --mute: #7A7A77; --faint: #9A9A97;
   --alert: #C4442F; --paper: #FFFFFF; --paper-ink: #141414;
   --view-bg: #F2F2F0; --model: #D9D9D5; --model-sel: #3A3A38; --model-cap: #B8B8B3; --edge: #2B2B2A; --axis: #C4442F;
+  --zhu: #B8261A; --zhu-soft: #F2C9C3; --early: #5f5f5b; --breath: 1.6s;
   --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
   --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -25,6 +26,7 @@
   --ink: #EDEDEA; --ink-2: #CFCFCB; --mute: #9A9A97; --faint: #74746F;
   --alert: #E0654F; --paper: #FFFFFF; --paper-ink: #141414;
   --view-bg: #1A1A19; --model: #8E8E89; --model-sel: #EDEDEA; --model-cap: #5A5A56; --edge: #0E0E0D; --axis: #E0654F;
+  --zhu: #F26B5E; --zhu-soft: #5A2A25; --early: #77776f;
   color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #121211; --panel: #171716; --card: #1C1C1B; --chip: #262624; --chip-hi: #2F2F2D;
@@ -32,6 +34,7 @@
   --ink: #EDEDEA; --ink-2: #CFCFCB; --mute: #9A9A97; --faint: #74746F;
   --alert: #E0654F; --paper: #FFFFFF; --paper-ink: #141414;
   --view-bg: #1A1A19; --model: #8E8E89; --model-sel: #EDEDEA; --model-cap: #5A5A56; --edge: #0E0E0D; --axis: #E0654F;
+  --zhu: #F26B5E; --zhu-soft: #5A2A25; --early: #77776f;
   color-scheme: dark }
 
 html, body { height: 100%; }
@@ -112,6 +115,18 @@ header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
 .pl.sel { background: var(--chip-hi); }
 .pl.sel .src { color: var(--ink); }
 .pl.gone .src { color: var(--faint); }
+/* 局部修改（cad 2.6.0，K10；交互以 #728 定稿为准）：不可选的行灰显，选中的行与三维同一节拍呼吸 */
+.pl.deny { cursor: not-allowed; }
+.pl.deny .src, .pl.deny .src .nm { color: var(--faint); }
+.pl .tag { font: 10.5px var(--sans); color: var(--faint); box-shadow: inset 0 0 0 1px var(--line); border-radius: 4px; padding: 0 5px; }
+.pl.mk { box-shadow: inset 2px 0 0 var(--mk); }
+.pl.mk.fol { box-shadow: none; background-image: linear-gradient(var(--mk) 50%, transparent 50%); background-size: 2px 4px; background-repeat: repeat-y; background-position: 0 0; }
+.pl.busy { animation: mg-breath var(--breath) ease-in-out infinite; }
+@keyframes mg-breath { 0%, 100% { background-color: transparent; } 50% { background-color: var(--zhu-soft); } }
+@media (prefers-reduced-motion: reduce) { .pl.busy { animation: none; background-color: var(--zhu-soft); } }
+.tip { position: absolute; z-index: 5; pointer-events: none; background: var(--card); color: var(--ink); font-size: 12px; line-height: 1.5;
+  padding: 4px 8px; border-radius: 6px; box-shadow: 0 0 0 1px var(--line), 0 2px 8px rgba(0,0,0,.08); max-width: 320px; }
+:root[data-chrome="host"] .hud .pick { display: none; }
 
 /* 键值、表 */
 .kv { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 0 12px; font-size: 13px; }
@@ -224,6 +239,10 @@ addEventListener("message", (e) => {
   if (!m || typeof m !== "object" || m.contract !== "0.1") return;
   if (m.type === "mengos.render") { if (m.chrome === "host") document.documentElement.dataset.chrome = "host"; window.__mg.msg = m; if (window.__mg.onRender) window.__mg.onRender(m); }
   if (m.type === "mengos.theme" && (m.theme === "light" || m.theme === "dark")) document.documentElement.dataset.theme = m.theme;
+  // 局部修改的私有扩展（r9.2 L11，不进公开渲染器契约）：open、close、busy、marks
+  if (["mengos.open", "mengos.close", "mengos.busy", "mengos.marks"].includes(m.type)) {
+    if (window.__mg.onHost) window.__mg.onHost(m);
+  }
 });
 parent.postMessage({ type: "mengos.ready", contract: "0.1", views: ["full", "embed"] }, "*");
 </script>
@@ -254,7 +273,13 @@ const OP_NAME = { box: "长方体", cylinder: "圆柱", sphere: "球", cone: "�
   hole: "孔", pocket: "型腔", slot: "长圆槽", fillet: "圆角", chamfer: "倒角", shell: "抽壳", pattern: "阵列", body: "基体",
   revolve: "回转", sweep: "扫掠", helix: "螺旋", mirror: "镜像" };
 
-const state = { part: null, files: [], formats: [], tab: "plan", sel: null, hole: null, view: "iso", cut: "none", cutPos: 0.5, edges: true };
+const state = { part: null, files: [], formats: [], tab: "plan", sel: null, hole: null, view: "iso", cut: "none", cutPos: 0.5, edges: true,
+  sels: [], open: false, busy: new Set(), marks: null };
+const MAX_SELS = 3;
+// 修改记录分色的后备色（宿主在 mengos.marks 里给 color 时以宿主为准；序列取 #728 定稿）
+const PAL = { light: ["#3B6EA8", "#2F8A7A", "#B07F1A", "#7A5AA6", "#62803A", "#8A6A4F"], dark: ["#7FA8D9", "#6CC2B0", "#DDB462", "#B39BDB", "#A6C36F", "#C9A88A"] };
+const isDark = () => css("--bg").toLowerCase() === "#121211";
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const fmtOf = (f) => f.format || (f.path || "").split(".").pop();
 const fileOf = (fmtKey) => state.files.find((f) => fmtOf(f) === fmtKey);
 
@@ -262,7 +287,8 @@ const fileOf = (fmtKey) => state.files.find((f) => fmtOf(f) === fmtKey);
 function adopt(msg) {
   const obj = msg.object && typeof msg.object === "object" ? msg.object : {};
   const out = obj.output && typeof obj.output === "object" ? obj.output : obj;
-  const build = { features: out.features || [], files: out.files || [], measure: out.measure || null, warnings: out.warnings || [], plan_sha256: out.plan_sha256 || "" };
+  const build = { features: out.features || [], files: out.files || [], measure: out.measure || null, warnings: out.warnings || [], plan_sha256: out.plan_sha256 || "",
+                  lines: Array.isArray(out.lines) ? out.lines : null };
   const plan = (obj.args && typeof obj.args.plan === "string") ? obj.args.plan : build.features.map((f) => f.src).join("\n");
   const byPath = new Map((msg.files || []).map((f) => [f.path, f]));
   state.files = build.files.map((f) => ({ ...f, bytes: byPath.get(f.path)?.bytes ?? null }));
@@ -317,8 +343,23 @@ async function load3d() {
     const r = renderer.domElement.getBoundingClientRect();
     ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
     const hits = ray.intersectObjects(featMeshes, false).filter((h) => state.cut === "none" || clip.distanceToPoint(h.point) >= -1e-9);
-    select(hits.length ? hits[0].object.userData.feature : null, true);
+    const h = hits[0];
+    pickFromView(h ? h.object.userData.feature : null, h ? faceAt(h.object, h.faceIndex) : null, { x: Math.round(e.clientX), y: Math.round(e.clientY) });
   });
+  // 悬停一句（三维上不挂字标，说明只在悬停时出现）
+  let hoverPending = null;
+  renderer.domElement.addEventListener("pointermove", (e) => {
+    hoverPending = e;
+    requestAnimationFrame(() => {
+      if (!hoverPending) return;
+      const ev = hoverPending; hoverPending = null;
+      const r = renderer.domElement.getBoundingClientRect();
+      ray.setFromCamera(new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1), camera);
+      const h = ray.intersectObjects(featMeshes, false).filter((x) => state.cut === "none" || clip.distanceToPoint(x.point) >= -1e-9)[0];
+      showTip(h ? markLine(h.object.userData.feature) : "", ev.clientX - vp.getBoundingClientRect().left, ev.clientY - vp.getBoundingClientRect().top);
+    });
+  });
+  renderer.domElement.addEventListener("pointerleave", () => showTip(""));
   resize(); loop();
   return true;
 }
@@ -326,12 +367,18 @@ async function load3d() {
 function themeColors() {
   if (!THREE || !scene) return;
   scene.background = new THREE.Color(css("--view-bg"));
-  const base = new THREE.Color(css("--model")), sel = new THREE.Color(css("--model-sel")), cap = new THREE.Color(css("--model-cap"));
+  const base = new THREE.Color(css("--model")), cap = new THREE.Color(css("--model-cap")), zhu = new THREE.Color(css("--zhu"));
   for (const m of featMeshes) {
-    const on = state.sel && m.userData.feature === state.sel;
-    m.material.color.copy(on ? sel : base);
+    // 取值照 #728 定稿：改过的元件染该步颜色，随动淡染加同色点线；选中再向朱偏一点；聚光时其余元件淡到 0.16
+    const fid = m.userData.feature, on = state.sels.includes(fid), mk = markOf(fid), dark = isDark();
+    const own = mk ? base.clone().lerp(new THREE.Color(mk.color), mk.kind === "fol" ? (dark ? 0.24 : 0.2) : (dark ? 0.6 : 0.55)) : base.clone();
+    m.userData.own = own;
+    m.material.color.copy(on ? own.clone().lerp(zhu, dark ? 0.32 : 0.22) : own);
+    const dim = state.open && state.sels.length && !on;            // 聚光：宿主回 mengos.open 之后才开始
+    m.material.transparent = dim; m.material.opacity = dim ? 0.16 : 1; m.material.depthWrite = !dim;
     m.userData.cap.material.color.copy(cap);
     m.userData.cap.visible = state.cut !== "none";
+    setFollowLine(m, mk && mk.kind === "fol" ? mk.color : null);
   }
   if (edgeObj) edgeObj.traverse((o) => { if (o.material) o.material.color.set(css("--edge")); });
   if (axisLine) axisLine.material.color.set(css("--axis"));
@@ -390,6 +437,7 @@ async function loadModel() {
   });
   for (const o of meshes) {                      // 先收集再加剖面子网格，免得遍历时一边走一边加
     o.userData.feature = o.userData.feature || o.parent?.userData?.feature;
+    o.userData.faces = o.userData.faces || o.parent?.userData?.faces;   // 面一级：三角形区间、face_key、uncertain、instance（2.6.0）
     o.material = new THREE.MeshStandardMaterial({ metalness: 0.12, roughness: 0.62, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     const cap = new THREE.Mesh(o.geometry, new THREE.MeshBasicMaterial({ side: THREE.BackSide }));
     cap.raycast = () => {};
@@ -419,6 +467,13 @@ function showHoleAxis(h) {
 }
 function loop() {
   controls.update();
+  if (state.busy.size && featMeshes.length) {                       // 处理中：选中元件颜色呼吸（淡朱与原色缓慢往复），不做文字变身
+    const period = parseFloat(css("--breath")) * 1000 || 2400;
+    const dark = isDark(), zhu = new THREE.Color(css("--zhu"));
+    const t = reducedMotion() ? 0.5 : (1 - Math.cos((performance.now() % period) / period * 2 * Math.PI)) / 2;   // 减少动效：静止为淡朱
+    const k = (dark ? 0.2 : 0.14) + (dark ? 0.5 : 0.42) * t;
+    for (const m of featMeshes) if (state.busy.has(m.userData.feature) && m.userData.own) m.material.color.copy(m.userData.own).lerp(zhu, k);
+  }
   key.position.copy(camera.position).add(new THREE.Vector3(radius, radius * 2, radius));
   fill.position.copy(camera.position).multiplyScalar(-1);
   renderer.render(scene, camera);
@@ -427,19 +482,118 @@ function loop() {
 
 /* ---------------- 检视 ---------------- */
 function feat(id) { return state.part.build.features.find((f) => f.id === id); }
-async function select(fid, fromView) {
-  state.sel = fid && fid !== state.sel ? fid : (fromView && fid ? null : fid);
-  themeColors();
-  const f = state.sel && feat(state.sel);
+/* ---------------- 选中（cad 2.6.0，K10）----------------
+   两步：点中元件只报位置（anchor），“改这里”按钮由宿主画；宿主回 mengos.open 才聚光。按钮阶段点别处即换选。
+   计划面板 Shift 加选，至多 3 行；三维里仍单选。不可选的行（无名、声明）只发 mengos.select_denied。 */
+function canSelect(fid) {
+  const f = feat(fid);
+  if (!f) return { ok: false, why_not: "declaration" };
+  if (f.selectable === false) return { ok: false, why_not: f.why_not || "unnamed" };
+  if (f.selectable === undefined && f.id.includes("#")) return { ok: false, why_not: "unnamed" };   // 2.5.2 的特征表没有 selectable
+  return { ok: true };
+}
+function faceAt(mesh, faceIndex) {
+  const faces = mesh.userData.faces;
+  if (!Array.isArray(faces) || faceIndex == null) return null;
+  return faces.find((fc) => faceIndex >= fc.tris[0] && faceIndex < fc.tris[0] + fc.tris[1]) || null;
+}
+function sendSelect(extra) {
+  const hs = state.sels.map((id) => `feature:${id}`);
+  const f = state.sels.length ? feat(state.sels[0]) : null;
+  post({ type: "mengos.select", handle_id: hs[0] || null, handles: hs,
+         label: state.sels.map((id) => `${id}（第 ${feat(id)?.line} 行）`).join("、"), ...extra });
   const pick = $("#pick");
   pick.hidden = !f;
-  if (f) {
-    pick.innerHTML = `<b>${esc(f.id)}</b> · ${OP_NAME[f.op] || esc(f.op)} <span class="mono">第 ${f.line} 行 · ${f.faces} 个面</span>`;
-    post({ type: "mengos.select", handle_id: `feature:${f.id}`, label: `${f.id}（第 ${f.line} 行）` });
+  if (f) pick.innerHTML = state.sels.map((id) => { const g = feat(id); return `<b>${esc(g.id)}</b> · ${OP_NAME[g.op] || esc(g.op)} <span class="mono">第 ${g.line} 行</span>`; }).join("　");
+}
+async function pickFromView(fid, face, anchor) {
+  if (fid && !canSelect(fid).ok) { post({ type: "mengos.select_denied", handle_id: `feature:${fid}`, why_not: canSelect(fid).why_not, anchor }); return; }
+  const same = fid && state.sels.length === 1 && state.sels[0] === fid;
+  state.sels = fid && !same ? [fid] : [];
+  state.sel = state.sels[0] || null; state.open = false;
+  const extra = { anchor };
+  if (state.sels.length && face) {
+    extra.picked = { feature: fid, face_key: face.face_key };
+    if (face.instance != null) extra.instance = face.instance;
+    if (face.uncertain) extra.uncertain = true;
   }
-  if (fromView && f && state.tab !== "plan") await setTab("plan");
+  sendSelect(extra);
+  themeColors();
+  if (state.sels.length && state.tab !== "plan") await setTab("plan");
   else if (state.tab === "plan") await renderPane();
-  if (fromView && f) $(`.pl[data-line="${f.line}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (state.sels.length) $(`.pl[data-fid="${CSS.escape(fid)}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+async function pickFromPlan(row, shift) {
+  const why = row.dataset.deny;
+  const r = row.getBoundingClientRect(), anchor = { x: Math.round(r.right), y: Math.round(r.top + r.height / 2) };
+  if (why) { post({ type: "mengos.select_denied", handle_id: row.dataset.fid ? `feature:${row.dataset.fid}` : `line:${row.dataset.line}`, why_not: why, anchor }); return; }
+  const fid = row.dataset.fid;
+  if (shift) {
+    if (state.sels.includes(fid)) state.sels = state.sels.filter((x) => x !== fid);
+    else if (state.sels.length < MAX_SELS) state.sels = [...state.sels, fid];
+  } else {
+    state.sels = state.sels.length === 1 && state.sels[0] === fid ? [] : [fid];
+  }
+  state.sel = state.sels[0] || null; state.open = false;
+  sendSelect({ anchor });
+  themeColors(); await renderPane();
+}
+async function select(fid) {                                         // 旧入口（宿主或别处直接定位）：单选
+  state.sels = fid && canSelect(fid).ok ? [fid] : []; state.sel = state.sels[0] || null; state.open = false;
+  themeColors(); if (state.tab === "plan") await renderPane();
+}
+
+/* ---------------- 处理中与修改记录（宿主 → 渲染器）---------------- */
+function stepColor(st) {
+  const upto = state.marks?.upto ?? Math.max(0, ...(state.marks?.steps || []).map((x) => x.step));
+  if (st.step <= upto - 6) return css("--early");                    // 超过 6 次，更早的统一变灰
+  return st.color || PAL[isDark() ? "dark" : "light"][(st.step - 1) % 6];
+}
+function markOf(fid) {
+  if (!state.marks || !fid) return null;
+  const upto = state.marks.upto ?? Infinity;
+  const steps = (state.marks.steps || []).filter((x) => x.step <= upto).sort((a, b) => b.step - a.step);
+  for (const st of steps) {
+    if ((st.changed || []).includes(fid)) return { kind: "chg", step: st.step, color: stepColor(st), st };
+    if ((st.followed || []).includes(fid)) return { kind: "fol", step: st.step, color: stepColor(st), st };
+  }
+  return null;
+}
+function markLine(fid) {
+  const mk = markOf(fid);
+  if (!mk) return "";
+  const d = (mk.st.param_diffs || []).filter((x) => mk.kind === "fol" || x.name === fid)
+    .map((x) => `${x.name} ${x.param === "op" ? "" : x.param + " "}${x.before ?? "—"}→${x.after ?? "—"}`);
+  const why = mk.kind === "fol" ? `随 ${(mk.st.changed || []).join("、")} 变` : d.join("，");
+  return `${fid} · 第 ${mk.step} 次${why ? "：" + why : ""}`;
+}
+function setFollowLine(m, color) {
+  if (m.userData.fol) { m.remove(m.userData.fol); m.userData.fol.geometry.dispose(); m.userData.fol = null; }
+  if (!color) return;
+  const g = new THREE.EdgesGeometry(m.geometry, 28);
+  const l = new THREE.LineSegments(g, new THREE.LineDashedMaterial({ color, dashSize: radius * 0.03, gapSize: radius * 0.025 }));
+  l.computeLineDistances(); l.raycast = () => {};
+  m.add(l); m.userData.fol = l;
+}
+function showTip(text, x, y) {
+  let t = $("#mg-tip");
+  if (!text) { if (t) t.hidden = true; return; }
+  if (!t) { vp.insertAdjacentHTML("beforeend", `<div class="tip" id="mg-tip" role="tooltip"></div>`); t = $("#mg-tip"); }
+  t.textContent = text; t.hidden = false;
+  t.style.left = `${Math.min(x + 12, vp.clientWidth - t.offsetWidth - 8)}px`; t.style.top = `${Math.max(8, y - 34)}px`;
+}
+function syncBreath() {
+  const delay = `-${Math.round(performance.now() % ((parseFloat(css("--breath")) || 2.4) * 1000))}ms`;   // 计划行与三维同一节拍
+  for (const el of document.querySelectorAll(".pl.busy")) el.style.animationDelay = delay;
+}
+async function onHost(m) {
+  const ids = (hs) => (Array.isArray(hs) ? hs : []).map((h) => String(h).replace(/^feature:/, ""));
+  if (m.type === "mengos.open") { if (Array.isArray(m.handles) && m.handles.length) state.sels = ids(m.handles).filter((x) => feat(x)).slice(0, MAX_SELS); state.open = state.sels.length > 0; }
+  if (m.type === "mengos.close") { state.open = false; state.sels = []; state.sel = null; $("#pick").hidden = true; }
+  if (m.type === "mengos.busy") state.busy = new Set(ids(m.handles));
+  if (m.type === "mengos.marks") state.marks = { steps: Array.isArray(m.steps) ? m.steps : [], upto: Number.isInteger(m.upto) ? m.upto : undefined };
+  themeColors();
+  if (state.tab === "plan") await renderPane();
 }
 function hiliteSrc(src) {
   const [code, cm] = src.split(/(?=#)/);
@@ -448,17 +602,22 @@ function hiliteSrc(src) {
   return body + (cm ? `<span class="cm">${esc(cm)}</span>` : "");
 }
 function paneP() {
-  const b = state.part.build, byLine = {};
+  const b = state.part.build, byLine = {}, lineInfo = {};
   for (const f of b.features) byLine[f.line] = f;
+  for (const x of b.lines || []) lineInfo[x.line] = x;
   const rows = state.part.plan.replace(/\n$/, "").split("\n").map((src, i) => {
-    const f = byLine[i + 1];
-    const cls = ["pl", f ? "feat" : "", f && f.id === state.sel ? "sel" : "", f && !f.faces ? "gone" : ""].join(" ");
-    const fx = f ? (f.faces ? `${f.faces} 面` : "已被覆盖") : "";
-    return `<div class="${cls}" data-line="${i + 1}" ${f ? `data-fid="${esc(f.id)}" tabindex="0" role="button"` : ""}><span class="no">${i + 1}</span><span class="src">${hiliteSrc(src) || "&nbsp;"}</span><span class="fx">${fx}</span></div>`;
+    const f = byLine[i + 1], li = lineInfo[i + 1];
+    const deny = li && li.kind === "declaration" ? "declaration" : f && !canSelect(f.id).ok ? canSelect(f.id).why_not : "";
+    const mk = f && markOf(f.id);
+    const cls = ["pl", f || deny ? "feat" : "", deny ? "deny" : "", f && state.sels.includes(f.id) ? "sel" : "", f && !f.faces ? "gone" : "",
+                 mk ? "mk" + (mk.kind === "fol" ? " fol" : "") : "", f && state.busy.has(f.id) ? "busy" : ""].join(" ");
+    const fx = deny ? `<span class="tag">${deny === "declaration" ? "声明" : "未命名"}</span>` : f ? (f.faces ? `${f.faces} 面` : "已被覆盖") : "";
+    const attrs = f || deny ? `${f ? `data-fid="${esc(f.id)}"` : ""} ${deny ? `data-deny="${deny}" aria-disabled="true"` : ""} tabindex="0" role="button"` : "";
+    return `<div class="${cls}" data-line="${i + 1}" ${attrs} ${mk ? `style="--mk:${mk.color}" title="${esc(markLine(f.id))}"` : ""}><span class="no">${i + 1}</span><span class="src">${hiliteSrc(src) || "&nbsp;"}</span><span class="fx">${fx}</span></div>`;
   }).join("");
   const warn = b.warnings.length ? `<div class="card"><h2>提示</h2>${b.warnings.map((w) => `<div class="note">第 ${w.line} 行：${esc(w.message)}</div>`).join("")}</div>` : "";
   return `<div class="card plan">${rows}</div>${warn}
-  <div class="card note">点模型上的面，或点带“面”的行，就能定位到产生它的那一行。行名就是特征的句柄，倒角、阵列、核对都用它。</div>`;
+  <div class="card note">点模型上的面，或点带“面”的行，就能定位到产生它的那一行；按住 Shift 点行可以多选，至多 ${MAX_SELS} 行。行名就是特征的句柄，倒角、阵列、核对都用它。</div>`;
 }
 function paneM() {
   const m = state.part.build.measure;
@@ -551,6 +710,7 @@ async function doDownload(key) {
 async function renderPane() {
   const html = { plan: paneP, measure: paneM, check: paneC, drawing: paneD, files: paneF }[state.tab]();
   $("#pane").innerHTML = await html;
+  syncBreath();
 }
 function setTab(t) {
   state.tab = t;
@@ -592,7 +752,7 @@ function renderEmbed() {
 /* ---------------- 事件 ---------------- */
 $("#pane").addEventListener("click", (e) => {
   const pl = e.target.closest(".pl.feat");
-  if (pl) { select(pl.dataset.fid === state.sel ? null : pl.dataset.fid, false); return; }
+  if (pl) { pickFromPlan(pl, e.shiftKey); return; }
   const tr = e.target.closest("tr.hole");
   if (tr) { const i = +tr.dataset.hole; state.hole = state.hole === i ? null : i; showHoleAxis(state.hole == null ? null : state.part.build.measure.holes[i]); renderPane(); return; }
   const dl = e.target.closest("[data-dl]");
@@ -630,7 +790,7 @@ async function onRender(msg) {
     adopt(msg);
     if (msg.view === "embed") { renderEmbed(); return; }
     $("#app").hidden = false;
-    state.sel = null; state.hole = null; $("#pick").hidden = true;
+    state.sel = null; state.sels = []; state.open = false; state.hole = null; $("#pick").hidden = true;
     renderHead();
     await setTab(state.tab);
     if (!started) { started = true; await load3d(); }
@@ -640,6 +800,7 @@ async function onRender(msg) {
   }
 }
 window.__mg.onRender = onRender;
+window.__mg.onHost = (m) => { if (state.part) onHost(m); };
 if (window.__mg.msg) onRender(window.__mg.msg);
 </script>
 </body>

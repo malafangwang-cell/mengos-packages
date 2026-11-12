@@ -11,7 +11,7 @@ import zipfile
 
 from build123d import CenterOf, ExportDXF, ExportSVG, Line, LineType, Unit, Vector, export_step
 
-from builder import BuildResult, cylinder_info, face_owner
+from builder import BuildResult, cylinder_info, face_instance, face_key_text, face_owner, key_is_uncertain, surface_key
 
 FIXED_TIME = "2000-01-01T00:00:00"
 
@@ -175,6 +175,7 @@ def tessellate(res: BuildResult, linear=None, angular=0.1):
     lin = linear if linear else max(0.005, min(0.1, diag * 0.0005))
     BRepMesh_IncrementalMesh(part.wrapped, lin, False, angular, False)
     groups = {}
+    feats = {f.id: f for f in res.features}
     weld, wtris = {}, []
     for face in part.faces():
         loc = TopLoc_Location()
@@ -204,8 +205,17 @@ def tessellate(res: BuildResult, linear=None, angular=0.1):
             L = math.sqrt(n[0] ** 2 + n[1] ** 2 + n[2] ** 2) or 1.0
             n[0] /= L; n[1] /= L; n[2] /= L
         owner = face_owner(face, res.features) or "body"
-        g = groups.setdefault(owner, {"pos": [], "nrm": [], "idx": []})
+        g = groups.setdefault(owner, {"pos": [], "nrm": [], "idx": [], "faces": []})
         base = len(g["pos"])
+        # 面一级的信息（2.6.0，K3、K7、K13）：这个面在本组三角形里的区间、曲面键、归属是否不确定、阵列实例号
+        key = surface_key(face)
+        fi = {"tris": [len(g["idx"]), len(tris)], "face_key": face_key_text(key)}
+        if key_is_uncertain(key):
+            fi["uncertain"] = True
+        inst = face_instance(face, feats[owner]) if owner in feats else None
+        if inst is not None:
+            fi["instance"] = inst
+        g["faces"].append(fi)
         g["pos"] += nodes
         g["nrm"] += [tuple(n) for n in normals]
         g["idx"] += [(a + base, b + base, c + base) for a, b, c in tris]
@@ -271,7 +281,7 @@ def to_glb(res: BuildResult, mesh) -> bytes:
         ia = add_acc(add_view(struct.pack(f"<{len(idx)}I", *idx), 34963), 5125, len(idx), "SCALAR")
         meshes.append({"name": fid, "primitives": [{"attributes": {"POSITION": pa, "NORMAL": na}, "indices": ia, "material": 0}]})
         f = feats.get(fid)
-        extras = {"feature": fid, "op": f.op if f else "body", "line": f.line if f else 0}
+        extras = {"feature": fid, "op": f.op if f else "body", "line": f.line if f else 0, "faces": g["faces"]}
         nodes.append({"name": fid, "mesh": len(meshes) - 1, "extras": extras})
     lp, li = [], []
     for poly in mesh["lines"]:

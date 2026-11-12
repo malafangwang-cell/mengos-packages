@@ -48,6 +48,7 @@ class Feature:
     axis: tuple | None = None      # 加工方向（从外向里），阵列与测量用
     face: str | None = None
     params: dict = field(default_factory=dict)
+    copies: list = field(default_factory=list)   # pattern / mirror 复制出来的刀具，第 k 个即实例 k（源特征本身是实例 0）
 
 
 @dataclass
@@ -89,6 +90,30 @@ def surface_key(face):
                 round(qx, 3) + 0.0, round(qy, 3) + 0.0, round(qz, 3) + 0.0, round(r, 4) + 0.0)
     c = face.center()
     return ("O", gt, round(c.X, 3), round(c.Y, 3), round(c.Z, 3), round(face.area, 3))
+
+
+def face_key_text(key) -> str:
+    """曲面键的文字形式（2.6.0）：特征表的 face_digest、网格的 face_key 用同一写法，逐字节确定。"""
+    return "|".join(k if isinstance(k, str) else repr(float(k) + 0.0) for k in key)
+
+
+def key_is_uncertain(key) -> bool:
+    """键里含面积的面（非平面、非圆柱面）：被后续特征切一下就成了“新曲面”，归属可能跳到切它的那一行。"""
+    return key[0] == "O"
+
+
+def face_instance(face, feat) -> int | None:
+    """阵列、镜像行名下的面来自第几个复制体（1 起；源特征本身是实例 0，面归源特征那一行）。
+    先按曲面键对刀具的面，对不上（键里含面积的面）再取离面中心最近的复制体。"""
+    if not feat.copies:
+        return None
+    k = surface_key(face)
+    hit = [i for i, c in enumerate(feat.copies, 1) if any(surface_key(g) == k for g in c.faces())]
+    if len(hit) == 1:
+        return hit[0]
+    ctr = face.center()
+    cand = hit or list(range(1, len(feat.copies) + 1))
+    return min(cand, key=lambda i: (feat.copies[i - 1].distance_to(ctr), i))
 
 
 def _surfaces(part):
@@ -850,7 +875,7 @@ def build(stmts: list[Stmt]) -> BuildResult:
                 for c in copies:
                     part = part + c if src.sign > 0 else part - c
                 part = check_part(st, part)
-                record(st, src.sign, before, part, params={"of": src.id, "mode": mode, "n": n})
+                record(st, src.sign, before, part, params={"of": src.id, "mode": mode, "n": n}, copies=copies)
                 continue
             if st.op == "mirror":
                 if not st.pos or not isinstance(st.pos[0], str):
@@ -867,7 +892,7 @@ def build(stmts: list[Stmt]) -> BuildResult:
                 before = part
                 part = part + copy if src.sign > 0 else part - copy
                 part = check_part(st, part)
-                record(st, src.sign, before, part, tool=copy, params={"of": src.id, "plane": pl, "off": off})
+                record(st, src.sign, before, part, tool=copy, params={"of": src.id, "plane": pl, "off": off}, copies=[copy])
                 continue
             a.err(f"不支持的操作“{st.op}”", "支持的操作：" + "、".join(SUPPORTED))
         except DslError:

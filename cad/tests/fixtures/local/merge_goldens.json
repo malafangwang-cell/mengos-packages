@@ -1,0 +1,60 @@
+[
+  {
+    "id": "replace-stays-in-place",
+    "base": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss",
+    "patch": [
+      "boss: cylinder d=70 h=18 at=(0,0,12)"
+    ],
+    "whole": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=70 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss",
+    "stays_at": 5
+  },
+  {
+    "id": "new-name-appended",
+    "base": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss",
+    "patch": [
+      "b2: hole d=6 at=(0,45) from=top through"
+    ],
+    "whole": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss\nb2: hole d=6 at=(0,45) from=top through",
+    "appended": true
+  },
+  {
+    "id": "replace-and-append-together",
+    "base": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss",
+    "patch": [
+      "b1: hole d=12 at=(45,0) from=bottom through",
+      "b2: hole d=6 at=(0,45) from=top through"
+    ],
+    "whole": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=12 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss\nb2: hole d=6 at=(0,45) from=top through",
+    "stays_at": 7,
+    "appended": true
+  },
+  {
+    "id": "fullwidth-colon",
+    "base": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss",
+    "patch": [
+      "fl：fillet r=3 edges=boss"
+    ],
+    "whole": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl：fillet r=3 edges=boss",
+    "stays_at": 9
+  },
+  {
+    "id": "chinese-names",
+    "base": "material 6061-T6\n底盘: cylinder d=120 h=12\n凸台: cylinder d=60 h=18 at=(0,0,12)\n中心孔: hole d=30 at=center from=top through\n圆角: fillet r=2 edges=凸台",
+    "patch": [
+      "凸台: cylinder d=70 h=18 at=(0,0,12)",
+      "侧孔: hole d=8 at=(0,6) from=front through"
+    ],
+    "whole": "material 6061-T6\n底盘: cylinder d=120 h=12\n凸台: cylinder d=70 h=18 at=(0,0,12)\n中心孔: hole d=30 at=center from=top through\n圆角: fillet r=2 edges=凸台\n侧孔: hole d=8 at=(0,6) from=front through",
+    "stays_at": 3,
+    "appended": true
+  },
+  {
+    "id": "dotted-names",
+    "base": "base.一: box 80 50 20\nh.1: hole d=20 at=center from=top through\nc.1: chamfer c=0.5 edges=h.1",
+    "patch": [
+      "h.1: hole d=24 at=center from=top through"
+    ],
+    "whole": "base.一: box 80 50 20\nh.1: hole d=24 at=center from=top through\nc.1: chamfer c=0.5 edges=h.1",
+    "stays_at": 2
+  }
+]

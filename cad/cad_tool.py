@@ -119,6 +119,115 @@ def _features(res):
     return [{"id": f.id, "op": f.op, "line": f.line, "src": f.src, "faces": count.get(f.id, 0)} for f in res.features]
 
 
+# ---------------------------------------------------------------- 特征表与全行表（2.6.0，局部修改用）
+DECLARATION_OPS = ("units", "material", "let")
+MODIFIER_OPS = ("fillet", "chamfer", "shell")
+COPY_OPS = ("pattern", "mirror")
+GLOBAL_EDGES = ("all", "vertical", "top", "bottom", "front", "back", "left", "right")
+
+
+def _line_kind(op):
+    if op in DECLARATION_OPS:
+        return "declaration"
+    if op in MODIFIER_OPS:
+        return "modifier"
+    if op in COPY_OPS:
+        return "copy"
+    return "feature"
+
+
+def _code_tokens(raw, ln=0):
+    """一行的代码部分（去注释、规范化记号）→ (名字, 操作, 其余记号)；空行与注释行返回 None。只在计划已解析通过后调用。"""
+    from cad_dsl import _engineering, _normalize, _tokenize
+    s = _engineering(_normalize(raw).split("#", 1)[0]).strip()
+    if not s:
+        return None
+    toks = _tokenize(s, ln)
+    name = None
+    if len(toks) >= 2 and toks[0][0] == "word" and toks[1][1] == ":":
+        name, toks = toks[0][1], toks[2:]
+    return name, toks[0][1].lower(), toks[1:]
+
+
+def _scope(f):
+    """作用范围（K12）：抽壳、按 all / vertical / 面名选边的圆角与倒角作用到整件，为 global；其余为 local。"""
+    if f.op == "shell":
+        return "global"
+    if f.op in ("fillet", "chamfer") and f.params.get("edges") in GLOBAL_EDGES:
+        return "global"
+    return "local"
+
+
+def _refs(f, ids):
+    """本行显式引用的特征名（K6）：edges=名、pattern 名、mirror 名。隐式依赖不在内，只是下限。"""
+    if f.op in ("fillet", "chamfer"):
+        e = f.params.get("edges")
+        return [e] if e in ids and e not in GLOBAL_EDGES else []
+    if f.op in COPY_OPS:
+        return [f.params["of"]]
+    return []
+
+
+def _feature_table(res):
+    """特征表：2.5.2 的五个字段照旧，另加 selectable、why_not、face_digest、uncertain_faces、refs、referenced_by、scope、group。"""
+    from builder import face_owner, key_is_uncertain, face_key_text, surface_key
+    count, digest, uncertain = {}, {}, {}
+    for f in res.part.faces():
+        o = face_owner(f, res.features)
+        count[o] = count.get(o, 0) + 1
+        key = surface_key(f)
+        digest.setdefault(o, []).append([face_key_text(key), round(f.area, 3) + 0.0])
+        if key_is_uncertain(key):
+            uncertain[o] = uncertain.get(o, 0) + 1
+    ids = {f.id for f in res.features}
+    refs = {f.id: _refs(f, ids) for f in res.features}
+    out = []
+    for f in res.features:
+        named = "#" not in f.id
+        item = {"id": f.id, "op": f.op, "line": f.line, "src": f.src, "faces": count.get(f.id, 0),
+                "selectable": named, "face_digest": sorted(digest.get(f.id, [])),
+                "uncertain_faces": uncertain.get(f.id, 0), "refs": refs[f.id],
+                "referenced_by": [g.id for g in res.features if f.id in refs[g.id]], "scope": _scope(f)}
+        if not named:
+            item["why_not"] = "unnamed"
+        if f.op in COPY_OPS:
+            item["group"] = {"kind": f.op, "source": f.params["of"], "instances": len(f.copies) + 1}
+        out.append(item)
+    return out
+
+
+def _lines(plan, features):
+    """全行表（K2、K11）：计划里每一行一项，行号与解析器一致。"""
+    from cad_dsl import _normalize
+    by_line = {f["line"]: f for f in features}
+    out = []
+    for ln, raw in enumerate(_normalize(plan).splitlines(), 1):
+        ct = _code_tokens(raw, ln)
+        if ct is None:
+            out.append({"line": ln, "kind": "comment", "selectable": False, "why_not": "comment"})
+            continue
+        name, op, _ = ct
+        item = {"line": ln, "kind": _line_kind(op), "op": op}
+        if name:
+            item["name"] = name
+        if item["kind"] == "declaration":
+            item.update(selectable=False, why_not="declaration")
+        else:
+            f = by_line[ln]
+            item.update(feature_id=f["id"], selectable=f["selectable"], scope=f["scope"])
+            if "why_not" in f:
+                item["why_not"] = f["why_not"]
+        out.append(item)
+    return out
+
+
+def _unnamed_warnings(features):
+    return [{"line": f["line"], "code": "unnamed_feature", "feature": f["id"],
+             "message": f"{f['op']} 没有名字（界面上叫 {f['id']}）；特征行都要写名字，"
+                        f"例如 {f['op']}1: {f['op']} …，否则以后不能单独改这一行"}
+            for f in features if "why_not" in f]
+
+
 def _write_files(res, formats, name, workdir, meta, mesh):
     import geometry
     if not formats:
@@ -152,7 +261,7 @@ def _mesh_if_needed(res, formats, need):
     return mesh
 
 
-# ---------------------------------------------------------------- 三件工具
+# ---------------------------------------------------------------- 建模三件
 def cad_build(payload, workdir=None):
     """计划 → 零件：测量值、特征表、警告，以及请求的文件（缺省 STEP + GLB + SVG 三视图）。"""
     import geometry
@@ -164,9 +273,12 @@ def cad_build(payload, workdir=None):
     mesh = _mesh_if_needed(res, formats, need=True)
     meas = geometry.measure(res, mesh)
     meta = {"name": name, "plan_sha": sha}
+    feats = _feature_table(res)
     return {
-        "name": name, "plan_sha256": sha, "measure": meas, "features": _features(res),
-        "warnings": res.warnings, "files": _write_files(res, formats, name, workdir, meta, mesh),
+        "name": name, "plan_sha256": sha, "measure": meas, "features": feats,
+        "warnings": res.warnings + _unnamed_warnings(feats), "files": _write_files(res, formats, name, workdir, meta, mesh),
+        "lines": _lines(plan, feats),
+        "part": {"material": meas["material"], "density": meas["density_g_cm3"], "mass": meas["mass_g"]},
     }
 
 
@@ -225,7 +337,114 @@ def cad_export(payload, workdir=None):
             "files": _write_files(res, formats, name, workdir, {"name": name, "plan_sha": sha}, mesh)}
 
 
-TOOLS = {"cad.build": cad_build, "cad.check": cad_check, "cad.export": cad_export}
+# ---------------------------------------------------------------- 比较（2.6.0，K5、K11、K14）
+PART_KEYS = ("material", "density", "mass")
+REBUILD_HINT = "先用当前版本的 cad.build 把这份计划重建一次，取新的特征表再比"
+
+
+def _table(payload, key):
+    t = payload.get(key)
+    what = "旧" if key == "old" else "新"
+    if not isinstance(t, dict) or not isinstance(t.get("features"), list):
+        raise BadInput(f"{key} 应当是{what}特征表：cad.build 的产出（含 features 与 part）")
+    feats = {}
+    for f in t["features"]:
+        if not isinstance(f, dict) or not isinstance(f.get("id"), str) or not isinstance(f.get("src"), str):
+            raise BadInput(f"{key}.features 的每一项要有 id 与 src")
+        if not isinstance(f.get("face_digest"), list):
+            raise BadInput(f"{what}特征表里的特征 {f['id']} 没有面摘要（face_digest），是旧版本建的", hint=REBUILD_HINT)
+        if f["id"] in feats:
+            raise BadInput(f"{key}.features 里特征 {f['id']} 出现了两次")
+        feats[f["id"]] = f
+    part = t.get("part")
+    if not isinstance(part, dict) or any(k not in part for k in PART_KEYS):
+        raise BadInput(f"{what}特征表没有零件级属性 part（material、density、mass），是旧版本建的", hint=REBUILD_HINT)
+    return feats, part
+
+
+def _params(src):
+    """计划行 → (操作, [(参数名, 原样的值)])。键=值 的参数名为键，位置参数为 arg1、arg2…；值取计划行里的写法，去掉空白。"""
+    ct = _code_tokens(src)
+    if ct is None:
+        return None, []
+    _, op, toks = ct
+    out, i, npos = [], 0, 0
+
+    def atom(j):
+        if toks[j][1] == "(":
+            depth = 0
+            while j < len(toks):
+                depth += {"(": 1, ")": -1}.get(toks[j][1], 0)
+                j += 1
+                if depth == 0:
+                    break
+            return j
+        return j + 1
+
+    def value(j):
+        while j < len(toks) and toks[j][1] in ("+", "-"):
+            j += 1
+        j = atom(j) if j < len(toks) else j
+        while j < len(toks) and toks[j][1] in ("+", "-", "*", "/", "%"):
+            j += 1
+            while j < len(toks) and toks[j][1] in ("+", "-"):
+                j += 1
+            j = atom(j) if j < len(toks) else j
+        return j
+
+    while i < len(toks):
+        if toks[i][0] == "word" and i + 1 < len(toks) and toks[i + 1][1] == "=":
+            key, start = toks[i][1].lower(), i + 2
+        else:
+            npos += 1
+            key, start = f"arg{npos}", i
+        i = value(start)
+        out.append((key, "".join(v for _, v in toks[start:i])))
+    return op, out
+
+
+def _param_diffs(name, a, b):
+    (op_a, pa), (op_b, pb) = _params(a), _params(b)
+    out = []
+    if op_a != op_b:
+        out.append({"name": name, "param": "op", "before": op_a, "after": op_b})
+    da, db = dict(pa), dict(pb)
+    for k in [k for k, _ in pa] + [k for k, _ in pb if k not in da]:
+        if da.get(k) != db.get(k):
+            out.append({"name": name, "param": k, "before": da.get(k), "after": db.get(k)})
+    return out
+
+
+def _same_line(a, b):
+    return _params(a) == _params(b)
+
+
+def cad_compare(payload, workdir=None):
+    """两份特征表 → 改了 / 随动 / 被修剪 / 新增 / 删去，零件级属性的变化与逐行参数差。不建模，不读几何。"""
+    _allowed(payload, ["old", "new"])
+    old, old_part = _table(payload, "old")
+    new, new_part = _table(payload, "new")
+    changed, followed, trimmed, diffs = [], [], [], []
+    for fid, f in new.items():
+        g = old.get(fid)
+        if g is None:
+            continue
+        if not _same_line(g["src"], f["src"]):
+            changed.append(fid)
+            diffs += _param_diffs(fid, g["src"], f["src"])
+        elif {k for k, _ in g["face_digest"]} != {k for k, _ in f["face_digest"]}:
+            followed.append(fid)
+        elif sorted(map(tuple, g["face_digest"])) != sorted(map(tuple, f["face_digest"])):
+            trimmed.append(fid)
+    part_changed = [k for k in ("material", "density") if old_part[k] != new_part[k]]
+    if old_part["mass"] != new_part["mass"] and (part_changed or (old_part["mass"] is None) != (new_part["mass"] is None)):
+        part_changed.append("mass")
+    return {"changed": changed, "followed": followed, "trimmed": trimmed,
+            "added": [k for k in new if k not in old], "removed": [k for k in old if k not in new],
+            "part_changed": part_changed, "param_diffs": diffs}
+
+
+TOOLS = {"cad.build": cad_build, "cad.check": cad_check, "cad.export": cad_export, "cad.compare": cad_compare}
 
 
 def run(envelope, tool_from_argv=None, workdir_from_argv=None) -> dict:

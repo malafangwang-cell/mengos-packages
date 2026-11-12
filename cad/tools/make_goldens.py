@@ -167,5 +167,90 @@ cases += [
      "payload": {"plan": "helix d=20 pitch=2 h=20 wire=2", "formats": []},
      "expect": {"ok": False, "code": "BAD_INPUT", "line": 1}},
 ]
+# ---- 2.6.0 局部修改用的输出（执行令《局部追问 · cad 包补强》K1–K14）----
+# 前 35 条一字不动，新金样只追加在后面。cad.compare 的入参是两次建模的特征表：由本脚本经进程入口现场建出
+# （回归值，只截取 id、src、face_digest 与 part）；期望的改了 / 随动 / 被修剪取自《调研-CAD局部追问技术可行性》§3.1 的实测表，与本工具无关。
+import subprocess
+import sys
+
+FLANGE_NAMED = ("# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\n"
+                "plate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\n"
+                "b1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss")
+FLANGE_728 = FLANGE_NAMED + "\nchamfer c=1 edges=bottom"        # 交互定稿 #728 的写法：留一行无名倒角
+
+
+def table(plan):
+    env = {"tool": "cad.build", "payload": {"plan": plan, "name": "p", "formats": []}}
+    p = subprocess.run([sys.executable, str(ROOT / "cad_tool.py")], input=json.dumps(env), capture_output=True, text=True, timeout=300)
+    out = json.loads(p.stdout)["output"]
+    return {"features": [{k: f[k] for k in ("id", "src", "face_digest")} for f in out["features"]], "part": out["part"]}
+
+
+def B(cid, plan, equals=(), count=(), src=""):
+    return {"id": cid, "tool": "cad.build", "payload": {"plan": plan, "name": "p", "formats": []},
+            "expect": {"ok": True, "equals": list(equals), "count": list(count), "source": src}}
+
+
+def C(cid, a, b, equals, src, plan=FLANGE_NAMED):
+    return {"id": cid, "tool": "cad.compare", "payload": {"old": table(plan), "new": table(plan.replace(a, b))},
+            "expect": {"ok": True, "equals": [{"path": k, "value": v} for k, v in equals], "source": src}}
+
+
+SPHERE = "s: sphere d=40\nh: hole d=10 at=center from=top through"
+R31 = "调研-CAD局部追问技术可行性 §3.1 路 A 实测表（fillet#1 即 fl，pattern#1 即 ring）"
+cases += [
+    B("k1-unnamed-warning", "b: box 10 10 10\nchamfer c=1",
+      count=[{"path": "warnings", "where": {"code": "unnamed_feature", "line": 2, "feature": "chamfer#1"}, "value": 1}],
+      src="K1：无名特征行告警，带行号与自动编号"),
+    B("k1-named-no-warning", FLANGE_NAMED, equals=[{"path": "warnings", "value": []}], src="K1：全具名零告警"),
+    B("k2-lines-flange", FLANGE_728, src="K2、K11：全行表逐行对上计划；声明行、无名行不可选",
+      equals=[{"path": "lines.0.kind", "value": "comment"}, {"path": "lines.1.kind", "value": "declaration"},
+              {"path": "lines.1.selectable", "value": False}, {"path": "lines.2.why_not", "value": "declaration"},
+              {"path": "lines.4.feature_id", "value": "boss"}, {"path": "lines.7.kind", "value": "copy"},
+              {"path": "lines.8.kind", "value": "modifier"}, {"path": "lines.9.why_not", "value": "unnamed"},
+              {"path": "features.6.id", "value": "chamfer#1"}, {"path": "features.6.selectable", "value": False}],
+      count=[{"path": "lines", "where": {"selectable": True}, "value": 6}]),
+    B("k2-zero-face-selectable", "b: box 40 40 10\nh1: hole d=10 at=center from=top depth=5\nh2: hole d=10 at=center from=top depth=5",
+      equals=[{"path": "features.2.faces", "value": 0}, {"path": "features.2.selectable", "value": True}],
+      src="K2：同轴同径两盲孔，第二个名下 0 面（调研 §3.1 漏判一例），仍可选"),
+    B("k3-pattern-group", FLANGE_NAMED,
+      equals=[{"path": "features.4.group", "value": {"kind": "pattern", "source": "b1", "instances": 6}}],
+      src="K3：环形阵列 6 个孔"),
+    B("k6-refs", FLANGE_NAMED, src="K6：显式引用与反向",
+      equals=[{"path": "features.1.referenced_by", "value": ["fl"]}, {"path": "features.3.referenced_by", "value": ["ring"]},
+              {"path": "features.5.refs", "value": ["boss"]}, {"path": "features.4.refs", "value": ["b1"]}]),
+    B("k7-sphere-uncertain", SPHERE, equals=[{"path": "features.0.faces", "value": 0}],
+      count=[{"path": "features", "where": {"id": "h", "uncertain_faces": 1}, "value": 1}],
+      src="K7：球被后打的孔切过，球面归到孔、键里含面积（调研 §3.3 实测：球这一行名下 0 个面）"),
+    B("k7-box-certain", "b: box 40 40 10\nh: hole d=10 at=center from=top through",
+      count=[{"path": "features", "where": {"uncertain_faces": 0}, "value": 2}], src="K7：盒与孔的面归属确定"),
+    B("k12-scope", "b: box 40 40 20\nk: add cylinder d=10 h=5 at=(20,20,20)\nf1: fillet r=1 edges=k\nf2: fillet r=1 edges=vertical\ns: shell t=2 open=bottom",
+      equals=[{"path": "features.2.scope", "value": "local"}, {"path": "features.3.scope", "value": "global"},
+              {"path": "features.4.scope", "value": "global"}, {"path": "lines.2.scope", "value": "local"}],
+      src="K12：edges=特征名为局部；edges=vertical、shell 作用到整件"),
+    C("compare-boss-d", "boss: cylinder d=60", "boss: cylinder d=70",
+      [("changed", ["boss"]), ("followed", ["fl"]), ("trimmed", ["plate"]),
+       ("param_diffs", [{"name": "boss", "param": "d", "before": "60", "after": "70"}])], R31 + "；K14 逐行参数差"),
+    C("compare-boss-h", "h=18 at=(0,0,12)", "h=25 at=(0,0,12)",
+      [("changed", ["boss"]), ("followed", ["fl"]), ("trimmed", ["bore"])], R31),
+    C("compare-bore-d", "bore: hole d=30", "bore: hole d=36",
+      [("changed", ["bore"]), ("followed", []), ("trimmed", ["plate", "boss"])], R31),
+    C("compare-b1-d", "b1: hole d=10", "b1: hole d=12",
+      [("changed", ["b1"]), ("followed", ["ring"]), ("trimmed", ["plate"])], R31),
+    C("compare-plate-d", "plate: cylinder d=D", "plate: cylinder d=140",
+      [("changed", ["plate"]), ("followed", []), ("trimmed", []), ("part_changed", [])], R31),
+    C("compare-material", "fl: fillet r=2 edges=boss", "fl: fillet r=2 edges=boss\nmat2: material 7075",
+      [("changed", []), ("part_changed", ["material", "density", "mass"]), ("param_diffs", [])],
+      "K11：增量里写出的新名字 material 行改了整件材料（Q235 7.85 → 7075 2.81 g/cm³）"),
+    {"id": "compare-old-table-no-digest", "tool": "cad.compare",
+     "payload": {"old": {"features": [{"id": "plate", "op": "cylinder", "line": 4, "src": "plate: cylinder d=D h=12", "faces": 3}],
+                         "part": {"material": "Q235", "density": 7.85, "mass": 1254.0}},
+                 "new": table(FLANGE_NAMED)},
+     "expect": {"ok": False, "code": "BAD_INPUT", "hint_contains": "重建一次", "source": "K5：2.5.2 的特征表没有面摘要"}},
+]
+for c in cases[35:]:
+    for k in ("equals", "count"):
+        if not c["expect"].get(k, True):
+            c["expect"].pop(k)
 (ROOT / "golden_cases.json").write_text(json.dumps(cases, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(len(cases), "cases")

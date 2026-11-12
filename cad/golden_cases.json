@@ -904,5 +904,1808 @@
       "code": "BAD_INPUT",
       "line": 1
     }
+  },
+  {
+    "id": "k1-unnamed-warning",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "b: box 10 10 10\nchamfer c=1",
+      "name": "p",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "count": [
+        {
+          "path": "warnings",
+          "where": {
+            "code": "unnamed_feature",
+            "line": 2,
+            "feature": "chamfer#1"
+          },
+          "value": 1
+        }
+      ],
+      "source": "K1：无名特征行告警，带行号与自动编号"
+    }
+  },
+  {
+    "id": "k1-named-no-warning",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss",
+      "name": "p",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "warnings",
+          "value": []
+        }
+      ],
+      "source": "K1：全具名零告警"
+    }
+  },
+  {
+    "id": "k2-lines-flange",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss\nchamfer c=1 edges=bottom",
+      "name": "p",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "lines.0.kind",
+          "value": "comment"
+        },
+        {
+          "path": "lines.1.kind",
+          "value": "declaration"
+        },
+        {
+          "path": "lines.1.selectable",
+          "value": false
+        },
+        {
+          "path": "lines.2.why_not",
+          "value": "declaration"
+        },
+        {
+          "path": "lines.4.feature_id",
+          "value": "boss"
+        },
+        {
+          "path": "lines.7.kind",
+          "value": "copy"
+        },
+        {
+          "path": "lines.8.kind",
+          "value": "modifier"
+        },
+        {
+          "path": "lines.9.why_not",
+          "value": "unnamed"
+        },
+        {
+          "path": "features.6.id",
+          "value": "chamfer#1"
+        },
+        {
+          "path": "features.6.selectable",
+          "value": false
+        }
+      ],
+      "count": [
+        {
+          "path": "lines",
+          "where": {
+            "selectable": true
+          },
+          "value": 6
+        }
+      ],
+      "source": "K2、K11：全行表逐行对上计划；声明行、无名行不可选"
+    }
+  },
+  {
+    "id": "k2-zero-face-selectable",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "b: box 40 40 10\nh1: hole d=10 at=center from=top depth=5\nh2: hole d=10 at=center from=top depth=5",
+      "name": "p",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "features.2.faces",
+          "value": 0
+        },
+        {
+          "path": "features.2.selectable",
+          "value": true
+        }
+      ],
+      "source": "K2：同轴同径两盲孔，第二个名下 0 面（调研 §3.1 漏判一例），仍可选"
+    }
+  },
+  {
+    "id": "k3-pattern-group",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss",
+      "name": "p",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "features.4.group",
+          "value": {
+            "kind": "pattern",
+            "source": "b1",
+            "instances": 6
+          }
+        }
+      ],
+      "source": "K3：环形阵列 6 个孔"
+    }
+  },
+  {
+    "id": "k6-refs",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "# 法兰：Φ120 盘 + Φ60 凸台，中心孔 Φ30，6×Φ10 均布螺栓孔（PCD 90）\nmaterial Q235\nlet D = 120\nplate: cylinder d=D h=12\nboss: cylinder d=60 h=18 at=(0,0,12)\nbore: hole d=30 at=center from=top through\nb1: hole d=10 at=(45,0) from=bottom through\nring: pattern b1 circular n=6 center=(0,0)\nfl: fillet r=2 edges=boss",
+      "name": "p",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "features.1.referenced_by",
+          "value": [
+            "fl"
+          ]
+        },
+        {
+          "path": "features.3.referenced_by",
+          "value": [
+            "ring"
+          ]
+        },
+        {
+          "path": "features.5.refs",
+          "value": [
+            "boss"
+          ]
+        },
+        {
+          "path": "features.4.refs",
+          "value": [
+            "b1"
+          ]
+        }
+      ],
+      "source": "K6：显式引用与反向"
+    }
+  },
+  {
+    "id": "k7-sphere-uncertain",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "s: sphere d=40\nh: hole d=10 at=center from=top through",
+      "name": "p",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "features.0.faces",
+          "value": 0
+        }
+      ],
+      "count": [
+        {
+          "path": "features",
+          "where": {
+            "id": "h",
+            "uncertain_faces": 1
+          },
+          "value": 1
+        }
+      ],
+      "source": "K7：球被后打的孔切过，球面归到孔、键里含面积（调研 §3.3 实测：球这一行名下 0 个面）"
+    }
+  },
+  {
+    "id": "k7-box-certain",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "b: box 40 40 10\nh: hole d=10 at=center from=top through",
+      "name": "p",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "count": [
+        {
+          "path": "features",
+          "where": {
+            "uncertain_faces": 0
+          },
+          "value": 2
+        }
+      ],
+      "source": "K7：盒与孔的面归属确定"
+    }
+  },
+  {
+    "id": "k12-scope",
+    "tool": "cad.build",
+    "payload": {
+      "plan": "b: box 40 40 20\nk: add cylinder d=10 h=5 at=(20,20,20)\nf1: fillet r=1 edges=k\nf2: fillet r=1 edges=vertical\ns: shell t=2 open=bottom",
+      "name": "p",
+      "formats": []
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "features.2.scope",
+          "value": "local"
+        },
+        {
+          "path": "features.3.scope",
+          "value": "global"
+        },
+        {
+          "path": "features.4.scope",
+          "value": "global"
+        },
+        {
+          "path": "lines.2.scope",
+          "value": "local"
+        }
+      ],
+      "source": "K12：edges=特征名为局部；edges=vertical、shell 作用到整件"
+    }
+  },
+  {
+    "id": "compare-boss-d",
+    "tool": "cad.compare",
+    "payload": {
+      "old": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                10131.636
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7621.504
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1254.075222,
+          "material": "Q235"
+        }
+      },
+      "new": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                10131.636
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                6537.654
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=70 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|35.0",
+                3078.761
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                2714.336
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-34.414|0.0|29.414|676.527",
+                676.527
+              ],
+              [
+                "O|TORUS|-35.586|0.0|12.586|705.218",
+                705.218
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1398.345011,
+          "material": "Q235"
+        }
+      }
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "changed",
+          "value": [
+            "boss"
+          ]
+        },
+        {
+          "path": "followed",
+          "value": [
+            "fl"
+          ]
+        },
+        {
+          "path": "trimmed",
+          "value": [
+            "plate"
+          ]
+        },
+        {
+          "path": "param_diffs",
+          "value": [
+            {
+              "name": "boss",
+              "param": "d",
+              "before": "60",
+              "after": "70"
+            }
+          ]
+        }
+      ],
+      "source": "调研-CAD局部追问技术可行性 §3.1 路 A 实测表（fillet#1 即 fl，pattern#1 即 ring）；K14 逐行参数差"
+    }
+  },
+  {
+    "id": "compare-boss-h",
+    "tool": "cad.compare",
+    "payload": {
+      "old": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                10131.636
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7621.504
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1254.075222,
+          "material": "Q235"
+        }
+      },
+      "new": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                10131.636
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7621.504
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=25 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                3958.407
+              ],
+              [
+                "P|0.0|0.0|1.0|37.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                3487.168
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|36.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1370.600821,
+          "material": "Q235"
+        }
+      }
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "changed",
+          "value": [
+            "boss"
+          ]
+        },
+        {
+          "path": "followed",
+          "value": [
+            "fl"
+          ]
+        },
+        {
+          "path": "trimmed",
+          "value": [
+            "bore"
+          ]
+        }
+      ],
+      "source": "调研-CAD局部追问技术可行性 §3.1 路 A 实测表（fillet#1 即 fl，pattern#1 即 ring）"
+    }
+  },
+  {
+    "id": "compare-bore-d",
+    "tool": "cad.compare",
+    "payload": {
+      "old": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                10131.636
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7621.504
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1254.075222,
+          "material": "Q235"
+        }
+      },
+      "new": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                9820.619
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7621.504
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1445.133
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=36 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|18.0",
+                3392.92
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1180.83056,
+          "material": "Q235"
+        }
+      }
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "changed",
+          "value": [
+            "bore"
+          ]
+        },
+        {
+          "path": "followed",
+          "value": []
+        },
+        {
+          "path": "trimmed",
+          "value": [
+            "plate",
+            "boss"
+          ]
+        }
+      ],
+      "source": "调研-CAD局部追问技术可行性 §3.1 路 A 实测表（fillet#1 即 fl，pattern#1 即 ring）"
+    }
+  },
+  {
+    "id": "compare-b1-d",
+    "tool": "cad.compare",
+    "payload": {
+      "old": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                10131.636
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7621.504
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1254.075222,
+          "material": "Q235"
+        }
+      },
+      "new": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                9924.291
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7414.159
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=12 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|6.0",
+                452.389
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|6.0",
+                452.389
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|6.0",
+                452.389
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|6.0",
+                452.389
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|6.0",
+                452.389
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|6.0",
+                452.389
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1234.543313,
+          "material": "Q235"
+        }
+      }
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "changed",
+          "value": [
+            "b1"
+          ]
+        },
+        {
+          "path": "followed",
+          "value": [
+            "ring"
+          ]
+        },
+        {
+          "path": "trimmed",
+          "value": [
+            "plate"
+          ]
+        }
+      ],
+      "source": "调研-CAD局部追问技术可行性 §3.1 路 A 实测表（fillet#1 即 fl，pattern#1 即 ring）"
+    }
+  },
+  {
+    "id": "compare-plate-d",
+    "tool": "cad.compare",
+    "payload": {
+      "old": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                10131.636
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7621.504
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1254.075222,
+          "material": "Q235"
+        }
+      },
+      "new": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=140 h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|70.0",
+                5277.876
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                14215.707
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                11705.574
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1638.794659,
+          "material": "Q235"
+        }
+      }
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "changed",
+          "value": [
+            "plate"
+          ]
+        },
+        {
+          "path": "followed",
+          "value": []
+        },
+        {
+          "path": "trimmed",
+          "value": []
+        },
+        {
+          "path": "part_changed",
+          "value": []
+        }
+      ],
+      "source": "调研-CAD局部追问技术可行性 §3.1 路 A 实测表（fillet#1 即 fl，pattern#1 即 ring）"
+    }
+  },
+  {
+    "id": "compare-material",
+    "tool": "cad.compare",
+    "payload": {
+      "old": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                10131.636
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7621.504
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1254.075222,
+          "material": "Q235"
+        }
+      },
+      "new": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                10131.636
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7621.504
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 2.81,
+          "mass": 448.911003,
+          "material": "7075"
+        }
+      }
+    },
+    "expect": {
+      "ok": true,
+      "equals": [
+        {
+          "path": "changed",
+          "value": []
+        },
+        {
+          "path": "part_changed",
+          "value": [
+            "material",
+            "density",
+            "mass"
+          ]
+        },
+        {
+          "path": "param_diffs",
+          "value": []
+        }
+      ],
+      "source": "K11：增量里写出的新名字 material 行改了整件材料（Q235 7.85 → 7075 2.81 g/cm³）"
+    }
+  },
+  {
+    "id": "compare-old-table-no-digest",
+    "tool": "cad.compare",
+    "payload": {
+      "old": {
+        "features": [
+          {
+            "id": "plate",
+            "op": "cylinder",
+            "line": 4,
+            "src": "plate: cylinder d=D h=12",
+            "faces": 3
+          }
+        ],
+        "part": {
+          "material": "Q235",
+          "density": 7.85,
+          "mass": 1254.0
+        }
+      },
+      "new": {
+        "features": [
+          {
+            "id": "plate",
+            "src": "plate: cylinder d=D h=12",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|60.0",
+                4523.893
+              ],
+              [
+                "P|0.0|0.0|-1.0|0.0",
+                10131.636
+              ],
+              [
+                "P|0.0|0.0|1.0|12.0",
+                7621.504
+              ]
+            ]
+          },
+          {
+            "id": "boss",
+            "src": "boss: cylinder d=60 h=18 at=(0,0,12)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|30.0",
+                2638.938
+              ],
+              [
+                "P|0.0|0.0|1.0|30.0",
+                1756.15
+              ]
+            ]
+          },
+          {
+            "id": "bore",
+            "src": "bore: hole d=30 at=center from=top through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|0.0|0.0|0.0|15.0",
+                2827.433
+              ]
+            ]
+          },
+          {
+            "id": "b1",
+            "src": "b1: hole d=10 at=(45,0) from=bottom through",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|45.0|0.0|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "ring",
+            "src": "ring: pattern b1 circular n=6 center=(0,0)",
+            "face_digest": [
+              [
+                "C|0.0|0.0|1.0|-22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-22.5|38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|-45.0|0.0|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|-38.971|0.0|5.0",
+                376.991
+              ],
+              [
+                "C|0.0|0.0|1.0|22.5|38.971|0.0|5.0",
+                376.991
+              ]
+            ]
+          },
+          {
+            "id": "fl",
+            "src": "fl: fillet r=2 edges=boss",
+            "face_digest": [
+              [
+                "O|TORUS|-29.414|0.0|29.414|577.831",
+                577.831
+              ],
+              [
+                "O|TORUS|-30.586|0.0|12.586|606.522",
+                606.522
+              ]
+            ]
+          }
+        ],
+        "part": {
+          "density": 7.85,
+          "mass": 1254.075222,
+          "material": "Q235"
+        }
+      }
+    },
+    "expect": {
+      "ok": false,
+      "code": "BAD_INPUT",
+      "hint_contains": "重建一次",
+      "source": "K5：2.5.2 的特征表没有面摘要"
+    }
   }
 ]
