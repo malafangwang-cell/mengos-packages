@@ -14,6 +14,6 @@
   ```
   python3 -c "import json,sys,hashlib; m=json.load(open('subcontract-bom/mengos-package.json',encoding='utf-8')); print(hashlib.sha256(('\n'.join(m['norms'])+'\n').encode()).hexdigest())"
   ```
-  0.2.0 应得 `407f138f7b05d80c93632b91e92c140b34df86562094e55c5610e1973cbb0b24`（0.1.0 为 `04633d56a1ecee296217d781e68e747894577f38525eb56abffff2da320bbfce`）。
+  0.2.0 应得 `ea5d1747daa40c18f88d9c7fc1202c4ed61629c9c949c2fe4a2f63bf11500ad5`（0.1.0 为 `04633d56a1ecee296217d781e68e747894577f38525eb56abffff2da320bbfce`）。
 - **content_hash**：口径同安装器（WP-W6 §2，mengosv2 `engine/tools/package-hash.ts`）与其他包的 `tools/make_package.py`；清单计入，所以改任何一条都会换 content_hash，须发新版本。
 - **改条文**：任何一字都要发新版本，重新入册、安装核对，各组织重新签字启用。
