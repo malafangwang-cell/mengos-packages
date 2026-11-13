@@ -1,14 +1,13 @@
 <title>长文产出台</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600&display=swap">
 <style>
 /* 版式：顶栏（标题 | 下载）→ 左侧目录导航 + 正文。窄屏目录收进抽屉。只读，给人看组装好的成品。 */
 :root {
   --bg: #FBFBFA; --side: #F4F4F2; --ink: #1A1A19; --ink-2: #4A4A47; --mute: #7D7D79; --line: #E4E4E1;
   --hover: #ECECE9; --on: #E3E3DF; --menu: #FFFFFF; --fig: #FFFFFF; --shadow: 0 10px 30px rgba(20, 20, 18, .12);
-  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, serif;
-  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  /* 2.3.1：只用本机字体，不取任何外部字体或样式表（外链样式表会挡住 mengos.ready，字体站点不通时整块空白）。
+     顺序：本机装了 Noto/思源就用它（与导出 PDF 随包字体同族），否则落到各系统自带中文字体。 */
+  --serif: "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  --sans: "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #161615; --side: #1C1C1B; --ink: #ECECE8; --ink-2: #C8C8C3; --mute: #95958F; --line: #2E2E2C;
@@ -58,7 +57,12 @@ main { overflow: auto; scroll-behavior: smooth; }
 .doc header h1 { font: 700 28px/1.35 var(--sans); margin: 0 0 6px; text-wrap: balance; }
 .doc header .subtitle { font-size: 18px; color: var(--ink-2); margin: 0 0 8px; }
 .doc header .meta { font: 13px var(--sans); color: var(--mute); margin: 0; }
-.doc .sec { scroll-margin-top: 16px; }
+/* 2.3.1：屏外的节不排版不绘制（content-visibility），占位高度先按字数估、排过一次后记住实高（auto）。
+   节因此各自独立排版，标题上边距不再与上一节末尾的下边距折叠，故去掉节末元素的下边距，保持原间距。 */
+.doc .sec { scroll-margin-top: 16px; content-visibility: auto; contain-intrinsic-size: auto 800px; }
+.doc .sec > :last-child { margin-bottom: 0; }
+.doc header + .sec > .h:first-child { margin-top: 4px; }
+@media print { .doc .sec { content-visibility: visible; } }
 .doc .h { font-family: var(--sans); font-weight: 700; text-wrap: balance; }
 .doc h2.h { font-size: 22px; margin: 40px 0 12px; }
 .doc h3.h { font-size: 18px; margin: 30px 0 10px; }
@@ -155,26 +159,90 @@ function viewOf(m) {
   const f = listed ? files.find((x) => x.path === listed.path) : files.find((x) => /\.view\.json$/.test(x.path || ""));
   if (!f) throw new Error("没有 role 为 document.view 的文件");
   if (!(f.bytes instanceof ArrayBuffer)) return null;   // 过大未随来字节，走下载
-  return JSON.parse(new TextDecoder().decode(f.bytes));
+  return parseView(f.bytes);
+}
+/* 2.3.1：视图文件大（图文长文的视图里图是 base64，可达十几 MB）时，解码与 JSON 解析交给后台线程，
+   不占主线程（实测 17 MB 视图解码加解析约 100 ms）。后台线程起不来或出错时退回当场解析。
+   字节是复制过去的，不转移所有权，退回时原字节仍在。 */
+const WORKER_MIN_BYTES = 1 << 20;
+const WORKER_SRC = "onmessage=(e)=>{try{postMessage({ok:true,v:JSON.parse(new TextDecoder().decode(e.data))})}catch(err){postMessage({ok:false})}}";
+const parseNow = (buf) => JSON.parse(new TextDecoder().decode(buf));
+function parseView(buf) {
+  if (buf.byteLength < WORKER_MIN_BYTES || typeof Worker !== "function") return parseNow(buf);
+  let url, w;
+  try { url = URL.createObjectURL(new Blob([WORKER_SRC], { type: "text/javascript" })); w = new Worker(url); }
+  catch { if (url) URL.revokeObjectURL(url); return parseNow(buf); }
+  return new Promise((res, rej) => {
+    const fin = (get) => { w.terminate(); URL.revokeObjectURL(url); try { res(get()); } catch (err) { rej(err); } };
+    w.onmessage = (e) => fin(() => e.data && e.data.ok ? e.data.v : parseNow(buf));
+    w.onerror = (e) => { e.preventDefault(); fin(() => parseNow(buf)); };
+    w.postMessage(buf);
+  });
+}
+
+/* 2.3.1 分批排版：长文不再整篇一次 innerHTML（300 节约 75 万字时整页冻住约 1.8 s，且与宿主同一条主线程）。
+   目录与首屏几节当场排出；其余各节排成队，空闲时（requestIdleCallback，无则 setTimeout）每次最多占 SLICE_MS 追加一批。
+   要用到尚未追加的节时（目录跳转、文内链接、打印、Ctrl+F）先把队列补齐到位。 */
+const FIRST_CHARS = 60000;   // 首批：至少一节，正文 HTML 累计到这个量为止
+const SLICE_MS = 8;          // 后续每批最多占主线程的毫秒数（单节本身很大时至少放一节）
+const job = { queue: [], token: 0, io: null };
+
+function estimate(html) {    // 占位高度（px）：字数按每行约 42 字、行高约 30 px，图与表另加；排过一次后由 auto 记住实高
+  const text = html.replace(/<[^>]*>/g, "").length;
+  const figs = (html.match(/<(img|svg)\b/gi) || []).length;
+  const rows = (html.match(/<tr\b/gi) || []).length;
+  return Math.max(120, Math.round(70 + text / 42 * 30 + figs * 380 + rows * 30));
+}
+function secOf(s) {
+  const lv = Math.min(6, s.level + 1);
+  const num = s.number ? esc(s.display.slice(0, s.display.length - s.heading.length)) : "";
+  return `<section class="sec" id="${esc(s.anchor)}" data-sec="${esc(s.id)}" style="contain-intrinsic-size:auto ${estimate(s.html || "")}px"><h${lv} class="h">${num}${esc(s.heading)}</h${lv}>${s.html}</section>`;
+}
+function apOf(ap) {
+  return `<section class="sec" id="${esc(ap.anchor)}" data-sec="${esc(ap.id)}" style="contain-intrinsic-size:auto ${estimate(ap.html || "")}px"><h2 class="h">${esc(ap.heading)}</h2>${ap.html}</section>`;
+}
+function append(items) {     // items: [{anchor, src, ap}]，按序拼好接到正文末尾，并交给目录高亮
+  if (!items.length) return;
+  const doc = $("#doc");
+  const before = doc.lastElementChild;
+  doc.insertAdjacentHTML("beforeend", items.map((x) => x.ap ? apOf(x.src) : secOf(x.src)).join(""));
+  for (let el = before ? before.nextElementSibling : doc.firstElementChild; el; el = el.nextElementSibling) if (el.classList.contains("sec")) job.io?.observe(el);
+}
+function flush(anchor) {     // 把队列补齐：给了 anchor 就补到该节为止，否则全部
+  if (!job.queue.length) return;
+  let n = job.queue.length;
+  if (anchor !== undefined) { const i = job.queue.findIndex((x) => x.anchor === anchor); if (i < 0) return; n = i + 1; }
+  append(job.queue.splice(0, n));
+}
+const idle = window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 200 }) : (f) => setTimeout(f, 0);
+function pump(token) {
+  idle(() => {
+    if (token !== job.token || !job.queue.length) return;
+    const end = performance.now() + SLICE_MS;
+    do append([job.queue.shift()]); while (job.queue.length && performance.now() < end);
+    if (job.queue.length) pump(token);
+  });
 }
 
 function renderFull(v) {
   const m = v.meta || {};
   $("#name").textContent = v.title;
-  const meta = [m.org, m.author, m.date, m.version && "版本 " + m.version].filter(Boolean).join(" · ");
-  const parts = [`<header><h1>${esc(v.title)}</h1>${v.subtitle ? `<p class="subtitle">${esc(v.subtitle)}</p>` : ""}${meta ? `<p class="meta">${esc(meta)}</p>` : ""}</header>`];
-  for (const s of v.sections) {
-    const lv = Math.min(6, s.level + 1);
-    const num = s.number ? esc(s.display.slice(0, s.display.length - s.heading.length)) : "";
-    parts.push(`<section class="sec" id="${esc(s.anchor)}" data-sec="${esc(s.id)}"><h${lv} class="h">${num}${esc(s.heading)}</h${lv}>${s.html}</section>`);
-  }
-  for (const ap of v.appendix || []) parts.push(`<section class="sec" id="${esc(ap.anchor)}" data-sec="${esc(ap.id)}"><h2 class="h">${esc(ap.heading)}</h2>${ap.html}</section>`);
-  $("#doc").innerHTML = parts.join("");
   const toc = v.toc.map((t) => `<a class="l${t.level}" href="#${esc(t.anchor)}" data-sec="${esc(t.id)}">${esc(t.display)}</a>`);
   for (const ap of v.appendix || []) toc.push(`<a class="l1" href="#${esc(ap.anchor)}" data-sec="${esc(ap.id)}">${esc(ap.heading)}</a>`);
   $("#toc").innerHTML = `<div class="hd">目录</div>` + toc.join("");
   renderMenu();
   spy();
+  const meta = [m.org, m.author, m.date, m.version && "版本 " + m.version].filter(Boolean).join(" · ");
+  $("#doc").innerHTML = `<header><h1>${esc(v.title)}</h1>${v.subtitle ? `<p class="subtitle">${esc(v.subtitle)}</p>` : ""}${meta ? `<p class="meta">${esc(meta)}</p>` : ""}</header>`;
+  const items = v.sections.map((s) => ({ anchor: s.anchor, src: s, ap: false }))
+    .concat((v.appendix || []).map((ap) => ({ anchor: ap.anchor, src: ap, ap: true })));
+  // 节的 HTML 在追加时才拼（拼接与估高也是开销，随各批摊开）
+  job.token++;
+  job.queue = items;
+  let chars = 0, n = 0;
+  while (n < items.length && (n === 0 || chars < FIRST_CHARS)) chars += (items[n++].src.html || "").length;
+  append(job.queue.splice(0, n));
+  if (job.queue.length) pump(job.token);
 }
 
 function renderEmbed(v) {
@@ -195,21 +263,37 @@ function renderMenu() {
   $("#dlbtn").disabled = !items.length;
 }
 
-function spy() {
+function spy() {               // 节是分批追加的，每追加一批由 append() 交给这里的观察者
+  job.io?.disconnect();
   const links = [...document.querySelectorAll("#toc a")];
-  const io = new IntersectionObserver((es) => {
+  job.io = new IntersectionObserver((es) => {
     for (const e of es) if (e.isIntersecting) for (const a of links) a.classList.toggle("on", a.dataset.sec === e.target.dataset.sec);
   }, { root: $("#main"), rootMargin: "0px 0px -80% 0px" });
-  for (const s of document.querySelectorAll(".sec")) io.observe(s);
 }
-function go(anchor) { const el = document.getElementById(anchor); if (el) el.scrollIntoView({ block: "start" }); setDrawer(false); }
+/* 跳转：目标节可能还在队列里，先补齐到它；屏外节的占位高度是估的，排版后会变，
+   所以即时跳转后再连看两帧，目标偏了就再对齐一次（不用平滑滚动，免得边滚边变高落不准）。 */
+function jump(anchor, block) {
+  flush(anchor);
+  if (!document.getElementById(anchor)) flush();   // 节内锚点（图、表、注）不在队列的节名里，补齐全部再找
+  const el = document.getElementById(anchor); if (!el) return;
+  const main = $("#main");
+  const off = () => el.getBoundingClientRect().top - main.getBoundingClientRect().top;
+  el.scrollIntoView({ block, behavior: "instant" });
+  const want = off();
+  let k = 3;
+  const fix = () => { if (Math.abs(off() - want) > 2) el.scrollIntoView({ block, behavior: "instant" }); if (--k) requestAnimationFrame(() => requestAnimationFrame(fix)); };
+  requestAnimationFrame(() => requestAnimationFrame(fix));
+}
+function go(anchor) { jump(anchor, "start"); setDrawer(false); }
 $("#toc").addEventListener("click", (e) => { const a = e.target.closest("a[href^='#']"); if (!a) return; e.preventDefault(); go(a.getAttribute("href").slice(1)); });
 $("#doc").addEventListener("click", (e) => {
   const a = e.target.closest("a[href^='#']"); if (!a) return;
   e.preventDefault();
-  const el = document.getElementById(a.getAttribute("href").slice(1));
-  if (el) el.scrollIntoView({ block: "center" });
+  jump(a.getAttribute("href").slice(1), "center");
 });
+// 打印与页内查找要看到全文：先把队列补齐（打印时 @media print 另把各节设为 visible）
+addEventListener("beforeprint", () => flush());
+document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F" || e.key === "p" || e.key === "P")) flush(); }, true);
 function setDrawer(open) { $("#shell").classList.toggle("open", open); $("#tocbtn").setAttribute("aria-expanded", String(open)); }
 $("#tocbtn").addEventListener("click", () => setDrawer(!$("#shell").classList.contains("open")));
 $("#scrim").addEventListener("click", () => setDrawer(false));
@@ -235,11 +319,13 @@ $("#menu").addEventListener("click", (e) => {
 let lastH = 0;
 function sendHeight() { const h = Math.ceil($("#embed").getBoundingClientRect().height); if (h && h !== lastH) { lastH = h; post({ type: "mengos.resize", height: h }); } }
 
-function render(m) {
+async function render(m) {
   if (m.theme === "light" || m.theme === "dark") document.documentElement.dataset.theme = m.theme;
   if (m.chrome === "host") document.documentElement.dataset.chrome = "host";
   state.formats = Array.isArray(m.formats) ? m.formats : [];
-  const v = viewOf(m);
+  const token = ++job.token; job.queue = [];
+  const v = await viewOf(m);
+  if (token !== job.token) return;   // 解析期间又来了新的 render，以新的为准
   const embed = m.view === "embed";
   document.documentElement.classList.toggle("embed-view", embed);
   $("#embed").hidden = !embed;
@@ -254,7 +340,7 @@ function render(m) {
 
 addEventListener("message", (e) => {
   const m = e.data || {};
-  if (m.type === "mengos.render") { try { render(m); } catch (err) { post({ type: "mengos.error", message: "document 渲染器：" + (err && err.message || err) }); } }
+  if (m.type === "mengos.render") render(m).catch((err) => post({ type: "mengos.error", message: "document 渲染器：" + (err && err.message || err) }));
   if (m.type === "mengos.theme" && (m.theme === "light" || m.theme === "dark")) document.documentElement.dataset.theme = m.theme;
 });
 post({ type: "mengos.ready", views: ["full", "embed"] });
