@@ -1,6 +1,6 @@
 {
   "package": "cad",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "publisher": "mengos",
   "scope": "public",
   "title": "三维零件建模",
@@ -10,7 +10,7 @@
     "cad.export": "导出零件加工与图纸文件",
     "cad.compare": "比较零件改前改后的特征表"
   },
-  "content_hash": "6278697273aba2e9dbffff783b6856da6e95d93143943d887a12a511567845e4",
+  "content_hash": "e4b0085eeca90c598fabc930f8b5818896c8541cfbd102663c40d9de05501cfb",
   "types": [
     {
       "name": "cad_model",

@@ -1,5 +1,11 @@
 # cad v2（W3 的 CAD 工具包）
 
+> 2.6.2（渲染器修卡死；只改 `renderer/`，工具代码、登记与 lock 都不变，lock 仍为 `3625f3c31608de88`，不需重跑工具认证）：
+> - **按需绘制**：去掉常驻 `requestAnimationFrame` 循环。只在视角变化（OrbitControls `change`，含阻尼收尾）、缩放、尺寸变化、主题与配色变化、数据到达、剖切与边线切换时画一帧，同一帧里的多次请求合并成一次；“处理中”呼吸动画进行时才连续绘制。去掉 `preserveDrawingBuffer`（本页不读回像素）。静置时主线程不再被占满。
+> - **WebGL 上下文丢失**：监听 `webglcontextlost`（`preventDefault`）与 `webglcontextrestored`（材质重编译、重画）。浏览器同时开的三维视图过多（Chrome 约 16 个）而收回本页上下文时，三维区显示“点这里重新显示”，点了换一块新画布重建，场景与视角保留；不再变白不恢复。
+> - **不取外网资源**：去掉 Google 字体，改用本机字体栈；three.js 0.170.0（只打包本页用到的名字 + GLTFLoader + OrbitControls）与 JSZip 3.10.1 随页内联，不再从 jsdelivr/cdnjs 取。外链样式表连不上会挡住发 `mengos.ready` 的脚本，外链脚本连不上三维区空白；现在页面里没有外链。内联段由 `renderer/build_vendor.mjs` 生成：按 npm 发布包 sha256 核对（three `4a608a355dcaba72e0e5383cdc814303f5b6060b43c238cdf6932dceb699238d`，jszip `5117f4a2a645aeb307bf3b829c575ad58135cc97e75291e594532ab5b5b21b23`），esbuild 0.24.0 压缩，`--check` 可复核逐字节一致。代价：`renderer/index.html` 由 51 KB 变为约 736 KB（gzip 约 191 KB）；原先每次打开要从公共 CDN 取约 2.8 MB（three.js 未压缩版、扩展、JSZip、字体分片）。
+> - 加 `tests/test_renderer.py`（5 条，在 2.6.1 上红）。
+
 > 2.6.1（修 2.6.0 不能安装）：cad.compare 登记样例里的两个质量写成了整数值浮点（`1254.0`、`1395.0`）。lock.py（Python）规范化写成 `1254.0`，引擎安装器（JS `JSON.stringify`）写成 `1254`，安装器重算 lock 得 `3625f3c31608de88`，与包里写的 `4af64ad614891a58` 不符，按 TL-25a 拒装。改为整数 `1254`、`1395`；加包内测试 `test_registration_has_no_integral_floats`（在 2.6.0 上红）。工具行为、输出、金样都不变；registration 在 lock 内，lock 随之变，见 PR。2.6.0 未在任何环境装上过。
 
 > 2.6.0（mengosv2《执行令-局部追问-cad包补强-2026-11-12》K1–K14；设计《局部追问 r9.2》§五 C1–C9；终审 M7；交互定稿 #728）：给“只改零件里的一处”补包内的东西。**只放宽**：只加输出字段、告警与一件新工具；2.5.2 已有的输出字段逐字节不变，35 条金样一字未动、全过（`tests/test_local_edit.py` 拿 2.5.2 的实跑输出逐样件比对：STEP、STL、3MF、SVG、DXF 的 sha256 不变，GLB 去掉新加的 `extras.faces` 后逐字节相同）。
@@ -270,7 +276,7 @@ feature boss                         # 这个特征还在零件上
 | 三视图 | 图纸 | role = drawing 的 SVG |
 | 文件 | 每种格式一行，写明用途、大小、sha256 前缀，可下载，也可全部打包下载；还有出处（工具版本、计划 sha256、内核版本） | `files` |
 
-原型源码在 `renderer/index.html`，样件数据用 `python tools/make_viewer_data.py renderer` 生成，然后起一个静态服务器打开。页面依赖 three.js 0.170 与 JSZip 3.10，从 CDN 加载。
+原型源码在 `renderer/index.html`，样件数据用 `python tools/make_viewer_data.py renderer` 生成，然后起一个静态服务器打开。页面用 three.js 0.170 与 JSZip 3.10，随页内联（2.6.2 起，见 `renderer/build_vendor.mjs`），不取外网资源。
 
 **局部修改（2.6.0，K10；渲染器的私有扩展，r9.2 L11，不进公开的渲染器契约；细节以 #728 定稿为准）：**
 
@@ -293,7 +299,7 @@ feature boss                         # 这个特征还在零件上
 ## 8 测试
 
 ```
-uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 225 条，约 150 s
+uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 230 条，约 150 s
 ```
 
 不要用不带 `--frozen` 的 `uv sync` / `uv run`：环境变量里配了别的索引（例如国内镜像）时，uv 会重新解析并改写 `uv.lock`，工具版本（lock hash）与 content_hash 随之失配。安装区里只用环境解释器跑，不运行 uv。
