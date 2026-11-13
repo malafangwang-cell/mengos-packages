@@ -7,7 +7,7 @@ mengos 工具包源码仓库。每个子目录是一个包：`cad`、`document`�
   - `document` 1.2.5 ← `927cebff9d6fa0e4b9598892c8f52e05b3ae7ac3fe724316eb61c4d761f86a3c.zip`
   - `calc` 2.2.1 ← `341977c5a687c4e99de7e9c86fed5180ef6441e1adca19f81fb37f020d26a215.zip`
   - `mathdisc` 1.1.0 ← `17b2438287af4b98a67ff3e46d2542e129ca8d5aa9a9473f94d3ac430a9cfdb6.zip`
-- **纯规范包**：`subcontract-bom`（分包分解单规范）只带包内规范 `norms`，不带类型和工具，不走工具认证。0.1.0 于 2026-11-13 新增，条文逐字取自 mengosv2 `docs/alignment/work交付/分解单规范-0.1.0/分解单规范/`。核对方法见该包 README。
+- **纯规范包**：`subcontract-bom`（分包分解单规范）只带包内规范 `norms`，不带类型和工具，不走工具认证。0.1.0 于 2026-11-13 新增；现为 0.2.0（同日，按通用性评审改 10 条、增 R6.6，写明适用范围），条文逐字取自 mengosv2 `docs/alignment/work交付/分解单规范-0.2.0/分解单规范/`。核对方法见该包 README。
 - **分工**：本仓库施工、预检、出包；mengosv2 只更新安装快照与读数（见 mengosv2 `docs/alignment/arch/设计-产出不受模型输出长度限制-2026-11-03.md` §六.2）。
 
 ## 提示词不公开（立法者 2026-11-10）
