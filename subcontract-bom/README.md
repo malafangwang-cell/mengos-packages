@@ -8,12 +8,12 @@
 
 ## 说明
 
-- **条目**：`mengos-package.json` 的 `norms`，共 61 条（定义 10、约束 45、形态 6），体例“[定义|约束|形态] 正文”。条文由 work 侧交付，逐字照搬，打包时不改；各版改了哪几条见 `变更说明.md`。
-- **出处**：mengosv2 `docs/alignment/work交付/分解单规范-0.2.0/分解单规范/`（`norms.txt`、`meta.json`、`变更说明.md`）。评测材料（打分程序、案例与基线）不进本仓库。
+- **条目**：`mengos-package.json` 的 `norms`，共 62 条（定义 11、约束 45、形态 6），体例“[定义|约束|形态] 正文”。条文由 work 侧交付，逐字照搬，打包时不改；各版改了哪几条见 `变更说明.md`。
+- **出处**：0.2.0 条文取自 mengosv2 `docs/alignment/work交付/分解单规范-0.2.0/分解单规范/`（`norms.txt`、`meta.json`、`变更说明.md`）；0.3.0 在其上按调度 2026-11-17 草案（立法者批准）改 14 条、增 2 条、删 1 条，见 `变更说明.md`。评测材料（打分程序、案例与基线）不进本仓库。
 - **核对条文**：`norms` 按序用换行连接、末尾加一个换行，即与来源 `norms.txt` 逐字节相同：
   ```
   python3 -c "import json,sys,hashlib; m=json.load(open('subcontract-bom/mengos-package.json',encoding='utf-8')); print(hashlib.sha256(('\n'.join(m['norms'])+'\n').encode()).hexdigest())"
   ```
-  0.2.0 应得 `ea5d1747daa40c18f88d9c7fc1202c4ed61629c9c949c2fe4a2f63bf11500ad5`（0.1.0 为 `04633d56a1ecee296217d781e68e747894577f38525eb56abffff2da320bbfce`）。
+  0.3.0 应得 `fdb36418436c25bb5abe44b5ce853cad880ebc30c8695aff931e6088e599cb82`（0.2.0 为 `ea5d1747daa40c18f88d9c7fc1202c4ed61629c9c949c2fe4a2f63bf11500ad5`，0.1.0 为 `04633d56a1ecee296217d781e68e747894577f38525eb56abffff2da320bbfce`）。
 - **content_hash**：口径同安装器（WP-W6 §2，mengosv2 `engine/tools/package-hash.ts`）与其他包的 `tools/make_package.py`；清单计入，所以改任何一条都会换 content_hash，须发新版本。
 - **改条文**：任何一字都要发新版本，重新入册、安装核对，各组织重新签字启用。
