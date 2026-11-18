@@ -1,7 +1,7 @@
 {
   "family": "document",
   "family_version": "2.0.0",
-  "lock_hash": "d4e302536b06d231",
+  "lock_hash": "addb4cae3d1502a3",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。文件产出按 TL-9a：结果对象顶层的 files。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
@@ -352,7 +352,6 @@
                                   "categories",
                                   "series"
                                 ],
-                                "additionalProperties": false,
                                 "description": "chart：一张数据图。type 取 bar（柱状）、line（折线）、pie（饼）、combo（柱线组合）。categories 是横轴的类别（饼图是各项名称），年份、季度、月份要逐期写全。series 是一组或几组数据，每组有 name 和 values；values 只写数，个数与 categories 相同，没有数据的位置写 null。unit 是单位。组合图里每组另写 as（bar 或 line）和各自的 unit。从某一期起是预测时，写 forecast_from 为那一期。图里的数要与正文、表格里的一致。",
                                 "properties": {
                                   "type": {
@@ -382,7 +381,6 @@
                                         "name",
                                         "values"
                                       ],
-                                      "additionalProperties": false,
                                       "properties": {
                                         "name": {
                                           "type": "string",
@@ -393,7 +391,8 @@
                                           "items": {
                                             "type": [
                                               "number",
-                                              "null"
+                                              "null",
+                                              "string"
                                             ]
                                           }
                                         },
@@ -934,7 +933,7 @@
           "不做脚注、尾注、参考文献格式与公式排版"
         ]
       },
-      "version": "d4e302536b06d231"
+      "version": "addb4cae3d1502a3"
     },
     {
       "tool_id": "doc.check",
@@ -1199,7 +1198,6 @@
                                   "categories",
                                   "series"
                                 ],
-                                "additionalProperties": false,
                                 "description": "chart：一张数据图。type 取 bar（柱状）、line（折线）、pie（饼）、combo（柱线组合）。categories 是横轴的类别（饼图是各项名称），年份、季度、月份要逐期写全。series 是一组或几组数据，每组有 name 和 values；values 只写数，个数与 categories 相同，没有数据的位置写 null。unit 是单位。组合图里每组另写 as（bar 或 line）和各自的 unit。从某一期起是预测时，写 forecast_from 为那一期。图里的数要与正文、表格里的一致。",
                                 "properties": {
                                   "type": {
@@ -1229,7 +1227,6 @@
                                         "name",
                                         "values"
                                       ],
-                                      "additionalProperties": false,
                                       "properties": {
                                         "name": {
                                           "type": "string",
@@ -1240,7 +1237,8 @@
                                           "items": {
                                             "type": [
                                               "number",
-                                              "null"
+                                              "null",
+                                              "string"
                                             ]
                                           }
                                         },
@@ -1528,7 +1526,7 @@
           "document_meets_spec"
         ]
       },
-      "version": "d4e302536b06d231"
+      "version": "addb4cae3d1502a3"
     },
     {
       "tool_id": "doc.export",
@@ -1792,7 +1790,6 @@
                                   "categories",
                                   "series"
                                 ],
-                                "additionalProperties": false,
                                 "description": "chart：一张数据图。type 取 bar（柱状）、line（折线）、pie（饼）、combo（柱线组合）。categories 是横轴的类别（饼图是各项名称），年份、季度、月份要逐期写全。series 是一组或几组数据，每组有 name 和 values；values 只写数，个数与 categories 相同，没有数据的位置写 null。unit 是单位。组合图里每组另写 as（bar 或 line）和各自的 unit。从某一期起是预测时，写 forecast_from 为那一期。图里的数要与正文、表格里的一致。",
                                 "properties": {
                                   "type": {
@@ -1822,7 +1819,6 @@
                                         "name",
                                         "values"
                                       ],
-                                      "additionalProperties": false,
                                       "properties": {
                                         "name": {
                                           "type": "string",
@@ -1833,7 +1829,8 @@
                                           "items": {
                                             "type": [
                                               "number",
-                                              "null"
+                                              "null",
+                                              "string"
                                             ]
                                           }
                                         },
@@ -2166,7 +2163,7 @@
           "不读入已有的 Word 文件"
         ]
       },
-      "version": "d4e302536b06d231"
+      "version": "addb4cae3d1502a3"
     }
   ]
 }

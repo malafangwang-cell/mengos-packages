@@ -172,7 +172,9 @@ def test_reject_messages_match_the_page_draft_errors_file():
         assert ei.value.hint == e["error"].get("hint")
 
 
-def test_schema_rejects_style_fields_and_unit_strings():
+def test_schema_lets_style_fields_and_unit_strings_through_to_the_tool():
+    """立法者 11-18 裁定：这两类不在 schema 拦下（引擎先按 input_schema 校验，拦下时模型只看到 schema 报错），
+    放进工具，由工具退回 §六 原话。其余字段的类型与必填照旧。"""
     import jsonschema
     reg = json.loads((ROOT / "registration.json").read_text(encoding="utf-8"))
     for u in reg["units"]:
@@ -181,13 +183,21 @@ def test_schema_rejects_style_fields_and_unit_strings():
         ok = {"doc": {"title": "T", "sections": [{"id": "a", "heading": "A", "body": "[[fig:c]]"}],
                       "figures": [{"id": "c", "caption": "c", "source": {"chart": SAMPLES["combo"]["chart"]}}]}}
         assert V.is_valid(ok), u["tool_id"]
-        bad = json.loads(json.dumps(ok))
-        bad["doc"]["figures"][0]["source"]["chart"]["colors"] = ["#f00"]
-        assert not V.is_valid(bad)
-        bad = json.loads(json.dumps(ok))
-        bad["doc"]["figures"][0]["source"]["chart"]["series"][0]["values"][0] = "12.4亿"
-        assert not V.is_valid(bad)
+        colors = json.loads(json.dumps(ok))
+        colors["doc"]["figures"][0]["source"]["chart"]["colors"] = ["#f00"]
+        assert V.is_valid(colors), u["tool_id"]
+        unit = json.loads(json.dumps(ok))
+        unit["doc"]["figures"][0]["source"]["chart"]["series"][0]["values"][0] = "12.4亿"
+        assert V.is_valid(unit), u["tool_id"]
+        for bad in ({"type": "radar"}, {"categories": "2021"}, {"series": []}, {"decimals": 9}):
+            b = json.loads(json.dumps(ok))
+            b["doc"]["figures"][0]["source"]["chart"].update(bad)
+            assert not V.is_valid(b), (u["tool_id"], bad)
         assert "x-mengos-data" not in json.dumps(s)          # 裁定 5：图表数据本期不查证件
+        # 放进来的两类，工具按 §六 原话退回
+        for payload, msg in ((colors, "有不认识的字段：colors"), (unit, "不是数：'12.4亿'")):
+            r = doc_tool.run({"tool": "doc.check", "payload": {"doc": payload["doc"]}})
+            assert r["ok"] is False and r["error"]["code"] == "BAD_INPUT" and msg in r["error"]["message"], r
 
 
 # ───────────────────────── 提醒与边界 ─────────────────────────

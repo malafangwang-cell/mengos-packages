@@ -53,15 +53,19 @@ CHART_DESC = (
     "从某一期起是预测时，写 forecast_from 为那一期。图里的数要与正文、表格里的一致。"
 )
 UNIT = {"type": "string", "maxLength": 20}
-CHART = {"type": "object", "required": ["type", "categories", "series"], "additionalProperties": False,
+# 立法者 11-18 裁定：schema 放宽到最小，让“数里带单位”“写了颜色等不认识的字段”两类进到工具，
+# 由工具退回 §六 原话（引擎先按 input_schema 校验，schema 拦下时模型只看到 schema 报错）。
+# 所以 chart 与 series 两层不写 additionalProperties: false，values 的元素也收文字；
+# 与说明文字（values 只写数、不写颜色）不一致之处是有意的，工具会逐条退回并说明。
+CHART = {"type": "object", "required": ["type", "categories", "series"],
          "description": CHART_DESC,
          "properties": {
              "type": {"enum": ["bar", "line", "pie", "combo"]},
              "categories": {"type": "array", "minItems": 1, "maxItems": 60, "items": {"type": "string", "minLength": 1}},
              "series": {"type": "array", "minItems": 1, "maxItems": 6, "items": {
-                 "type": "object", "required": ["name", "values"], "additionalProperties": False,
+                 "type": "object", "required": ["name", "values"],
                  "properties": {"name": {"type": "string", "minLength": 1},
-                                "values": {"type": "array", "items": {"type": ["number", "null"]}},
+                                "values": {"type": "array", "items": {"type": ["number", "null", "string"]}},
                                 "as": {"enum": ["bar", "line"]}, "unit": UNIT}}},
              "unit": UNIT,
              "forecast_from": {"type": "string", "minLength": 1},
