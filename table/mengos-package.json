@@ -1,6 +1,6 @@
 {
   "package": "table",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "title": "表格",
   "tool_titles": {
     "table.build": "生成表格",
