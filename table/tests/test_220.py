@@ -48,7 +48,7 @@ def _reachable(schema, path=""):
 def test_x_mengos_expr_is_declared_on_every_rows_and_only_where_the_engine_can_see_it(tid):
     s = UNITS[tid]["signature"]["input_schema"]
     reach = dict(_reachable(s))
-    rows = [p for p in reach if p.endswith(".rows")]
+    rows = [p for p in reach if p.endswith(".rows") or p.endswith(".row_patch")]   # 2.3.0：row_patch 与 rows 同样收式
     assert rows, tid
     for p in rows:
         assert reach[p].get("x-mengos-expr") is True and reach[p].get("x-mengos-data") is True, (tid, p)
@@ -146,6 +146,8 @@ def test_model_round_trip_keeps_structure_exprs_and_ids(cid, tmp_path):
     assert r2["output"]["table_sha256"] == r["output"]["table_sha256"]
     a, b = render.to_view(model.normalize(m)), json.loads(files(r, w)["view"])
     a["stats"].pop("warnings"), b["stats"].pop("warnings")      # build 才有的告警（如空表 no_rows）导出时不再报
+    for x, y in zip(a["sheets"], b["sheets"]):                  # 2.3.0：包补的行 id 按入参行序发；表模型里的行是分组后的次序，
+        x.pop("ids", None), y.pop("ids", None)                  #   再导入时补的 id 次序不同（局部修改取规范化入参，不经表模型）
     assert json.loads(json.dumps(a)) == b
 
 

@@ -94,6 +94,15 @@ ROWS = {"type": "array", "maxItems": 100000, "x-mengos-data": True, "x-mengos-ex
     {"type": "object", "properties": {DISPLAY_KEY: DISPLAY, ID_KEY: ROW_ID}, "additionalProperties": CELL},
 ]}}
 ROWS_BUILD = {**ROWS, "x-mengos-merge": {"mode": "append"}}
+# 2.3.0 B1（mengosv2 局部追问 r9.2 §4.3、§4.4；L13、L18）：按行 id 改已有的行。表级、可选、只给 table.build；
+#   引擎按 by-id（键 $id）合并，$delete、$after、$clear 是本工具自定义的键（引擎只当普通键合并，语义在 canon.py）。
+#   给模型看的说明（description）是进模型上下文的文字：本版不写，草案交 mengosv2 调度，由立法者定稿后再补（随后重算 lock）。
+CLEAR = {"type": "object", "required": ["$clear"], "additionalProperties": False, "properties": {"$clear": {"const": True}}}
+ROW_PATCH = {"type": "array", "maxItems": 10000, "x-mengos-data": True, "x-mengos-expr": True, "x-mengos-expr-params": EXPR_PARAMS,
+             "x-mengos-merge": {"mode": "by-id", "id": ID_KEY},
+             "items": {"type": "object", "required": [ID_KEY], "properties": {
+                 ID_KEY: ROW_ID, "$delete": {"const": True}, "$after": ROW_ID, DISPLAY_KEY: DISPLAY},
+                 "additionalProperties": {"anyOf": [CELL_PLAIN, EXPR, CLEAR]}}}
 TOTALS = {"type": "array", "maxItems": 200, "items": {"oneOf": [
     {"type": "string", "minLength": 1},
     {"type": "object", "required": ["column"], "additionalProperties": False, "properties": {
@@ -223,7 +232,7 @@ assert all(x in TABLE_DESC_BUILD for x in NUM22_DESC)
 def table_def(build=False):
     """build=True：table.build 的贡献型定义；否则核对与导出用的 1.x 定义（逐键同 1.0.1）。"""
     rows = ROWS_BUILD if build else ROWS
-    sheet_props = {**SHEET_PROPS, "rows": rows}
+    sheet_props = {**SHEET_PROPS, "rows": rows, **({"row_patch": ROW_PATCH} if build else {})}
     sheet = {"type": "object", "required": ["id"] if build else ["columns"], "additionalProperties": False,
              "properties": {"id": ID, "name": {"type": "string", "maxLength": 200}, **sheet_props, "derive": DERIVE,
                             "sources": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 1000},
@@ -330,6 +339,8 @@ BUILD = {
                 "warnings": WARN,
                 "files": FILES,
                 "assumptions": {"type": "array", "items": {"type": "string"}},
+                # 2.3.0 B1：规范化入参——sheets 写法、每张表有 id（单表补 _sa）、对象行带 $id（缺的补 _r 加字母）、row_patch 已施加并清空
+                "normalized": {"type": "object"},
             },
         },
     },
@@ -490,6 +501,17 @@ REG = {
              "选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。"
              "文件产出按 TL-9a：结果对象顶层的 files。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。"),
     "units": [BUILD, CHECK, EXPORT],
+    # 2.3.0 B1（L18）：局部修改的补丁形状，引擎建局部 run 时按本工作区装着的版本取来填 calls.GEN.schema。
+    #   形状里没有表 id：引擎按选区把它包成 table.sheets: [{id: 选区的表, …补丁}]，再与底稿（规范化入参）按 input_schema 合并。
+    #   description 是给模型看的说明，草案交 mengosv2 调度，由立法者定稿后再补。
+    "local_patch": {
+        "tool_id": "table.build", "field": "table", "wrap": "sheet",
+        "schema": {"type": "object", "additionalProperties": False, "minProperties": 1, "properties": {
+            "row_patch": ROW_PATCH,
+            "columns": SHEET_PROPS["columns"],
+            "totals": TOTALS,
+        }},
+    },
 }
 
 if __name__ == "__main__":

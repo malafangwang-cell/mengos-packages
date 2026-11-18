@@ -217,6 +217,7 @@ def to_view(t: Table) -> dict:
                 s["totals_fn"] = fns
         _view_styles(sh, s)
         _view_structure(sh, s, lang)
+        _view_local(t, sh, s, lang)
         if sh.caption:
             s["caption"] = sh.caption
         if sh.note:
@@ -238,6 +239,58 @@ def to_view(t: Table) -> dict:
 
 
 LAYOUT_KIND = {"data": "d", "group": "g", "subtotal": "s", "merged": "m"}
+
+
+def _view_local(t, sh, s, lang):
+    """2.3.0 B1（局部追问 r9.2 §4.1、§4.5；r8 §4.1、§4.4）：表 id、行 id、单元种类、每格依赖、派生行与生成行的键。
+    宿主与渲染器只读这些，不解析公式。单表写法的表 id 由包补 _sa；缺 id 的行由包补 _r 加字母（与规范化入参一致）。"""
+    import formula as F
+    from model import SINGLE_SHEET_ID
+    sid = sh.id or (SINGLE_SHEET_ID if len(t.sheets) == 1 else None)
+    if sid is not None:
+        s["id"] = sid
+    if sh.derive:
+        # 派生表的行不可选：键 = 来源行（表id/行id）的集合（终审 M4 第 2 条）
+        s["row_kind"] = "derived"
+        keys = []
+        for gi in range(len(sh.rows)):
+            src = set()
+            for mem in sh.derive_src.get(gi, {}).values():
+                for o, ri, _ in mem:
+                    src.add(f"{o.id or SINGLE_SHEET_ID}/{o.row_ids[ri]}")
+            keys.append(sorted(src))
+        s["derived_keys"] = keys
+    elif sh.row_ids:
+        s["ids"] = list(sh.row_ids)
+    # 单元种类：列一级（输入 / 公式 / 编号）；带式的输入格见 exprs；合计、小计、生成的组头、合并行见 totals 与 layout
+    s["col_kinds"] = ["formula" if c.formula is not None else "numbering" if c.numbering is not None else "input" for c in sh.columns]
+    deps = {}
+    col_refs = {c.key: sorted(F.refs(c.node)) for c in sh.columns if c.formula is not None and c.node is not None}
+    if col_refs:
+        deps["columns"] = col_refs
+    cells = []
+    for (ri, j), node in sorted(sh.expr_nodes.items()):
+        locs = sorted({(loc[1], loc[2], loc[3]) for loc in F.cell_refs(node)})
+        same = sorted(F.refs(node))
+        refs = [[(t.book[si].id or (SINGLE_SHEET_ID if len(t.sheets) == 1 else None)), t.book[si].row_ids[r2], t.book[si].columns[j2].key] for si, r2, j2 in locs]
+        cells.append([ri, j, refs, same])
+    if cells:
+        deps["cells"] = cells
+    if deps:
+        s["deps"] = deps
+    if "layout" in s:
+        # 生成行的键（按 ⟨行种类, 键⟩ 对齐比较，不按行 id）：组头、小计取分组值，合并行取合并键
+        # 与 layout 逐项对齐；数据行为 null（数据行按行 id 对齐）
+        keys = []
+        for e in sh.layout:
+            if e["kind"] in ("group", "subtotal"):
+                keys.append(e.get("label"))
+            elif e["kind"] == "merged":
+                first = sh.merged[e["mi"]]["members"][0]
+                keys.append([display(sh.col(b), sh.rows[first][next(k for k, c in enumerate(sh.columns) if c.key == b)], lang) for b in sh.merge_rows["by"]])
+            else:
+                keys.append(None)
+        s["layout_keys"] = keys
 
 
 def layout_label_col(sh):

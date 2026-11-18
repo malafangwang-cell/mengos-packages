@@ -1,6 +1,6 @@
 {
   "package": "table",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "title": "表格",
   "tool_titles": {
     "table.build": "生成表格",
@@ -9,7 +9,7 @@
   },
   "publisher": "mengos",
   "scope": "public",
-  "content_hash": "8e8d2d59574af25791f463477fd1a5e100da07c63d26e201b2964de8afbeeb98",
+  "content_hash": "fbe441b586909a106a61b858b7df7177f1c33cd222ac8c22185cb6b1376c95a4",
   "types": [
     {
       "name": "table",
@@ -50,6 +50,7 @@
       "xlsx_writer.py",
       "checker.py",
       "table_tool.py",
+      "canon.py",
       "pyproject.toml",
       "uv.lock",
       "registration.json"

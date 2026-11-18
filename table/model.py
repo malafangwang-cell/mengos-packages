@@ -45,6 +45,47 @@ DATE_FORMATS = {"YYYY-MM-DD": ("yyyy-mm-dd", "{y:04d}-{m:02d}-{d:02d}"), "YYYY/M
 MAX_RULES = 50
 MAX_FLOAT_WARN = 20           # G4：每列最多点名这么多格，其余合成一句
 KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,31}$")
+# 2.3.0 B1（局部追问 r9.2 §4.1）：缺 id 的行由包补 `_r` 加字母序号、单表写法的表 id 由包补 `_sa`；调用方写别的 `_r…`、`_s…` 回 BAD_INPUT
+ISSUED_ROW = re.compile(r"^_r[a-z]+$")
+ISSUED_SHEET = re.compile(r"^_s[a-z]+$")
+SINGLE_SHEET_ID = "_sa"
+
+
+def letters(n: int) -> str:
+    """0 → a，25 → z，26 → aa …"""
+    s = ""
+    n += 1
+    while n:
+        n, r = divmod(n - 1, 26)
+        s = chr(97 + r) + s
+    return s
+
+
+def issue_ids(given):
+    """缺 id 的行按行序补 `_r` 加字母序号，跳过已用的 id。given 是各行已有的 id（没有的是 None）。"""
+    used = set(x for x in given if x is not None)
+    out, k = [], 0
+    for x in given:
+        if x is not None:
+            out.append(x)
+            continue
+        while f"_r{letters(k)}" in used:
+            k += 1
+        rid = f"_r{letters(k)}"
+        used.add(rid)
+        out.append(rid)
+        k += 1
+    return out
+
+
+def check_row_id(rid, where):
+    if isinstance(rid, str) and rid.startswith("_r") and not ISSUED_ROW.match(rid):
+        raise BadInput(f"行 id {rid}：以 _r 开头的行 id 由表格工具保留（只发 _r 加小写字母），请换一个", where)
+
+
+def check_sheet_id(sid, where):
+    if isinstance(sid, str) and sid.startswith("_s") and not ISSUED_SHEET.match(sid):
+        raise BadInput(f"表 id {sid}：以 _s 开头的表 id 由表格工具保留，请换一个", where)
 SHEET_BAD = re.compile(r"[\[\]:*?/\\]")
 MAX_SHEETS = 20
 MAX_COLS = 200
@@ -267,7 +308,7 @@ class Sheet:
     __slots__ = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols", "formula_errors",
                  "header_style", "rules", "row_styles", "displays", "raw", "_styles",
                  "row_ids", "exprs", "outline_from", "levels", "group", "subtotals", "merge_rows", "derive",
-                 "layout", "merged", "derive_src", "_spec", "_where", "_index")
+                 "layout", "merged", "derive_src", "_spec", "_where", "_index", "issued", "expr_nodes")
 
     def col(self, key):
         return next(c for c in self.columns if c.key == key)
@@ -326,6 +367,8 @@ class Sheet:
         cells = [({EXPR_KEY: self.exprs[(ri, j)][0]} if (ri, j) in self.exprs else _cell_json(c, v))
                  for j, (c, v) in enumerate(zip(self.columns, r))]
         rid = self.row_ids[ri] if self.row_ids else None
+        if rid in self.issued:                # 2.3.0：包补的 id 只进视图与规范化入参，不进表模型（旧输入的表模型逐字节不变）
+            rid = None
         if not d and rid is None:
             return cells
         o = {c.key: v for c, v in zip(self.columns, cells)}
@@ -386,7 +429,7 @@ def _cell_json(col, v):
 
 
 class Table:
-    __slots__ = ("title", "subtitle", "meta", "sheets", "sources", "assumptions", "warnings", "_json", "_sha", "book")
+    __slots__ = ("title", "subtitle", "meta", "sheets", "sources", "assumptions", "warnings", "_json", "_sha", "book", "single")
 
     def to_json(self):
         if self._json is None:
@@ -476,6 +519,7 @@ def normalize(raw, build=False) -> Table:
     t = Table()
     t._json = t._sha = None
     t.warnings = []
+    t.single = "sheets" not in raw         # 2.3.0：单表写法的表 id 由包补 _sa（只进视图与规范化入参）
     t.title = _str(raw.get("title"), "table.title", MAX_TITLE, True)
     t.subtitle = _str(raw.get("subtitle"), "table.subtitle", MAX_TITLE)
     t.meta = _meta(raw.get("meta"))
@@ -597,12 +641,13 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     sh.raw = {}
     sh._styles = None
     sh._spec, sh._where = s, where
-    sh.row_ids, sh.exprs = [], {}
+    sh.row_ids, sh.exprs, sh.issued, sh.expr_nodes = [], {}, set(), {}
     sh.outline_from = sh.levels = sh.group = sh.merge_rows = sh.derive = None
     sh.subtotals, sh.layout, sh.merged, sh.derive_src = [], [], [], {}
     sid = s.get("id")
     if sid is not None and (not isinstance(sid, str) or not KEY_RE.match(sid)):
         raise BadInput("id 由字母、数字、下划线组成，字母或下划线开头，最多 32 个字符", f"{where}.id")
+    check_sheet_id(sid, f"{where}.id")
     sh.id = sid
     sh.name = _sheet_name(s.get("name"), i, used, t, where)
     sh.caption = _str(s.get("caption"), f"{where}.caption", 500)
@@ -674,6 +719,10 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     if len(ids) != len(set(ids)):
         dup = next(x for x in ids if ids.count(x) > 1)
         raise BadInput(f"行 id 重复：{dup}", f"{where}.rows", "同一张表里每行的 $id 不能相同")
+    if s.get("derive") is None:              # 2.3.0 B1：缺 id 的行按入参行序补 `_r` 加字母（与 canon.canonical 同一规则）
+        full = issue_ids(sh.row_ids)
+        sh.issued = {x for x, y in zip(full, sh.row_ids) if y is None}
+        sh.row_ids = full
     sh.freeze_cols = fc
     sh.outline_from = _outline_from(s.get("outline_from"), sh, f"{where}.outline_from")
     sh.group = _group_spec(s.get("group"), sh, f"{where}.group")
@@ -807,6 +856,7 @@ def _row(r, where, sh, plain, t, from_model, ri):
         rid = r[ID_KEY]
         if not isinstance(rid, str) or not KEY_RE.match(rid):
             raise BadInput(f"{ID_KEY} 是行 id：字母、数字、下划线，字母或下划线开头，最多 32 个字符", f"{where}.{ID_KEY}")
+        check_row_id(rid, f"{where}.{ID_KEY}")
         r = {k: v for k, v in r.items() if k != ID_KEY}
     sh.row_ids.append(rid)
     if isinstance(r, dict):
@@ -953,6 +1003,7 @@ def _exprs(t):
         if k != "num":
             raise BadInput(f"格公式“{e.src}”的结果要是数（{'条件' if k == 'bool' else '文字'}不行）", e.where)
         nodes[("cell", sh._index, ri, j)] = (node, e)
+        sh.expr_nodes[(ri, j)] = node         # 2.3.0：视图发布每格依赖（随动闭包）
     state, val = {}, {}
 
     class Ext:

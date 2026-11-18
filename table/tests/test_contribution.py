@@ -341,7 +341,9 @@ def _overlay(base, extra):
 # 2.1.0 只放宽（执行令 table 包 2.1.0 §四）：入参 schema 只加可选字段、枚举值与说明文字。去掉这些，应与 1.0.1 逐键相同。
 ADDED_FIELDS_210 = {"style", "date_format", "thousands", "header_style", "rules", "row_styles",
                     # 2.2.0（G7–G11、G17）
-                    "numbering", "outline_from", "group", "subtotals", "merge_rows", "derive", "sheet_order", "$id", "identifier"}
+                    "numbering", "outline_from", "group", "subtotals", "merge_rows", "derive", "sheet_order", "$id", "identifier",
+                    # 2.3.0 B1（局部修改的按行补丁）
+                    "row_patch"}
 ADDED_FN_210 = ["formula", "none"]
 
 
@@ -409,7 +411,10 @@ WM = json.loads((FIX / "whole-mode-1.0.1.json").read_text(encoding="utf-8"))
 
 
 WX = json.loads((FIX / "whole-mode-2.0.1-xlsx.json").read_text(encoding="utf-8"))
-NEW_VIEW_FIELDS_210 = ("totals_fn",)      # 2.1.0 产出台数据新增的输出字段（只加，不改原有字段）
+NEW_VIEW_FIELDS_210 = ("totals_fn",      # 2.1.0 产出台数据新增的输出字段（只加，不改原有字段）
+                       # 2.3.0 B1：表 id、行 id、单元种类、每格依赖、派生行与生成行的键
+                       "id", "ids", "col_kinds", "deps", "row_kind", "derived_keys", "layout_keys")
+NEW_OUTPUT_FIELDS_230 = ("normalized",)   # 2.3.0 B1：table.build 的规范化入参
 
 
 def _unwrap_210(new, old):
@@ -473,7 +478,7 @@ def test_whole_mode_output_unchanged_since_1_0_1(case, tmp_path):
             assert sha(data) == case["file_sha256"][f["path"]], f["path"]
     norm = lambda o: [{k: v for k, v in f.items() if not (f["format"] in ("xlsx", "view") and k in ("bytes", "sha256"))} for f in o["files"]]
     assert norm(out) == norm(old)
-    assert {k: v for k, v in out.items() if k != "files"} == {k: v for k, v in old.items() if k != "files"}
+    assert {k: v for k, v in out.items() if k != "files" and k not in NEW_OUTPUT_FIELDS_230} == {k: v for k, v in old.items() if k != "files"}
 
 
 def test_whole_mode_fixture_was_recorded_on_1_0_1():

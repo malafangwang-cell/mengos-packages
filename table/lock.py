@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SOURCES = ["model.py", "formula.py", "render.py", "xlsx_writer.py", "checker.py", "table_tool.py", "pyproject.toml", "uv.lock"]
+SOURCES = ["model.py", "formula.py", "render.py", "xlsx_writer.py", "checker.py", "table_tool.py", "canon.py", "pyproject.toml", "uv.lock"]
 
 
 def _registration_bytes() -> bytes:

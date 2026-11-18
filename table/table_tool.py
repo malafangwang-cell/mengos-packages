@@ -185,14 +185,26 @@ def _sheets(t):
 # ---------------------------------------------------------------- 三件工具
 def table_build(payload, workdir=None):
     """数据 → 表：规范各列的类型与单位，算公式列和合计；交付表模型、产出台数据、Markdown，以及 Excel（缺省）。"""
+    import canon
+    from model import BadInput, normalize
     _allowed(payload, ["table", "name", "formats"])
-    t = _table(payload, build=True)
+    if "table" not in payload:
+        raise BadInput("缺少 table（表的内容）", "table")
+    raw = payload["table"]
+    # 2.3.0 B1：带 row_patch 时先施加补丁（规范化入参），再按它建表；不带时照旧按原入参建表（旧输入的产物逐字节不变）
+    if canon.has_patch(raw):
+        norm = canon.canonical(raw)
+        t = normalize(norm, True)
+    else:
+        t = normalize(raw, True)
+        norm = canon.canonical(raw)
     name = _name(payload, t)
     extra = _formats(payload, BUILD_EXTRA, ["xlsx"])
     out = {"title": t.title, "table_sha256": t.sha, "name": name, "sheets": _sheets(t), "stats": t.stats(),
            "warnings": _warnings(t), "files": _write(t, BUILD_ALWAYS + extra, name, workdir)}
     if t.assumptions:
         out["assumptions"] = list(t.assumptions)
+    out["normalized"] = norm   # 规范化入参：sheets 写法、每张表有 id、对象行带 $id、补丁已施加（局部修改下一步的底稿）
     return out
 
 
