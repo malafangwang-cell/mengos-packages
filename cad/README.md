@@ -1,5 +1,12 @@
 # cad v2（W3 的 CAD 工具包）
 
+> 2.6.3（渲染器加选；只改 `renderer/`，工具代码、登记与 lock 都不变，lock 仍为 `3625f3c31608de88`，不需重跑工具认证）：mengosv2 立法者 11-18 定多处选区的修饰键为 Ctrl / ⌘（计划面板 Shift 照旧），CAD 一次至多 3 处，三维里也能加选。
+> - **三维加选**：按住 Ctrl（Mac 上 ⌘）点模型上的面 = 把产生它的特征加进选中，再点一次去掉，至多 3 处；不按修饰键照旧单选。
+> - **计划面板**：Ctrl / ⌘ 与 Shift 同为加选。
+> - **消息**：修饰键（或 Shift）加选时 `mengos.select` 带 `additive: true`，`handles` 仍是当前选中的全部；宿主据此连着加、不弹确认浮条（mengosv2 局部追问 S2）。不带修饰键的消息与 2.6.2 逐字段相同。
+> - 页面提示改为“按住 Ctrl（Mac 上 ⌘）点模型或点行可以加选，计划里按住 Shift 也行，至多 3 处”。
+> - `tests/test_renderer.py` 加 4 条（在 2.6.2 上红）。
+
 > 2.6.2（渲染器修卡死；只改 `renderer/`，工具代码、登记与 lock 都不变，lock 仍为 `3625f3c31608de88`，不需重跑工具认证）：
 > - **按需绘制**：去掉常驻 `requestAnimationFrame` 循环。只在视角变化（OrbitControls `change`，含阻尼收尾）、缩放、尺寸变化、主题与配色变化、数据到达、剖切与边线切换时画一帧，同一帧里的多次请求合并成一次；“处理中”呼吸动画进行时才连续绘制。去掉 `preserveDrawingBuffer`（本页不读回像素）。静置时主线程不再被占满。
 > - **WebGL 上下文丢失**：监听 `webglcontextlost`（`preventDefault`）与 `webglcontextrestored`（材质重编译、重画）。浏览器同时开的三维视图过多（Chrome 约 16 个）而收回本页上下文时，三维区显示“点这里重新显示”，点了换一块新画布重建，场景与视角保留；不再变白不恢复。
