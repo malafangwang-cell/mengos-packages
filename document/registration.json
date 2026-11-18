@@ -1,7 +1,7 @@
 {
   "family": "document",
   "family_version": "2.0.0",
-  "lock_hash": "fe130b7ae721185b",
+  "lock_hash": "d4e302536b06d231",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。文件产出按 TL-9a：结果对象顶层的 files。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
@@ -139,7 +139,7 @@
             "doc": {
               "type": "object",
               "additionalProperties": false,
-              "description": "doc：一份长文档的内容（报告、方案、标书、手册、论文等）。title 标题（必填）；sections 按顺序列出各节：heading 节标题（只写标题文字，编号由工具统一加）、level 层级 1–4（缺省 1，每节最多比上一节深一级）、body 正文（Markdown：段落、加粗、列表、表格、引用、代码块）、id（必填，供引用和后续修改时定位）、responds_to（这一节响应的要求 id）。图放进 figures：id、caption、source 为 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；表放进 tables：id、caption、columns、rows（每行格数与列数相同）、note。正文里单独一行写 [[fig:id]] 或 [[tab:id]]，图表就放在那里；行内写 [[sec:id]]、[[fig:id]]、[[tab:id]] 引用，交付时换成“第 2.1 节”“图 3”“表 1”并可点击跳转。requirements 列出任务书或招标文件提出的要求：id、text、source（出处，如“招标文件 第三章 3.2”）、priority（must 或 should），交付时列出每条要求由哪些章节响应。meta：lang（zh-CN 或 en）、author、org、date（YYYY-MM-DD）、version、numbering（decimal：1 / 1.1；chapter：第一章 / 1.1；zh：一、/（一）/ 1．/（1）；none：不编号）、figure_numbering（global：图 1、图 2；chapter：图 2-1）、toc（目录，缺省 true）、cover（封面页）、trace_table（文末附要求响应对照表）。kind=outline 表示提纲，允许各节暂时没有正文。",
+              "description": "doc：一份长文档的内容（报告、方案、标书、手册、论文等）。title 标题（必填）；sections 按顺序列出各节：heading 节标题（只写标题文字，编号由工具统一加）、level 层级 1–4（缺省 1，每节最多比上一节深一级）、body 正文（Markdown：段落、加粗、列表、表格、引用、代码块）、id（必填，供引用和后续修改时定位）、responds_to（这一节响应的要求 id）。图放进 figures：id、caption、source。数据图（柱状、折线、饼、柱线组合）写 source 为 {chart: 类型和数据}，坐标轴、刻度、数值、图例由本工具画；其他图写 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；表放进 tables：id、caption、columns、rows（每行格数与列数相同）、note。正文里单独一行写 [[fig:id]] 或 [[tab:id]]，图表就放在那里；行内写 [[sec:id]]、[[fig:id]]、[[tab:id]] 引用，交付时换成“第 2.1 节”“图 3”“表 1”并可点击跳转。requirements 列出任务书或招标文件提出的要求：id、text、source（出处，如“招标文件 第三章 3.2”）、priority（must 或 should），交付时列出每条要求由哪些章节响应。meta：lang（zh-CN 或 en）、author、org、date（YYYY-MM-DD）、version、numbering（decimal：1 / 1.1；chapter：第一章 / 1.1；zh：一、/（一）/ 1．/（1）；none：不编号）、figure_numbering（global：图 1、图 2；chapter：图 2-1）、toc（目录，缺省 true）、cover（封面页）、trace_table（文末附要求响应对照表）。kind=outline 表示提纲，允许各节暂时没有正文。",
               "properties": {
                 "schema": {
                   "const": "mengos.document/1"
@@ -338,6 +338,105 @@
                       },
                       "source": {
                         "oneOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "chart"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                              "chart": {
+                                "type": "object",
+                                "required": [
+                                  "type",
+                                  "categories",
+                                  "series"
+                                ],
+                                "additionalProperties": false,
+                                "description": "chart：一张数据图。type 取 bar（柱状）、line（折线）、pie（饼）、combo（柱线组合）。categories 是横轴的类别（饼图是各项名称），年份、季度、月份要逐期写全。series 是一组或几组数据，每组有 name 和 values；values 只写数，个数与 categories 相同，没有数据的位置写 null。unit 是单位。组合图里每组另写 as（bar 或 line）和各自的 unit。从某一期起是预测时，写 forecast_from 为那一期。图里的数要与正文、表格里的一致。",
+                                "properties": {
+                                  "type": {
+                                    "enum": [
+                                      "bar",
+                                      "line",
+                                      "pie",
+                                      "combo"
+                                    ]
+                                  },
+                                  "categories": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 60,
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "series": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 6,
+                                    "items": {
+                                      "type": "object",
+                                      "required": [
+                                        "name",
+                                        "values"
+                                      ],
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "values": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": [
+                                              "number",
+                                              "null"
+                                            ]
+                                          }
+                                        },
+                                        "as": {
+                                          "enum": [
+                                            "bar",
+                                            "line"
+                                          ]
+                                        },
+                                        "unit": {
+                                          "type": "string",
+                                          "maxLength": 20
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "unit": {
+                                    "type": "string",
+                                    "maxLength": 20
+                                  },
+                                  "forecast_from": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stacked": {
+                                    "type": "boolean",
+                                    "description": "true 时柱状图按组堆叠。"
+                                  },
+                                  "decimals": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4,
+                                    "description": "数值标签保留几位小数，0–4。"
+                                  },
+                                  "note": {
+                                    "type": "string",
+                                    "maxLength": 200,
+                                    "description": "图下一行脚注，如“数据来源：……”。"
+                                  }
+                                }
+                              }
+                            }
+                          },
                           {
                             "type": "object",
                             "required": [
@@ -707,6 +806,13 @@
                     "type": "string",
                     "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$"
                   },
+                  "source": {
+                    "enum": [
+                      "chart",
+                      "svg",
+                      "image"
+                    ]
+                  },
                   "table": {
                     "type": "string",
                     "pattern": "^[A-Za-z][A-Za-z0-9_]{0,31}$"
@@ -814,17 +920,21 @@
           {
             "input": "把这份季度报告排成带目录的 Word，图表自动编号",
             "output": "你把报告内容填进 doc → doc.json + .md + .docx；图 1–3、表 1–2，正文里的引用换成可点击的编号"
+          },
+          {
+            "input": "写一份项目可行性研究报告，要有投资构成图和分年度投资图",
+            "output": "……图 1-3 柱线组合、图 1-4 饼图由你给的数据画出，带刻度、数值与图例"
           }
         ],
         "non_goals": [
           "不替你写内容：正文、标题、图表都由调用方给出，工具只组装、编号、排版与追溯",
           "不判断内容是否满足要求，只列出声明的响应关系",
           "不出 PDF：PDF 在下载时由导出生成",
-          "不从别处取图：图要随内容一起给出（矢量图或 PNG、JPEG），文档里只有文字、图片和表格",
+          "不从别处取图：图要随内容一起给出（数据图给类型和数据，其他图给矢量图或 PNG、JPEG），文档里只有文字、图片和表格",
           "不做脚注、尾注、参考文献格式与公式排版"
         ]
       },
-      "version": "fe130b7ae721185b"
+      "version": "d4e302536b06d231"
     },
     {
       "tool_id": "doc.check",
@@ -881,7 +991,7 @@
                 "sections"
               ],
               "additionalProperties": false,
-              "description": "doc：一份长文档的内容（报告、方案、标书、手册、论文等）。title 标题（必填）；sections 按顺序列出各节：heading 节标题（只写标题文字，编号由工具统一加）、level 层级 1–4（缺省 1，每节最多比上一节深一级）、body 正文（Markdown：段落、加粗、列表、表格、引用、代码块）、id（可选，供引用和后续修改时定位）、responds_to（这一节响应的要求 id）。图放进 figures：id、caption、source 为 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；表放进 tables：id、caption、columns、rows（每行格数与列数相同）、note。正文里单独一行写 [[fig:id]] 或 [[tab:id]]，图表就放在那里；行内写 [[sec:id]]、[[fig:id]]、[[tab:id]] 引用，交付时换成“第 2.1 节”“图 3”“表 1”并可点击跳转。requirements 列出任务书或招标文件提出的要求：id、text、source（出处，如“招标文件 第三章 3.2”）、priority（must 或 should），交付时列出每条要求由哪些章节响应。meta：lang（zh-CN 或 en）、author、org、date（YYYY-MM-DD）、version、numbering（decimal：1 / 1.1；chapter：第一章 / 1.1；zh：一、/（一）/ 1．/（1）；none：不编号）、figure_numbering（global：图 1、图 2；chapter：图 2-1）、toc（目录，缺省 true）、cover（封面页）、trace_table（文末附要求响应对照表）。kind=outline 表示提纲，允许各节暂时没有正文。也接受只有 {title, sections:[{heading, body}]} 的简单写法。",
+              "description": "doc：一份长文档的内容（报告、方案、标书、手册、论文等）。title 标题（必填）；sections 按顺序列出各节：heading 节标题（只写标题文字，编号由工具统一加）、level 层级 1–4（缺省 1，每节最多比上一节深一级）、body 正文（Markdown：段落、加粗、列表、表格、引用、代码块）、id（可选，供引用和后续修改时定位）、responds_to（这一节响应的要求 id）。图放进 figures：id、caption、source。数据图（柱状、折线、饼、柱线组合）写 source 为 {chart: 类型和数据}，坐标轴、刻度、数值、图例由本工具画；其他图写 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；表放进 tables：id、caption、columns、rows（每行格数与列数相同）、note。正文里单独一行写 [[fig:id]] 或 [[tab:id]]，图表就放在那里；行内写 [[sec:id]]、[[fig:id]]、[[tab:id]] 引用，交付时换成“第 2.1 节”“图 3”“表 1”并可点击跳转。requirements 列出任务书或招标文件提出的要求：id、text、source（出处，如“招标文件 第三章 3.2”）、priority（must 或 should），交付时列出每条要求由哪些章节响应。meta：lang（zh-CN 或 en）、author、org、date（YYYY-MM-DD）、version、numbering（decimal：1 / 1.1；chapter：第一章 / 1.1；zh：一、/（一）/ 1．/（1）；none：不编号）、figure_numbering（global：图 1、图 2；chapter：图 2-1）、toc（目录，缺省 true）、cover（封面页）、trace_table（文末附要求响应对照表）。kind=outline 表示提纲，允许各节暂时没有正文。也接受只有 {title, sections:[{heading, body}]} 的简单写法。",
               "properties": {
                 "schema": {
                   "const": "mengos.document/1"
@@ -1075,6 +1185,105 @@
                       },
                       "source": {
                         "oneOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "chart"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                              "chart": {
+                                "type": "object",
+                                "required": [
+                                  "type",
+                                  "categories",
+                                  "series"
+                                ],
+                                "additionalProperties": false,
+                                "description": "chart：一张数据图。type 取 bar（柱状）、line（折线）、pie（饼）、combo（柱线组合）。categories 是横轴的类别（饼图是各项名称），年份、季度、月份要逐期写全。series 是一组或几组数据，每组有 name 和 values；values 只写数，个数与 categories 相同，没有数据的位置写 null。unit 是单位。组合图里每组另写 as（bar 或 line）和各自的 unit。从某一期起是预测时，写 forecast_from 为那一期。图里的数要与正文、表格里的一致。",
+                                "properties": {
+                                  "type": {
+                                    "enum": [
+                                      "bar",
+                                      "line",
+                                      "pie",
+                                      "combo"
+                                    ]
+                                  },
+                                  "categories": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 60,
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "series": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 6,
+                                    "items": {
+                                      "type": "object",
+                                      "required": [
+                                        "name",
+                                        "values"
+                                      ],
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "values": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": [
+                                              "number",
+                                              "null"
+                                            ]
+                                          }
+                                        },
+                                        "as": {
+                                          "enum": [
+                                            "bar",
+                                            "line"
+                                          ]
+                                        },
+                                        "unit": {
+                                          "type": "string",
+                                          "maxLength": 20
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "unit": {
+                                    "type": "string",
+                                    "maxLength": 20
+                                  },
+                                  "forecast_from": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stacked": {
+                                    "type": "boolean",
+                                    "description": "true 时柱状图按组堆叠。"
+                                  },
+                                  "decimals": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4,
+                                    "description": "数值标签保留几位小数，0–4。"
+                                  },
+                                  "note": {
+                                    "type": "string",
+                                    "maxLength": 200,
+                                    "description": "图下一行脚注，如“数据来源：……”。"
+                                  }
+                                }
+                              }
+                            }
+                          },
                           {
                             "type": "object",
                             "required": [
@@ -1319,7 +1528,7 @@
           "document_meets_spec"
         ]
       },
-      "version": "fe130b7ae721185b"
+      "version": "d4e302536b06d231"
     },
     {
       "tool_id": "doc.export",
@@ -1375,7 +1584,7 @@
                 "sections"
               ],
               "additionalProperties": false,
-              "description": "doc：一份长文档的内容（报告、方案、标书、手册、论文等）。title 标题（必填）；sections 按顺序列出各节：heading 节标题（只写标题文字，编号由工具统一加）、level 层级 1–4（缺省 1，每节最多比上一节深一级）、body 正文（Markdown：段落、加粗、列表、表格、引用、代码块）、id（可选，供引用和后续修改时定位）、responds_to（这一节响应的要求 id）。图放进 figures：id、caption、source 为 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；表放进 tables：id、caption、columns、rows（每行格数与列数相同）、note。正文里单独一行写 [[fig:id]] 或 [[tab:id]]，图表就放在那里；行内写 [[sec:id]]、[[fig:id]]、[[tab:id]] 引用，交付时换成“第 2.1 节”“图 3”“表 1”并可点击跳转。requirements 列出任务书或招标文件提出的要求：id、text、source（出处，如“招标文件 第三章 3.2”）、priority（must 或 should），交付时列出每条要求由哪些章节响应。meta：lang（zh-CN 或 en）、author、org、date（YYYY-MM-DD）、version、numbering（decimal：1 / 1.1；chapter：第一章 / 1.1；zh：一、/（一）/ 1．/（1）；none：不编号）、figure_numbering（global：图 1、图 2；chapter：图 2-1）、toc（目录，缺省 true）、cover（封面页）、trace_table（文末附要求响应对照表）。kind=outline 表示提纲，允许各节暂时没有正文。也接受只有 {title, sections:[{heading, body}]} 的简单写法。",
+              "description": "doc：一份长文档的内容（报告、方案、标书、手册、论文等）。title 标题（必填）；sections 按顺序列出各节：heading 节标题（只写标题文字，编号由工具统一加）、level 层级 1–4（缺省 1，每节最多比上一节深一级）、body 正文（Markdown：段落、加粗、列表、表格、引用、代码块）、id（可选，供引用和后续修改时定位）、responds_to（这一节响应的要求 id）。图放进 figures：id、caption、source。数据图（柱状、折线、饼、柱线组合）写 source 为 {chart: 类型和数据}，坐标轴、刻度、数值、图例由本工具画；其他图写 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；表放进 tables：id、caption、columns、rows（每行格数与列数相同）、note。正文里单独一行写 [[fig:id]] 或 [[tab:id]]，图表就放在那里；行内写 [[sec:id]]、[[fig:id]]、[[tab:id]] 引用，交付时换成“第 2.1 节”“图 3”“表 1”并可点击跳转。requirements 列出任务书或招标文件提出的要求：id、text、source（出处，如“招标文件 第三章 3.2”）、priority（must 或 should），交付时列出每条要求由哪些章节响应。meta：lang（zh-CN 或 en）、author、org、date（YYYY-MM-DD）、version、numbering（decimal：1 / 1.1；chapter：第一章 / 1.1；zh：一、/（一）/ 1．/（1）；none：不编号）、figure_numbering（global：图 1、图 2；chapter：图 2-1）、toc（目录，缺省 true）、cover（封面页）、trace_table（文末附要求响应对照表）。kind=outline 表示提纲，允许各节暂时没有正文。也接受只有 {title, sections:[{heading, body}]} 的简单写法。",
               "properties": {
                 "schema": {
                   "const": "mengos.document/1"
@@ -1569,6 +1778,105 @@
                       },
                       "source": {
                         "oneOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "chart"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                              "chart": {
+                                "type": "object",
+                                "required": [
+                                  "type",
+                                  "categories",
+                                  "series"
+                                ],
+                                "additionalProperties": false,
+                                "description": "chart：一张数据图。type 取 bar（柱状）、line（折线）、pie（饼）、combo（柱线组合）。categories 是横轴的类别（饼图是各项名称），年份、季度、月份要逐期写全。series 是一组或几组数据，每组有 name 和 values；values 只写数，个数与 categories 相同，没有数据的位置写 null。unit 是单位。组合图里每组另写 as（bar 或 line）和各自的 unit。从某一期起是预测时，写 forecast_from 为那一期。图里的数要与正文、表格里的一致。",
+                                "properties": {
+                                  "type": {
+                                    "enum": [
+                                      "bar",
+                                      "line",
+                                      "pie",
+                                      "combo"
+                                    ]
+                                  },
+                                  "categories": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 60,
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "series": {
+                                    "type": "array",
+                                    "minItems": 1,
+                                    "maxItems": 6,
+                                    "items": {
+                                      "type": "object",
+                                      "required": [
+                                        "name",
+                                        "values"
+                                      ],
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "values": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": [
+                                              "number",
+                                              "null"
+                                            ]
+                                          }
+                                        },
+                                        "as": {
+                                          "enum": [
+                                            "bar",
+                                            "line"
+                                          ]
+                                        },
+                                        "unit": {
+                                          "type": "string",
+                                          "maxLength": 20
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "unit": {
+                                    "type": "string",
+                                    "maxLength": 20
+                                  },
+                                  "forecast_from": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stacked": {
+                                    "type": "boolean",
+                                    "description": "true 时柱状图按组堆叠。"
+                                  },
+                                  "decimals": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4,
+                                    "description": "数值标签保留几位小数，0–4。"
+                                  },
+                                  "note": {
+                                    "type": "string",
+                                    "maxLength": 200,
+                                    "description": "图下一行脚注，如“数据来源：……”。"
+                                  }
+                                }
+                              }
+                            }
+                          },
                           {
                             "type": "object",
                             "required": [
@@ -1858,7 +2166,7 @@
           "不读入已有的 Word 文件"
         ]
       },
-      "version": "fe130b7ae721185b"
+      "version": "d4e302536b06d231"
     }
   ]
 }

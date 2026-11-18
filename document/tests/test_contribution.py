@@ -182,6 +182,11 @@ def _fold_whole_mode(schema):
     return s
 
 
+FIG_SENTENCE_1_2_5 = "图放进 figures：id、caption、source 为 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；"
+CHART_SENTENCE_2_4 = ("图放进 figures：id、caption、source。数据图（柱状、折线、饼、柱线组合）写 source 为 {chart: 类型和数据}，坐标轴、刻度、数值、图例由本工具画；"
+                      "其他图写 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；")
+
+
 def test_whole_mode_schema_equals_1_2_5_schema_plus_section_id():
     """不带 base 时走 else 分支：去掉标注与 base 槽、把 else 叠回主体，再去掉节 id 必填这唯一一处新增，
     应与 1.2.5 的 doc.build input_schema 逐键相同（含 by-id 元素内嵌套的必填）。"""
@@ -194,6 +199,12 @@ def test_whole_mode_schema_equals_1_2_5_schema_plus_section_id():
     assert "id（必填，供引用和后续修改时定位）" in doc["description"] and "简单写法" not in doc["description"]
     doc["description"] = (doc["description"].replace("id（必填，供引用和后续修改时定位）", "id（可选，供引用和后续修改时定位）")
                           + "也接受只有 {title, sections:[{heading, body}]} 的简单写法。")
+    # 2.4.0 有意的改动：图的来源加第三种 {chart}，说明里“图放进 figures……”一句随改。还原这两处再比。
+    src = doc["properties"]["figures"]["items"]["properties"]["source"]["oneOf"]
+    assert list(src[0]["properties"]) == ["chart"]
+    del src[0]
+    assert CHART_SENTENCE_2_4 in doc["description"]
+    doc["description"] = doc["description"].replace(CHART_SENTENCE_2_4, FIG_SENTENCE_1_2_5)
     assert sha(canonical_json(folded).encode()) == V125_BUILD_INPUT_SCHEMA_SHA256
 
 

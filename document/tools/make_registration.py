@@ -16,7 +16,8 @@ DOC_DOMAIN = (
     "title 标题（必填）；sections 按顺序列出各节：heading 节标题（只写标题文字，编号由工具统一加）、"
     "level 层级 1–4（缺省 1，每节最多比上一节深一级）、body 正文（Markdown：段落、加粗、列表、表格、引用、代码块）、"
     "id（可选，供引用和后续修改时定位）、responds_to（这一节响应的要求 id）。"
-    "图放进 figures：id、caption、source 为 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；"
+    "图放进 figures：id、caption、source。数据图（柱状、折线、饼、柱线组合）写 source 为 {chart: 类型和数据}，坐标轴、刻度、数值、图例由本工具画；"
+    "其他图写 {svg: 静态矢量图（不含脚本、动画与外部链接）} 或 {media_type: image/png|image/jpeg, base64}；"
     "表放进 tables：id、caption、columns、rows（每行格数与列数相同）、note。"
     "正文里单独一行写 [[fig:id]] 或 [[tab:id]]，图表就放在那里；行内写 [[sec:id]]、[[fig:id]]、[[tab:id]] 引用，"
     "交付时换成“第 2.1 节”“图 3”“表 1”并可点击跳转。"
@@ -42,7 +43,33 @@ SECTION = {
         "responds_to": {"type": "array", "items": ID, "uniqueItems": True},
     },
 }
+# 数据图（2.4.0，设计-长文内置图表-2026-11-18 §四）。说明文字为草案（C2），待立法者定稿。
+# 图表数据不标 x-mengos-data（立法者 11-18 裁定 5：与长文表格一致，本期不查证件）。
+CHART_DESC = (
+    "chart：一张数据图。type 取 bar（柱状）、line（折线）、pie（饼）、combo（柱线组合）。"
+    "categories 是横轴的类别（饼图是各项名称），年份、季度、月份要逐期写全。"
+    "series 是一组或几组数据，每组有 name 和 values；values 只写数，个数与 categories 相同，没有数据的位置写 null。"
+    "unit 是单位。组合图里每组另写 as（bar 或 line）和各自的 unit。"
+    "从某一期起是预测时，写 forecast_from 为那一期。图里的数要与正文、表格里的一致。"
+)
+UNIT = {"type": "string", "maxLength": 20}
+CHART = {"type": "object", "required": ["type", "categories", "series"], "additionalProperties": False,
+         "description": CHART_DESC,
+         "properties": {
+             "type": {"enum": ["bar", "line", "pie", "combo"]},
+             "categories": {"type": "array", "minItems": 1, "maxItems": 60, "items": {"type": "string", "minLength": 1}},
+             "series": {"type": "array", "minItems": 1, "maxItems": 6, "items": {
+                 "type": "object", "required": ["name", "values"], "additionalProperties": False,
+                 "properties": {"name": {"type": "string", "minLength": 1},
+                                "values": {"type": "array", "items": {"type": ["number", "null"]}},
+                                "as": {"enum": ["bar", "line"]}, "unit": UNIT}}},
+             "unit": UNIT,
+             "forecast_from": {"type": "string", "minLength": 1},
+             "stacked": {"type": "boolean", "description": "true 时柱状图按组堆叠。"},
+             "decimals": {"type": "integer", "minimum": 0, "maximum": 4, "description": "数值标签保留几位小数，0–4。"},
+             "note": {"type": "string", "maxLength": 200, "description": "图下一行脚注，如“数据来源：……”。"}}}
 FIG_SOURCE = {"oneOf": [
+    {"type": "object", "required": ["chart"], "additionalProperties": False, "properties": {"chart": CHART}},
     {"type": "object", "required": ["svg"], "additionalProperties": False,
      "properties": {"svg": {"type": "string", "minLength": 1, "maxLength": 2097152}}},
     {"type": "object", "required": ["media_type", "base64"], "additionalProperties": False,
@@ -161,7 +188,8 @@ BLOCKS = {"type": "array", "items": {
                    "kind": {"enum": ["paragraph", "heading", "list", "quote", "code", "md_table", "hr", "html", "figure", "table"]},
                    "section": ID, "start": {"type": "integer", "minimum": 0}, "end": {"type": "integer", "minimum": 0},
                    "line_start": {"type": "integer", "minimum": 0}, "line_end": {"type": "integer", "minimum": 0},
-                   "hash": SHA, "figure": ID, "table": ID, "auto": {"const": True}}}}
+                   "hash": SHA, "figure": ID, "source": {"enum": ["chart", "svg", "image"]}, "table": ID,
+                   "auto": {"const": True}}}}
 
 EXPECT_DESC = (
     "expect：期望清单，一行一条（可省略，省略时只做内置核对）。标题含空格时加引号，也可写 id:节id。"
@@ -224,11 +252,13 @@ units = [
                 {"input": "先列个提纲给我看看", "output": "你写各节标题和要点，kind=outline → 提纲文档"},
                 {"input": "把这份季度报告排成带目录的 Word，图表自动编号",
                  "output": "你把报告内容填进 doc → doc.json + .md + .docx；图 1–3、表 1–2，正文里的引用换成可点击的编号"},
+                {"input": "写一份项目可行性研究报告，要有投资构成图和分年度投资图",
+                 "output": "……图 1-3 柱线组合、图 1-4 饼图由你给的数据画出，带刻度、数值与图例"},
             ],
             "non_goals": ["不替你写内容：正文、标题、图表都由调用方给出，工具只组装、编号、排版与追溯",
                           "不判断内容是否满足要求，只列出声明的响应关系",
                           "不出 PDF：PDF 在下载时由导出生成",
-                          "不从别处取图：图要随内容一起给出（矢量图或 PNG、JPEG），文档里只有文字、图片和表格",
+                          "不从别处取图：图要随内容一起给出（数据图给类型和数据，其他图给矢量图或 PNG、JPEG），文档里只有文字、图片和表格",
                           "不做脚注、尾注、参考文献格式与公式排版"],
         },
     },

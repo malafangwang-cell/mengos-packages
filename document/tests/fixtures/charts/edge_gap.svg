@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 313" width="720" height="313" font-family='"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif'>
+<title>监测点年均浓度</title>
+<rect x="0" y="0" width="720" height="313" fill="#ffffff"/>
+<text x="27.79" y="28" font-size="11" fill="#7d7d79" text-anchor="start">PM2.5（μg/m³）</text>
+<line x1="44" y1="272" x2="700" y2="272" stroke="#b9b8b2" stroke-width="1"/>
+<text x="36" y="276" font-size="11" fill="#7d7d79" text-anchor="end">0</text>
+<line x1="44" y1="214" x2="700" y2="214" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="218" font-size="11" fill="#7d7d79" text-anchor="end">20</text>
+<line x1="44" y1="156" x2="700" y2="156" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="160" font-size="11" fill="#7d7d79" text-anchor="end">40</text>
+<line x1="44" y1="98" x2="700" y2="98" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="102" font-size="11" fill="#7d7d79" text-anchor="end">60</text>
+<line x1="44" y1="40" x2="700" y2="40" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="44" font-size="11" fill="#7d7d79" text-anchor="end">80</text>
+<text x="90.86" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2018</text>
+<text x="184.57" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2019</text>
+<text x="278.29" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2020</text>
+<text x="372" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2021</text>
+<text x="465.71" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2022</text>
+<text x="559.43" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2023</text>
+<text x="653.14" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2024</text>
+<polyline points="90.86,121.2 184.57,135.7" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="465.71,161.8 559.43,170.5 653.14,182.1" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="90.86" cy="121.2" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<text x="90.86" y="111.2" font-size="11" fill="#1a1a19" text-anchor="middle">52</text>
+<circle cx="184.57" cy="135.7" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<text x="184.57" y="125.7" font-size="11" fill="#1a1a19" text-anchor="middle">47</text>
+<circle cx="465.71" cy="161.8" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<text x="465.71" y="151.8" font-size="11" fill="#1a1a19" text-anchor="middle">38</text>
+<circle cx="559.43" cy="170.5" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<text x="559.43" y="160.5" font-size="11" fill="#1a1a19" text-anchor="middle">35</text>
+<circle cx="653.14" cy="182.1" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<text x="653.14" y="172.1" font-size="11" fill="#1a1a19" text-anchor="middle">31</text>
+</svg>

@@ -1,0 +1,452 @@
+{
+ "bid_tech.json": {
+  "blocks": [
+   {
+    "end": 82,
+    "hash": "a4691f9c98debcd85a5264a92066f618896d6275ace58d843c5854931108e835",
+    "id": "overview.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "overview",
+    "start": 0
+   },
+   {
+    "end": 98,
+    "hash": "e5037918c4bb8249789465555e0e9fc9125385ac4fdf8e2e55948f3c0989f512",
+    "id": "overview.b2",
+    "kind": "paragraph",
+    "line_end": 3,
+    "line_start": 3,
+    "section": "overview",
+    "start": 84
+   },
+   {
+    "end": 191,
+    "hash": "3a2b398e9e24e545934f603bb53923defb8dd86f71bf9ebcd8c413d12b4c1ed7",
+    "id": "overview.b3",
+    "kind": "list",
+    "line_end": 7,
+    "line_start": 5,
+    "section": "overview",
+    "start": 100
+   },
+   {
+    "end": 235,
+    "hash": "1b1e1252f15debf24ab13a1b3be78c66535e4aa4b61df5722a3333f4397a9234",
+    "id": "overview.b4",
+    "kind": "paragraph",
+    "line_end": 9,
+    "line_start": 9,
+    "section": "overview",
+    "start": 193
+   },
+   {
+    "end": 36,
+    "hash": "6a001a9d3945189e0ab1b784ca2ad38342b52618ed39b4cc711f21bd21a872fd",
+    "id": "design.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "design",
+    "start": 0
+   },
+   {
+    "end": 50,
+    "figure": "arch",
+    "hash": "6bb00fdd3bf3d81485c3c7d7f044bc4f99bef1667ddabf21b7673479c20724e6",
+    "id": "design.b2",
+    "kind": "figure",
+    "line_end": 3,
+    "line_start": 3,
+    "section": "design",
+    "start": 38
+   },
+   {
+    "end": 111,
+    "hash": "3b8a43f41f890d7562183b135036b756e989c237b2e1358f47f8a1f7b755e1e5",
+    "id": "design.b3",
+    "kind": "paragraph",
+    "line_end": 5,
+    "line_start": 5,
+    "section": "design",
+    "start": 52
+   },
+   {
+    "end": 60,
+    "hash": "50695d5bae75c8e258f8f9527185b681d57122a3f6157dad40f174c0afe19eb3",
+    "id": "video.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "video",
+    "start": 0
+   },
+   {
+    "end": 77,
+    "hash": "7b9b44b299ef867e99e563d9de670cee46eb9f1e4fc5b11afd2c3b66443b7962",
+    "id": "video.b2",
+    "kind": "table",
+    "line_end": 3,
+    "line_start": 3,
+    "section": "video",
+    "start": 62,
+    "table": "devices"
+   },
+   {
+    "end": 153,
+    "hash": "5df06674483284caeb479545d001338f097416712b7e1ee8e473834e192ae60b",
+    "id": "video.b3",
+    "kind": "paragraph",
+    "line_end": 5,
+    "line_start": 5,
+    "section": "video",
+    "start": 79
+   },
+   {
+    "end": 58,
+    "hash": "bd7af8138095626039b0851a05827ee6ffd57ffe1ab19ec1c8610b6d4256efec",
+    "id": "access.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "access",
+    "start": 0
+   },
+   {
+    "end": 135,
+    "hash": "7d5a849f9327d71840b067db71fda623310b2756030e1b7c68826a1a2b12ec99",
+    "id": "access.b2",
+    "kind": "list",
+    "line_end": 5,
+    "line_start": 3,
+    "section": "access",
+    "start": 60
+   },
+   {
+    "end": 84,
+    "hash": "fa607fc6e4c5a833ccedb6fe0efae4ab3adf0074d08fc466aed202c45a786a2c",
+    "id": "interface.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "interface",
+    "start": 0
+   },
+   {
+    "end": 34,
+    "hash": "02c18ff08200438d1e342c30c561f88c133451297dcb31a799b7eddc58f5a874",
+    "id": "resident.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "resident",
+    "start": 0
+   },
+   {
+    "end": 79,
+    "hash": "5c365bd233f39a55650f696b11340f0f88e46767fcfdce5730a333f2c4b288c4",
+    "id": "schedule.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "schedule",
+    "start": 0
+   },
+   {
+    "end": 94,
+    "figure": "gantt",
+    "hash": "930a0e155787f79eadc9b152398d6a340adf1998e071cd48fc2d23e8114d8d9e",
+    "id": "schedule.b2",
+    "kind": "figure",
+    "line_end": 3,
+    "line_start": 3,
+    "section": "schedule",
+    "start": 81
+   },
+   {
+    "end": 140,
+    "hash": "555f68617b5ebcc37e144113c894fcd7e3ef679cda9472c4009efab9c1505238",
+    "id": "schedule.b3",
+    "kind": "paragraph",
+    "line_end": 5,
+    "line_start": 5,
+    "section": "schedule",
+    "start": 96
+   },
+   {
+    "end": 70,
+    "hash": "7ddd0dd85f4d9035e7a39a06e2a906a15430927fa248f30ce85383cbd54d6798",
+    "id": "team.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "team",
+    "start": 0
+   },
+   {
+    "end": 85,
+    "hash": "6971a221a07374aaf853ab1701713cc4ce0dc07c91dcb910c947aa3ed609a2f5",
+    "id": "team.b2",
+    "kind": "table",
+    "line_end": 3,
+    "line_start": 3,
+    "section": "team",
+    "start": 72,
+    "table": "staff"
+   },
+   {
+    "end": 5,
+    "hash": "18956a8ced52aeebe625cc8485d581401b54d33a2d34ef9fc2087f579b4acba5",
+    "id": "service.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "service",
+    "start": 0
+   },
+   {
+    "end": 89,
+    "hash": "091762326a4db8f0e208c4019ec18ecfcc8baa67ddde64f462b6f77a862bea70",
+    "id": "service.b2",
+    "kind": "list",
+    "line_end": 5,
+    "line_start": 3,
+    "section": "service",
+    "start": 7
+   },
+   {
+    "end": 120,
+    "hash": "4d29595b4def7b8950e5fe802a761a2f99d7ed38101284907fafdaf34e9c2024",
+    "id": "service.b3",
+    "kind": "quote",
+    "line_end": 7,
+    "line_start": 7,
+    "section": "service",
+    "start": 91
+   }
+  ],
+  "build": {
+   "城东街道智慧社区安防改造项目.doc.json": "4ba01539d687e9068b188380100226cba558aefbe965b26ac31571732affeae8",
+   "城东街道智慧社区安防改造项目.docx": "f48480f4758170a19bf54a46ced890f20ba949b801f134286a5b59b9cfd68adf",
+   "城东街道智慧社区安防改造项目.f-arch.svg": "116112fad46a2dcef66674edd6062f7e9474745775114c1740ee56ae02ce674d",
+   "城东街道智慧社区安防改造项目.f-gantt.svg": "01641f639262d0a35c1dc8f3e2887d74d96d1f6bad0aae2f017e62285e155b74",
+   "城东街道智慧社区安防改造项目.html": "1e9f66941a7ea4041b02b1a8586931c279654ef8d9db12e8d017240757b9e1cd",
+   "城东街道智慧社区安防改造项目.md": "d47aa2228428d4915148713772c77e824fed50c2771e83339a9c0695b7091dc1",
+   "城东街道智慧社区安防改造项目.view.json": "89d91be18956aba84f57c63ea9a6f2d07404cc550b1d01cacbf16de995cdec48"
+  },
+  "export": {
+   "城东街道智慧社区安防改造项目.doc.json": "4ba01539d687e9068b188380100226cba558aefbe965b26ac31571732affeae8",
+   "城东街道智慧社区安防改造项目.f-arch.svg": "116112fad46a2dcef66674edd6062f7e9474745775114c1740ee56ae02ce674d",
+   "城东街道智慧社区安防改造项目.f-gantt.svg": "01641f639262d0a35c1dc8f3e2887d74d96d1f6bad0aae2f017e62285e155b74",
+   "城东街道智慧社区安防改造项目.md": "d47aa2228428d4915148713772c77e824fed50c2771e83339a9c0695b7091dc1",
+   "城东街道智慧社区安防改造项目.pdf": "0971e47b0422c6cab600882833b0fc2b2e7c0e2d4e3fb252d0f38f8edebb58d8"
+  },
+  "export_warnings": [],
+  "warnings": []
+ },
+ "brief_en.json": {
+  "blocks": [
+   {
+    "end": 181,
+    "hash": "40a7bbe0c024eb470a41bd3070e81abf031248392b9855ab44ba17dfd18ec82c",
+    "id": "summary.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "summary",
+    "start": 0
+   },
+   {
+    "end": 31,
+    "hash": "d56ed1c90d598637f5dc7e3b73fc8f517e6d276c996fee4d2a4d78c4ca51b5db",
+    "id": "rollout.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "rollout",
+    "start": 0
+   },
+   {
+    "end": 44,
+    "hash": "6833a3dfd3c7b01a83826b3c3f643d767585356497f4aec035e193e389059376",
+    "id": "rollout.b2",
+    "kind": "table",
+    "line_end": 3,
+    "line_start": 3,
+    "section": "rollout",
+    "start": 33,
+    "table": "kpi"
+   },
+   {
+    "end": 65,
+    "hash": "e8bcd7ebcddfb8652d48a01ae735e1e62e0ff6c1e5cba5aee609b2ae50d955ab",
+    "id": "next.b1",
+    "kind": "list",
+    "line_end": 3,
+    "line_start": 1,
+    "section": "next",
+    "start": 0
+   }
+  ],
+  "build": {
+   "Pilot-Results-Smart-Water-Meters.doc.json": "8df79dfcb4331da6f5987a9ed8d06dd65152a3337f19ca6a03d4208c73995556",
+   "Pilot-Results-Smart-Water-Meters.docx": "d8af4a5d34295968945b6e82c70e0a42d82c1a7b71643fe331a955433f3c7664",
+   "Pilot-Results-Smart-Water-Meters.html": "10b7ffd68ae79db4a5e30746bd0e9f5d9fca65fc701c2c8aca05520e84deb15b",
+   "Pilot-Results-Smart-Water-Meters.md": "3672ac565eb4081a3570c2f8ee6ef7a4d5a146c50d21b0fc523c2062192915b7",
+   "Pilot-Results-Smart-Water-Meters.view.json": "9a258509de6edd8cc5c5f645bf54004550acf1db028d6263d58f5ea31ec177ce"
+  },
+  "export": {
+   "Pilot-Results-Smart-Water-Meters.doc.json": "8df79dfcb4331da6f5987a9ed8d06dd65152a3337f19ca6a03d4208c73995556",
+   "Pilot-Results-Smart-Water-Meters.md": "3672ac565eb4081a3570c2f8ee6ef7a4d5a146c50d21b0fc523c2062192915b7",
+   "Pilot-Results-Smart-Water-Meters.pdf": "caa796774df44edca265c69e3779233d786e1f4323543f049f3a8bd2c918af11"
+  },
+  "export_warnings": [],
+  "warnings": []
+ },
+ "illustrated.json": {
+  "blocks": [
+   {
+    "end": 12,
+    "hash": "c6c45dd3de24509ffcc782be36d50769bb8c4902a2d6d5bb3051698978520c8e",
+    "id": "s1.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "s1",
+    "start": 0
+   },
+   {
+    "end": 24,
+    "figure": "p1",
+    "hash": "abfd3648328e63807fe260572a2a7c4efbf9abcb2466b3d77a8cbc6fb85855fa",
+    "id": "s1.b2",
+    "kind": "figure",
+    "line_end": 3,
+    "line_start": 3,
+    "section": "s1",
+    "start": 14
+   },
+   {
+    "end": 36,
+    "figure": "p2",
+    "hash": "e106f7b74316ef07e77c20fd3876db8451c99655effbd9bb8e6d255c3a9ca91f",
+    "id": "s1.b3",
+    "kind": "figure",
+    "line_end": 5,
+    "line_start": 5,
+    "section": "s1",
+    "start": 26
+   },
+   {
+    "end": 15,
+    "hash": "5f8dd456e5e4cd80408b5d054740e5a6c32f1879f9518425c09cc682c1d98397",
+    "id": "s2.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "s2",
+    "start": 0
+   },
+   {
+    "end": 27,
+    "figure": "p3",
+    "hash": "dee5b49cb0d4e2603cf700c3323ec6c8aa9f12e17bf387962ef2af57ce0af30b",
+    "id": "s2.b2",
+    "kind": "figure",
+    "line_end": 3,
+    "line_start": 3,
+    "section": "s2",
+    "start": 17
+   },
+   {
+    "end": 19,
+    "hash": "9516e568b20cd21198d7c3545a8b0e2270d565a78237a6e0a170decc84e7ed0a",
+    "id": "s3.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "s3",
+    "start": 0
+   }
+  ],
+  "build": {
+   "figures/p1.png": "d891c9337a1cfa51c9ec9a6384afae44afc2f54a00dddfca29123e8fc2f01ae1",
+   "figures/p2.png": "762843136a2ca7011958adaba58e553a4e03021ea40f00aa12609c2ff0ad76c4",
+   "figures/p3.png": "fb2896db777fc9af66db608f42c9ac6228509676259a1c3caaa91b6637a94929",
+   "社区活动图文简报.doc.json": "8f54c6224170e3c54492edfbd7d72c193cfd6092c74e573d4a7b1ed9c9bdd9b2",
+   "社区活动图文简报.docx": "b49170bfb290b495cd5abc2b8c6e57655c2ec640af7ef700c74827b8ed2d2474",
+   "社区活动图文简报.html": "54d1b103a3ead7b7c25544e80db7cccf6075567d5c6de8b9c1210eeae41e2c6d",
+   "社区活动图文简报.md": "39b25c9c5e748f147e9eb5f54a0811f13f14a594a030eb36c9c2176b470b9c0e",
+   "社区活动图文简报.view.json": "e4649f6e995a1311024710361b0c704f5fb9be6863757aafaf242f41f083ff12"
+  },
+  "export": {
+   "figures/p1.png": "d891c9337a1cfa51c9ec9a6384afae44afc2f54a00dddfca29123e8fc2f01ae1",
+   "figures/p2.png": "762843136a2ca7011958adaba58e553a4e03021ea40f00aa12609c2ff0ad76c4",
+   "figures/p3.png": "fb2896db777fc9af66db608f42c9ac6228509676259a1c3caaa91b6637a94929",
+   "社区活动图文简报.doc.json": "8f54c6224170e3c54492edfbd7d72c193cfd6092c74e573d4a7b1ed9c9bdd9b2",
+   "社区活动图文简报.md": "39b25c9c5e748f147e9eb5f54a0811f13f14a594a030eb36c9c2176b470b9c0e",
+   "社区活动图文简报.pdf": "90b6cb2be9e9c39c9b54759ddb8e698edf509c62c119265a9a4bdfd5738b56c0"
+  },
+  "export_warnings": [],
+  "warnings": []
+ },
+ "reading_corner.json": {
+  "blocks": [
+   {
+    "end": 30,
+    "hash": "7fc7e246a8575b3abd043b0ad7d345dc028ef7ea18bb8b2773aaf79387e570b2",
+    "id": "s1.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "s1",
+    "start": 0
+   },
+   {
+    "end": 48,
+    "hash": "ef06fd9abe0db3144aa32a9759f5f97f52f935ad83e112baa0886df0c6ca2365",
+    "id": "s2.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "s2",
+    "start": 0
+   },
+   {
+    "end": 41,
+    "hash": "088019cec2a72271b38514b474b93db3545a9c0092201f1114c569e8f78c2387",
+    "id": "s3.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "s3",
+    "start": 0
+   },
+   {
+    "end": 28,
+    "hash": "498b623a3450a46018467e20253cda91698f54d26c35bc89e7285092449b8859",
+    "id": "s4.b1",
+    "kind": "paragraph",
+    "line_end": 1,
+    "line_start": 1,
+    "section": "s4",
+    "start": 0
+   }
+  ],
+  "build": {
+   "社区读书角运营方案.doc.json": "c34c9be2bf393645b30240d92cebf76a9c374feda8e3be4c8e2368eca8114db8",
+   "社区读书角运营方案.docx": "ae039cb8146a3a96ad73e1caa36962b9d93b5f97bb688b0c6ccbcf9dd98049f3",
+   "社区读书角运营方案.html": "53231597b3158b8dfabe7bdf3a9c2c65ebb63f18f7279d78193dfabb88748f25",
+   "社区读书角运营方案.md": "426d363960650497e5e35bc5214841fe57cd55048d66e219dcd81c89c60cec88",
+   "社区读书角运营方案.view.json": "1a9eae0f572091ba8470e07977f1d6fec87c36751c253e6f354b8bff0e5979e0"
+  },
+  "export": {
+   "社区读书角运营方案.doc.json": "c34c9be2bf393645b30240d92cebf76a9c374feda8e3be4c8e2368eca8114db8",
+   "社区读书角运营方案.md": "426d363960650497e5e35bc5214841fe57cd55048d66e219dcd81c89c60cec88",
+   "社区读书角运营方案.pdf": "16d1c6c4562d681eb35c166f7dff2f1ea5ff52796f0741b0e6505e0b415163af"
+  },
+  "export_warnings": [],
+  "warnings": []
+ }
+}

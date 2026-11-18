@@ -77,7 +77,7 @@ class Figure:
     id: str
     caption: str
     width: float
-    kind: str                 # svg | image
+    kind: str                 # svg | image | chart（chart：工具按数据画的 SVG，data 是画好的 SVG）
     media_type: str
     data: bytes               # SVG 或位图的字节，随文档一起给出
     px: tuple[float, float] | None   # 固有尺寸（像素）；未知为 None
@@ -412,7 +412,16 @@ def _figure(v, where, index, warnings):
     src = v["source"]
     sw = f"{where}.source"
     if not isinstance(src, dict):
-        raise BadInput(f"{sw} 必须是对象：{{\"svg\": \"<svg…>\"}} 或 {{\"media_type\", \"base64\"}}", sw)
+        raise BadInput(f"{sw} 必须是对象：{{\"chart\": {{…}}}}、{{\"svg\": \"<svg…>\"}} 或 {{\"media_type\", \"base64\"}}", sw)
+    if "chart" in src:
+        import chart                                   # 晚引入：chart 依赖本模块的 BadInput
+        _obj(src, sw, ["chart"])
+        svg, chart_warnings, data_out = chart.render(src["chart"], caption, f"{sw}.chart")
+        for w in chart_warnings:
+            warnings.append({"where": f"{sw}.chart", "code": w["code"], "message": f"图 {fid}：{w['message']}"})
+        data = svg.encode("utf-8")
+        return Figure(index, fid, caption, width, "chart", "image/svg+xml", data, _check_svg(data, f"{sw}.chart"),
+                      {"chart": data_out})
     if "svg" in src:
         _obj(src, sw, ["svg"])
         svg = _str(src["svg"], f"{sw}.svg", LIMITS["svg_bytes"], required=True)
@@ -450,7 +459,8 @@ def _figure(v, where, index, warnings):
                   "original": {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data), "media_type": mt, "path": path}}
         return Figure(index, fid, caption, width, "image", mt, data, (float(px[0]), float(px[1])), source,
                       embed, "image/jpeg", path)
-    raise BadInput(f"{sw} 要给出 svg，或 media_type 加 base64", sw, "图片随文档一起给出：矢量图写 svg，位图写 PNG 或 JPEG 的 base64")
+    raise BadInput(f"{sw} 要给出 chart、svg，或 media_type 加 base64", sw,
+                   "数据图写 chart（类型和数据）；其他图随文档一起给出：矢量图写 svg，位图写 PNG 或 JPEG 的 base64")
 
 
 # ---------------------------------------------------------------- 表格

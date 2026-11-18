@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 335" width="720" height="335" font-family='"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif'>
+<title>2021—2027 年项目投资额与同比增速</title>
+<rect x="0" y="0" width="720" height="335" fill="#ffffff"/>
+<rect x="44" y="17" width="12" height="10" rx="2" fill="#2a78d6"/>
+<text x="64" y="26" font-size="12" fill="#4a4a47" text-anchor="start">投资额</text>
+<line x1="118" y1="22" x2="136" y2="22" stroke="#eb6834" stroke-width="2"/><circle cx="127" cy="22" r="3.5" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<text x="140" y="26" font-size="12" fill="#4a4a47" text-anchor="start">同比增速（右轴）</text>
+<rect x="256.5" y="17.5" width="11" height="9" rx="2" fill="#f4f4f2" stroke="#7d7d79" stroke-dasharray="3 2"/>
+<text x="276" y="26" font-size="12" fill="#4a4a47" text-anchor="start">预测</text>
+<text x="27.79" y="50" font-size="11" fill="#7d7d79" text-anchor="start">投资额（亿元）</text>
+<text x="702.34" y="50" font-size="11" fill="#7d7d79" text-anchor="end">同比增速（%）</text>
+<rect x="405.14" y="62" width="270.86" height="232" fill="#f4f4f2"/>
+<text x="411.14" y="76" font-size="11" fill="#7d7d79" text-anchor="start">预测</text>
+<line x1="44" y1="294" x2="676" y2="294" stroke="#b9b8b2" stroke-width="1"/>
+<text x="36" y="298" font-size="11" fill="#7d7d79" text-anchor="end">0</text>
+<line x1="44" y1="236" x2="676" y2="236" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="240" font-size="11" fill="#7d7d79" text-anchor="end">10</text>
+<line x1="44" y1="178" x2="676" y2="178" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="182" font-size="11" fill="#7d7d79" text-anchor="end">20</text>
+<line x1="44" y1="120" x2="676" y2="120" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="124" font-size="11" fill="#7d7d79" text-anchor="end">30</text>
+<line x1="44" y1="62" x2="676" y2="62" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="66" font-size="11" fill="#7d7d79" text-anchor="end">40</text>
+<text x="684" y="298" font-size="11" fill="#7d7d79" text-anchor="start">0%</text>
+<text x="684" y="240" font-size="11" fill="#7d7d79" text-anchor="start">10%</text>
+<text x="684" y="182" font-size="11" fill="#7d7d79" text-anchor="start">20%</text>
+<text x="684" y="124" font-size="11" fill="#7d7d79" text-anchor="start">30%</text>
+<text x="684" y="66" font-size="11" fill="#7d7d79" text-anchor="start">40%</text>
+<text x="89.14" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2021</text>
+<text x="179.43" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2022</text>
+<text x="269.71" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2023</text>
+<text x="360" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024</text>
+<text x="450.29" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2025</text>
+<text x="540.57" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2026</text>
+<text x="630.86" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2027</text>
+<path d="M75.14 294L75.14 225.08Q75.14 222.08 78.14 222.08L100.14 222.08Q103.14 222.08 103.14 225.08L103.14 294Z" fill="#2a78d6"/>
+<text x="89.14" y="236.08" font-size="11" fill="#ffffff" text-anchor="middle">12.4</text>
+<path d="M165.43 294L165.43 209.42Q165.43 206.42 168.43 206.42L190.43 206.42Q193.43 206.42 193.43 209.42L193.43 294Z" fill="#2a78d6"/>
+<text x="179.43" y="220.42" font-size="11" fill="#ffffff" text-anchor="middle">15.1</text>
+<path d="M255.71 294L255.71 189.12Q255.71 186.12 258.71 186.12L280.71 186.12Q283.71 186.12 283.71 189.12L283.71 294Z" fill="#2a78d6"/>
+<text x="269.71" y="200.12" font-size="11" fill="#ffffff" text-anchor="middle">18.6</text>
+<path d="M346 294L346 173.46Q346 170.46 349 170.46L371 170.46Q374 170.46 374 173.46L374 294Z" fill="#2a78d6"/>
+<text x="360" y="184.46" font-size="11" fill="#ffffff" text-anchor="middle">21.3</text>
+<path d="M436.79 294L436.79 155.4Q436.79 152.4 439.79 152.4L460.79 152.4Q463.79 152.4 463.79 155.4L463.79 294Z" fill="#c3d9f4" stroke="#2a78d6" stroke-width="1" stroke-dasharray="4 3"/>
+<text x="450.29" y="165.9" font-size="11" fill="#1a1a19" text-anchor="middle">24.5</text>
+<path d="M527.07 294L527.07 135.68Q527.07 132.68 530.07 132.68L551.07 132.68Q554.07 132.68 554.07 135.68L554.07 294Z" fill="#c3d9f4" stroke="#2a78d6" stroke-width="1" stroke-dasharray="4 3"/>
+<text x="540.57" y="146.18" font-size="11" fill="#1a1a19" text-anchor="middle">27.9</text>
+<path d="M617.36 294L617.36 117.7Q617.36 114.7 620.36 114.7L641.36 114.7Q644.36 114.7 644.36 117.7L644.36 294Z" fill="#c3d9f4" stroke="#2a78d6" stroke-width="1" stroke-dasharray="4 3"/>
+<text x="630.86" y="128.2" font-size="11" fill="#1a1a19" text-anchor="middle">31.0</text>
+<polyline points="179.43,167.56 269.71,159.44 360,209.9" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="360,209.9 450.29,207 540.57,213.38 630.86,229.62" fill="none" stroke="#eb6834" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round"/>
+<circle cx="179.43" cy="167.56" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<rect x="161.68" y="146.56" width="35.5" height="14" rx="2" fill="#ffffff" fill-opacity="0.85"/>
+<text x="179.43" y="157.56" font-size="11" fill="#1a1a19" text-anchor="middle">21.8%</text>
+<circle cx="269.71" cy="159.44" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<rect x="251.96" y="138.44" width="35.5" height="14" rx="2" fill="#ffffff" fill-opacity="0.85"/>
+<text x="269.71" y="149.44" font-size="11" fill="#1a1a19" text-anchor="middle">23.2%</text>
+<circle cx="360" cy="209.9" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<rect x="342.25" y="188.9" width="35.5" height="14" rx="2" fill="#ffffff" fill-opacity="0.85"/>
+<text x="360" y="199.9" font-size="11" fill="#1a1a19" text-anchor="middle">14.5%</text>
+<circle cx="450.29" cy="207" r="4" fill="#ffffff" stroke="#eb6834" stroke-width="2"/>
+<rect x="432.53" y="186" width="35.5" height="14" rx="2" fill="#ffffff" fill-opacity="0.85"/>
+<text x="450.29" y="197" font-size="11" fill="#1a1a19" text-anchor="middle">15.0%</text>
+<circle cx="540.57" cy="213.38" r="4" fill="#ffffff" stroke="#eb6834" stroke-width="2"/>
+<rect x="522.82" y="192.38" width="35.5" height="14" rx="2" fill="#ffffff" fill-opacity="0.85"/>
+<text x="540.57" y="203.38" font-size="11" fill="#1a1a19" text-anchor="middle">13.9%</text>
+<circle cx="630.86" cy="229.62" r="4" fill="#ffffff" stroke="#eb6834" stroke-width="2"/>
+<rect x="613.11" y="208.62" width="35.5" height="14" rx="2" fill="#ffffff" fill-opacity="0.85"/>
+<text x="630.86" y="219.62" font-size="11" fill="#1a1a19" text-anchor="middle">11.1%</text>
+</svg>
