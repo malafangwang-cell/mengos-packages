@@ -11,6 +11,13 @@
 > - 进模型文字：只改 cad.build、cad.check、cad.export 共用的 plan 说明六处（函数、部分顶点倒圆、polygon、dir= 孔、按点选边与整件倒角跳过、环形阵列 axis=），`family_version` 2.6.0 → 2.7.0；其余文字一字不改。registration 在 lock 内，lock `3625f3c31608de88` → `9c59409468000534`（四件同值），须重新认证。
 > - 测试：`tests/test_plan_gaps.py` 65 条（在 2.7.0-alpha.1 上 51 红；14 条绿的是对照：照旧报错、照旧不变的写法）；金样加 13 条（64 条；新加的 10 条在 2.7.0-alpha.1 上红，3 条为对照）。`test_assembly.py` 的 lock 守卫不再钉死 2.6 的值。
 
+> 2.7.0 同版带上的渲染器加选（来自包仓 PR #33，原拟 2.6.3，未单独出版；调度 2026-11-21 定并入 2.7.0）。只改 `renderer/` 与 `tests/test_renderer.py`，不在 lock 内，不影响认证：mengosv2 立法者 11-18 定多处选区的修饰键为 Ctrl / ⌘（计划面板 Shift 照旧），CAD 一次至多 3 处，三维里也能加选。
+> - **三维加选**：按住 Ctrl（Mac 上 ⌘）点模型上的面 = 把产生它的特征加进选中，再点一次去掉，至多 3 处；不按修饰键照旧单选。
+> - **计划面板**：Ctrl / ⌘ 与 Shift 同为加选。
+> - **消息**：修饰键（或 Shift）加选时 `mengos.select` 带 `additive: true`，`handles` 仍是当前选中的全部；宿主据此连着加、不弹确认浮条（mengosv2 局部追问 S2）。不带修饰键的消息与 2.6.2 逐字段相同。
+> - 页面提示改为“按住 Ctrl（Mac 上 ⌘）点模型或点行可以加选，计划里按住 Shift 也行，至多 3 处”。
+> - `tests/test_renderer.py` 加 4 条（在 2.6.2 上红）。
+
 > 2.7.0-alpha.1（装配工具第 1 阶段原型；mengosv2《立项-CAD装配工具-2026-11-16》§九 第 1 阶段，立法者 2026-11-19 裁）：加 `assembly.py`（`cad.assemble` 原型）、两道题的人手写装配计划 `samples/assembly/`、`tests/test_assembly.py`（46 条）与读数脚本 `tools/assembly_readings.py`，用法与读数见 §11。**只做包内离线验证：不进登记、不接引擎**。`assembly.py` 不在 `tools_lock.covers` 内，lock 仍为 `3625f3c31608de88`，四件旧工具的版本与输出都不变，不需重跑认证；registration.json、cad_tool.py、builder.py、geometry.py 一字未改。content_hash 随新文件变化。
 
 > 2.6.2（渲染器修卡死；只改 `renderer/`，工具代码、登记与 lock 都不变，lock 仍为 `3625f3c31608de88`，不需重跑工具认证）：
@@ -318,7 +325,7 @@ feature boss                         # 这个特征还在零件上
 ## 8 测试
 
 ```
-uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 354 条（原 230 条 + 装配 46 条 + 2.7.0 补缺 65 条 + 金样 13 条），约 6 分钟
+uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 358 条（原 230 条 + 装配 46 条 + 2.7.0 补缺 65 条 + 金样 13 条 + 渲染器加选 4 条），约 6 分钟
 ```
 
 不要用不带 `--frozen` 的 `uv sync` / `uv run`：环境变量里配了别的索引（例如国内镜像）时，uv 会重新解析并改写 `uv.lock`，工具版本（lock hash）与 content_hash 随之失配。安装区里只用环境解释器跑，不运行 uv。

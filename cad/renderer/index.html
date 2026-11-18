@@ -4191,7 +4191,7 @@ function makeRenderer() {
     ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
     const hits = ray.intersectObjects(featMeshes, false).filter((h) => state.cut === "none" || clip.distanceToPoint(h.point) >= -1e-9);
     const h = hits[0];
-    pickFromView(h ? h.object.userData.feature : null, h ? faceAt(h.object, h.faceIndex) : null, { x: Math.round(e.clientX), y: Math.round(e.clientY) });
+    pickFromView(h ? h.object.userData.feature : null, h ? faceAt(h.object, h.faceIndex) : null, { x: Math.round(e.clientX), y: Math.round(e.clientY) }, e.ctrlKey || e.metaKey);
   });
   // 悬停一句（三维上不挂字标，说明只在悬停时出现）
   let hoverPending = null;
@@ -4374,7 +4374,7 @@ function draw() {
 function feat(id) { return state.part.build.features.find((f) => f.id === id); }
 /* ---------------- 选中（cad 2.6.0，K10）----------------
    两步：点中元件只报位置（anchor），“改这里”按钮由宿主画；宿主回 mengos.open 才聚光。按钮阶段点别处即换选。
-   计划面板 Shift 加选，至多 3 行；三维里仍单选。不可选的行（无名、声明）只发 mengos.select_denied。 */
+   计划面板 Shift 加选，至多 3 行；2.6.3 起 Ctrl / ⌘ 在三维与计划里都是加选，消息带 additive: true。不可选的行（无名、声明）只发 mengos.select_denied。 */
 function canSelect(fid) {
   const f = feat(fid);
   if (!f) return { ok: false, why_not: "declaration" };
@@ -4396,12 +4396,18 @@ function sendSelect(extra) {
   pick.hidden = !f;
   if (f) pick.innerHTML = state.sels.map((id) => { const g = feat(id); return `<b>${esc(g.id)}</b> · ${OP_NAME[g.op] || esc(g.op)} <span class="mono">第 ${g.line} 行</span>`; }).join("　");
 }
-async function pickFromView(fid, face, anchor) {
+async function pickFromView(fid, face, anchor, add = false) {
   if (fid && !canSelect(fid).ok) { post({ type: "mengos.select_denied", handle_id: `feature:${fid}`, why_not: canSelect(fid).why_not, anchor }); return; }
-  const same = fid && state.sels.length === 1 && state.sels[0] === fid;
-  state.sels = fid && !same ? [fid] : [];
+  if (add && fid) {
+    // 2.6.3：按住 Ctrl（Mac 上 ⌘）点三维 = 加选 / 再点一次去掉，至多 MAX_SELS 处；宿主据 additive 连着加、不弹确认浮条
+    if (state.sels.includes(fid)) state.sels = state.sels.filter((x) => x !== fid);
+    else if (state.sels.length < MAX_SELS) state.sels = [...state.sels, fid];
+  } else {
+    const same = fid && state.sels.length === 1 && state.sels[0] === fid;
+    state.sels = fid && !same ? [fid] : [];
+  }
   state.sel = state.sels[0] || null; state.open = false;
-  const extra = { anchor };
+  const extra = { anchor, ...(add ? { additive: true } : {}) };
   if (state.sels.length && face) {
     extra.picked = { feature: fid, face_key: face.face_key };
     if (face.instance != null) extra.instance = face.instance;
@@ -4413,19 +4419,20 @@ async function pickFromView(fid, face, anchor) {
   else if (state.tab === "plan") await renderPane();
   if (state.sels.length) $(`.pl[data-fid="${CSS.escape(fid)}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
-async function pickFromPlan(row, shift) {
+async function pickFromPlan(row, shift, mod = false) {
   const why = row.dataset.deny;
   const r = row.getBoundingClientRect(), anchor = { x: Math.round(r.right), y: Math.round(r.top + r.height / 2) };
   if (why) { post({ type: "mengos.select_denied", handle_id: row.dataset.fid ? `feature:${row.dataset.fid}` : `line:${row.dataset.line}`, why_not: why, anchor }); return; }
   const fid = row.dataset.fid;
-  if (shift) {
+  const multi = shift || mod;   // 2.6.3：Ctrl / ⌘ 与 Shift 同为加选（立法者 11-18：修饰键 Ctrl / ⌘，计划面板 Shift 照旧）
+  if (multi) {
     if (state.sels.includes(fid)) state.sels = state.sels.filter((x) => x !== fid);
     else if (state.sels.length < MAX_SELS) state.sels = [...state.sels, fid];
   } else {
     state.sels = state.sels.length === 1 && state.sels[0] === fid ? [] : [fid];
   }
   state.sel = state.sels[0] || null; state.open = false;
-  sendSelect({ anchor });
+  sendSelect({ anchor, ...(multi ? { additive: true } : {}) });
   themeColors(); await renderPane();
 }
 async function select(fid) {                                         // 旧入口（宿主或别处直接定位）：单选
@@ -4507,7 +4514,7 @@ function paneP() {
   }).join("");
   const warn = b.warnings.length ? `<div class="card"><h2>提示</h2>${b.warnings.map((w) => `<div class="note">第 ${w.line} 行：${esc(w.message)}</div>`).join("")}</div>` : "";
   return `<div class="card plan">${rows}</div>${warn}
-  <div class="card note">点模型上的面，或点带“面”的行，就能定位到产生它的那一行；按住 Shift 点行可以多选，至多 ${MAX_SELS} 行。行名就是特征的句柄，倒角、阵列、核对都用它。</div>`;
+  <div class="card note">点模型上的面，或点带“面”的行，就能定位到产生它的那一行；按住 Ctrl（Mac 上 ⌘）点模型或点行可以加选，计划里按住 Shift 也行，至多 ${MAX_SELS} 处。行名就是特征的句柄，倒角、阵列、核对都用它。</div>`;
 }
 function paneM() {
   const m = state.part.build.measure;
@@ -4642,7 +4649,7 @@ function renderEmbed() {
 /* ---------------- 事件 ---------------- */
 $("#pane").addEventListener("click", (e) => {
   const pl = e.target.closest(".pl.feat");
-  if (pl) { pickFromPlan(pl, e.shiftKey); return; }
+  if (pl) { pickFromPlan(pl, e.shiftKey, e.ctrlKey || e.metaKey); return; }
   const tr = e.target.closest("tr.hole");
   if (tr) { const i = +tr.dataset.hole; state.hole = state.hole === i ? null : i; showHoleAxis(state.hole == null ? null : state.part.build.measure.holes[i]); renderPane(); return; }
   const dl = e.target.closest("[data-dl]");

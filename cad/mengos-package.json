@@ -10,7 +10,7 @@
     "cad.export": "导出零件加工与图纸文件",
     "cad.compare": "比较零件改前改后的特征表"
   },
-  "content_hash": "7145df400163f62faf3444e28fb69fff63a83b9d10dc378676f2d5acd5677d83",
+  "content_hash": "0b68e4670374a6a64a020f7ee3f35837a97f9a3a095c5100ca6192e415bab59a",
   "types": [
     {
       "name": "cad_model",
