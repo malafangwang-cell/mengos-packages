@@ -1,0 +1,258 @@
+[
+ {
+  "tool_id": "count.rows",
+  "task": "图纸线段统计里某图层竖直、某长度的线有几根",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.rows",
+  "task": "同一个图块在视图里插了几次、排成几列几行",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.rows",
+  "task": "设备台账里在用设备各车间几台",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.rows",
+  "task": "写一份项目周报",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "document",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.rows",
+  "task": "画一个带孔的铝底座",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "cad_model",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.rows",
+  "task": "查询客户 A 的合同记录",
+  "ops": [
+   "retrieve"
+  ],
+  "required_type": "data_record",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.series",
+  "task": "尺寸 33*2760=91080 是否自洽、两个因子各是多少",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.series",
+  "task": "底边那串连续尺寸一共几段、每段多长",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.series",
+  "task": "工序表里相邻工序是否首尾相接",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.series",
+  "task": "写一份项目周报",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "document",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.series",
+  "task": "画一个带孔的铝底座",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "cad_model",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.series",
+  "task": "查询客户 A 的合同记录",
+  "ops": [
+   "retrieve"
+  ],
+  "required_type": "data_record",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.coverage",
+  "task": "图纸 12 个分片是否每片都处理过",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.coverage",
+  "task": "评分办法每个评分项是否都有响应",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.coverage",
+  "task": "构件类清单里每一类是否都有数量记录",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.coverage",
+  "task": "写一份项目周报",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "document",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.coverage",
+  "task": "画一个带孔的铝底座",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "cad_model",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.coverage",
+  "task": "查询客户 A 的合同记录",
+  "ops": [
+   "retrieve"
+  ],
+  "required_type": "data_record",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.agree",
+  "task": "尺寸串的个数因子与图块列数是否一致",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.agree",
+  "task": "立柱数是否比列数多一",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.agree",
+  "task": "各类别条数之和是否等于总条数",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": true
+ },
+ {
+  "tool_id": "count.agree",
+  "task": "写一份项目周报",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "document",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.agree",
+  "task": "画一个带孔的铝底座",
+  "ops": [
+   "generate"
+  ],
+  "required_type": "cad_model",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.agree",
+  "task": "查询客户 A 的合同记录",
+  "ops": [
+   "retrieve"
+  ],
+  "required_type": "data_record",
+  "expect_selected": false
+ },
+ {
+  "tool_id": "count.rows",
+  "task": "求 2^10 + 3^5 的精确值",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": false,
+  "stage": "model"
+ },
+ {
+  "tool_id": "count.series",
+  "task": "求半径为 3 的圆面积",
+  "ops": [
+   "compute"
+  ],
+  "required_type": "number",
+  "expect_selected": false,
+  "stage": "model"
+ },
+ {
+  "tool_id": "count.coverage",
+  "task": "核验答案 177 是否等于 2^7 + 7^2",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": false,
+  "stage": "model"
+ },
+ {
+  "tool_id": "count.agree",
+  "task": "核对零件孔径是否符合图纸",
+  "ops": [
+   "check"
+  ],
+  "required_type": "verdict",
+  "expect_selected": false,
+  "stage": "model"
+ }
+]

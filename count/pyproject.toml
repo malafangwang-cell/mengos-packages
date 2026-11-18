@@ -1,0 +1,9 @@
+[project]
+name = "mengos-count"
+version = "0.1.0"
+description = "mengos count: 行式数据的确定性计数、乘积串与连续链、清单覆盖核对、两数互证（process 执行器，只用标准库）"
+requires-python = ">=3.10"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8", "jsonschema>=4"]

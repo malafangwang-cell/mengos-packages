@@ -1,0 +1,51 @@
+{
+  "package": "count",
+  "version": "0.1.0",
+  "publisher": "mengos",
+  "scope": "public",
+  "title": "确定性计数",
+  "summary": "按条件数行、求合计与分布，核乘积串与连续链，查清单里还没处理的项",
+  "tool_titles": {
+    "count.rows": "按条件数行与看分布",
+    "count.series": "核乘积串与连续链",
+    "count.coverage": "查清单里未处理的项",
+    "count.agree": "核两个数是否一致"
+  },
+  "content_hash": "73f8ef7a6f77a7c76c3b1aaf8ffff656e6b4c86201165a69482191b5ea0aa5ad",
+  "types": [],
+  "uses_platform_types": [
+    "number",
+    "verdict"
+  ],
+  "tools": "registration.json",
+  "tools_lock": {
+    "covers": [
+      "readers.py",
+      "ops.py",
+      "series.py",
+      "coverage.py",
+      "count_tool.py",
+      "pyproject.toml",
+      "uv.lock",
+      "registration.json"
+    ],
+    "note": "工具 version（lock hash）只覆盖这些文件；tests/、tools/、README 不在其内，改它们不使认证失效（TL-25）"
+  },
+  "certification_material": {
+    "golden_cases": "golden_cases.json",
+    "selection_cases": "selection_cases.json",
+    "golden_runner": "tools/run_golden.py"
+  },
+  "runtime": {
+    "process": {
+      "lang": "python",
+      "requires": ">=3.10",
+      "project": "pyproject.toml",
+      "lock": "uv.lock",
+      "entry": "count_tool.py",
+      "network": "none",
+      "workdir": false
+    }
+  },
+  "certification": []
+}
