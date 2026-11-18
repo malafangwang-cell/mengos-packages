@@ -5,7 +5,7 @@
   "ops": [
    "compute"
   ],
-  "required_type": "number",
+  "required_type": "count_receipt",
   "expect_selected": true
  },
  {
@@ -14,7 +14,7 @@
   "ops": [
    "compute"
   ],
-  "required_type": "number",
+  "required_type": "count_receipt",
   "expect_selected": true
  },
  {
@@ -23,7 +23,7 @@
   "ops": [
    "compute"
   ],
-  "required_type": "number",
+  "required_type": "count_receipt",
   "expect_selected": true
  },
  {
@@ -59,7 +59,7 @@
   "ops": [
    "compute"
   ],
-  "required_type": "number",
+  "required_type": "count_receipt",
   "expect_selected": true
  },
  {
@@ -68,7 +68,7 @@
   "ops": [
    "compute"
   ],
-  "required_type": "number",
+  "required_type": "count_receipt",
   "expect_selected": true
  },
  {
@@ -77,7 +77,7 @@
   "ops": [
    "compute"
   ],
-  "required_type": "number",
+  "required_type": "count_receipt",
   "expect_selected": true
  },
  {
@@ -113,7 +113,7 @@
   "ops": [
    "check"
   ],
-  "required_type": "verdict",
+  "required_type": "count_check",
   "expect_selected": true
  },
  {
@@ -122,7 +122,7 @@
   "ops": [
    "check"
   ],
-  "required_type": "verdict",
+  "required_type": "count_check",
   "expect_selected": true
  },
  {
@@ -131,7 +131,7 @@
   "ops": [
    "check"
   ],
-  "required_type": "verdict",
+  "required_type": "count_check",
   "expect_selected": true
  },
  {
@@ -167,7 +167,7 @@
   "ops": [
    "check"
   ],
-  "required_type": "verdict",
+  "required_type": "count_check",
   "expect_selected": true
  },
  {
@@ -176,7 +176,7 @@
   "ops": [
    "check"
   ],
-  "required_type": "verdict",
+  "required_type": "count_check",
   "expect_selected": true
  },
  {
@@ -185,7 +185,7 @@
   "ops": [
    "check"
   ],
-  "required_type": "verdict",
+  "required_type": "count_check",
   "expect_selected": true
  },
  {
@@ -222,8 +222,7 @@
    "compute"
   ],
   "required_type": "number",
-  "expect_selected": false,
-  "stage": "model"
+  "expect_selected": false
  },
  {
   "tool_id": "count.series",
@@ -232,8 +231,7 @@
    "compute"
   ],
   "required_type": "number",
-  "expect_selected": false,
-  "stage": "model"
+  "expect_selected": false
  },
  {
   "tool_id": "count.coverage",
@@ -242,8 +240,7 @@
    "check"
   ],
   "required_type": "verdict",
-  "expect_selected": false,
-  "stage": "model"
+  "expect_selected": false
  },
  {
   "tool_id": "count.agree",
@@ -252,7 +249,6 @@
    "check"
   ],
   "required_type": "verdict",
-  "expect_selected": false,
-  "stage": "model"
+  "expect_selected": false
  }
 ]

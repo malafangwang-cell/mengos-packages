@@ -100,3 +100,18 @@ def test_no_domain_words_in_executor_sources():
         text = (ROOT / name).read_text(encoding="utf-8")
         for w in words:
             assert w not in text, (name, w)
+
+
+def test_out_types_are_package_root_types_not_platform_generic():
+    """0.1.1：产物类型是包自带的新根类型，不登记在平台 number、verdict 上（PLAN 不把计数工具匹配到通用目标）。"""
+    declared = {t["name"]: t for t in MAN["types"]}
+    assert set(declared) == {"count_receipt", "count_check"}
+    assert all(t["parent"] is None for t in declared.values())
+    want = {"count.rows": ["count_receipt"], "count.series": ["count_receipt"],
+            "count.coverage": ["count_check"], "count.agree": ["count_check"]}
+    for tid, out in want.items():
+        cap = UNITS[tid]["capability"]
+        assert cap["out_types"] == out and cap["in_types"] == [], tid
+    for s in SEL:
+        if s["required_type"] in ("number", "verdict"):
+            assert s["expect_selected"] is False, s

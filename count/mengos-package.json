@@ -1,6 +1,6 @@
 {
   "package": "count",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "mengos",
   "scope": "public",
   "title": "确定性计数",
@@ -11,12 +11,22 @@
     "count.coverage": "查清单里未处理的项",
     "count.agree": "核两个数是否一致"
   },
-  "content_hash": "73f8ef7a6f77a7c76c3b1aaf8ffff656e6b4c86201165a69482191b5ea0aa5ad",
-  "types": [],
-  "uses_platform_types": [
-    "number",
-    "verdict"
+  "content_hash": "606e47afefead898a9301e3bc574f596429366a5e40b66ce5b131870e9c97afb",
+  "types": [
+    {
+      "name": "count_receipt",
+      "parent": null,
+      "kind": "value",
+      "note": "计数回执：按条件数出的条数、分组、合计、分布、乘积串与连续链，带回显的条件、来源与核对项；只在域包显式列出计数工具时使用，不作通用数值目标"
+    },
+    {
+      "name": "count_check",
+      "parent": null,
+      "kind": "value",
+      "note": "计数核对回执：清单未处理项、两种数法是否一致；只在域包显式列出时使用，不作通用判定目标"
+    }
   ],
+  "uses_platform_types": [],
   "tools": "registration.json",
   "tools_lock": {
     "covers": [

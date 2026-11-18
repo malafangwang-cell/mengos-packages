@@ -104,7 +104,7 @@ ROWS = unit(
         },
     },
     ROWS_OUT,
-    {"ops": ["compute"], "in_types": [], "out_types": ["number"], "constraints": {**CONSTRAINTS, "ops": OPS},
+    {"ops": ["compute"], "in_types": [], "out_types": ["count_receipt"], "constraints": {**CONSTRAINTS, "ops": OPS},
      "examples": [
          {"input": "图纸线段统计里，COL_A 图层竖直、长度约 10280 的线有几根", "output": "count 1 组，根数合计 1100"},
          {"input": "同一个图块在这个视图里插了几次、排成几列几行", "output": "count 660；x 向 33 个位置、步长 2760；网格 33×20，无缺位"},
@@ -142,7 +142,7 @@ SERIES = unit(
     {"type": "object", "required": ["what", "source", "checks", "assumptions"],
      "properties": {"product": {"type": "object"}, "chain": {"type": "object"}, "what": {"type": "object"},
                     "source": {"type": "object"}, "checks": {"type": "array"}, "assumptions": {"type": "array", "items": {"type": "string"}}}},
-    {"ops": ["compute"], "in_types": [], "out_types": ["number"], "constraints": CONSTRAINTS,
+    {"ops": ["compute"], "in_types": [], "out_types": ["count_receipt"], "constraints": CONSTRAINTS,
      "examples": [
          {"input": "主视图尺寸写着 33*2760=91080，核一下是否自洽", "output": "left 33、right 2760，product_ok true，与测量值 91080 一致"},
          {"input": "底边那串连续尺寸一共几段、每段多长", "output": "1 条链：12 段，每段 2760，总长 33120"},
@@ -184,7 +184,7 @@ COVERAGE = unit(
                     "unmarked": {"type": "array"}, "unknown_marks": {"type": "array"}, "duplicate_marks": {"type": "array"},
                     "status_counts": {"type": "object"}, "total_ok": {"type": ["boolean", "null"]}, "expected_total": {},
                     "source": {"type": "object"}, "assumptions": {"type": "array", "items": {"type": "string"}}}},
-    {"ops": ["check"], "in_types": [], "out_types": ["verdict"], "constraints": CONSTRAINTS,
+    {"ops": ["check"], "in_types": [], "out_types": ["count_check"], "constraints": CONSTRAINTS,
      "examples": [
          {"input": "图纸 12 个分片是不是每片都处理过了", "output": "unmarked_count 1，未处理：S7"},
          {"input": "评分办法 47 个评分项是否都有响应", "output": "unmarked_count 0，total_ok true"},
@@ -216,7 +216,7 @@ AGREE = unit(
      "properties": {"holds": {"type": "boolean"}, "relation": {"enum": ["eq", "diff"]}, "left": {"type": "object"}, "right": {"type": "object"},
                     "diff_expected": {"type": "number"}, "diff_actual": {"type": "number"}, "tol": {"type": "number"},
                     "assumptions": {"type": "array", "items": {"type": "string"}}}},
-    {"ops": ["check"], "in_types": [], "out_types": ["verdict"], "constraints": {"deterministic": True, "network": "none", "model_calls": 0},
+    {"ops": ["check"], "in_types": [], "out_types": ["count_check"], "constraints": {"deterministic": True, "network": "none", "model_calls": 0},
      "examples": [
          {"input": "尺寸串的个数因子与图块的列数是否一致", "output": "33 与 33，holds true"},
          {"input": "立柱数是否比列数多一", "output": "34 − 33 = 1，holds true"},
@@ -229,7 +229,7 @@ AGREE = unit(
 
 REG = {
     "family": "count",
-    "family_version": "0.1.0",
+    "family_version": "0.1.1",
     "lock_hash": "",
     "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。第一阶段（零引擎改动）来源只能由调用方给出（source_modes = inline），行数上限 max_inline_rows；回执带假设声明（TL-22a）。input_schema 各层 description、examples、input_example 为草案，待立法者定稿。",
     "units": [ROWS, SERIES, COVERAGE, AGREE],

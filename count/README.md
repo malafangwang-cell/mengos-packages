@@ -1,4 +1,4 @@
-# count 0.1.0 · 确定性计数
+# count 0.1.1 · 确定性计数
 
 行式数据上的确定性计数工具包。四件工具，T1、效应 none、process 执行器、只用 Python 标准库、不出网、不调模型；同一入参两次输出逐字节相同。
 
@@ -10,6 +10,10 @@
 | `count.series` | 乘积串 `左*右=合计` 的解析与验算（与测量列比对）；首尾相接的区间连成链 | `product.hits[]`（`left/right/stated_total/product_ok/measure_ok`）、`chain.chains[]`（`segments/values/uniform/pitch/total`） |
 | `count.coverage` | 数苹果：清单 + 已贴标记 → 未贴清单 | `unmarked_count`、`unmarked`、`unknown_marks`、`duplicate_marks`、`total_ok` |
 | `count.agree` | 两种数法互证（G-4）：相等或差一个定数 | `holds`、`diff_actual` |
+
+## 产物类型
+
+四件工具的产物类型是包自带的 `count_receipt`、`count_check`（新根类型，不挂在平台 number、verdict 之下）。PLAN 按类型匹配资源，所以要求通用数值或判定的任务不会选中计数工具；要用计数工具，由域包在工具表里显式列出。
 
 ## 通用性
 
@@ -44,4 +48,5 @@ uv run --frozen python tools/run_golden.py
 
 ## 版本记录
 
-- 0.1.0（2026-11-18）：首版，四件工具，第一阶段（inline 来源、行数上限 50）。
+- 0.1.0（2026-11-18）：首版，四件工具，第一阶段（inline 来源、行数上限 50）。未入册。
+- 0.1.1（2026-11-18）：产物类型改用包自带的两个新根类型 `count_receipt`（count.rows、count.series）与 `count_check`（count.coverage、count.agree），不再登记在平台的 number、verdict 上，PLAN 不把它们匹配到通用目标，只在域包显式列出时使用（立法者 11-18 裁定，经调度转）。工具逻辑不变。

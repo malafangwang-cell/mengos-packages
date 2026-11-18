@@ -1,12 +1,12 @@
 {
   "family": "count",
-  "family_version": "0.1.0",
-  "lock_hash": "6fe2b9d03a884e27",
+  "family_version": "0.1.1",
+  "lock_hash": "50b21dc2dde1868d",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。第一阶段（零引擎改动）来源只能由调用方给出（source_modes = inline），行数上限 max_inline_rows；回执带假设声明（TL-22a）。input_schema 各层 description、examples、input_example 为草案，待立法者定稿。",
   "units": [
     {
       "tool_id": "count.rows",
-      "version": "6fe2b9d03a884e27",
+      "version": "50b21dc2dde1868d",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -380,7 +380,7 @@
         ],
         "in_types": [],
         "out_types": [
-          "number"
+          "count_receipt"
         ],
         "constraints": {
           "deterministic": true,
@@ -431,7 +431,7 @@
     },
     {
       "tool_id": "count.series",
-      "version": "6fe2b9d03a884e27",
+      "version": "50b21dc2dde1868d",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -802,7 +802,7 @@
         ],
         "in_types": [],
         "out_types": [
-          "number"
+          "count_receipt"
         ],
         "constraints": {
           "deterministic": true,
@@ -840,7 +840,7 @@
     },
     {
       "tool_id": "count.coverage",
-      "version": "6fe2b9d03a884e27",
+      "version": "50b21dc2dde1868d",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -1120,7 +1120,7 @@
         ],
         "in_types": [],
         "out_types": [
-          "verdict"
+          "count_check"
         ],
         "constraints": {
           "deterministic": true,
@@ -1167,7 +1167,7 @@
     },
     {
       "tool_id": "count.agree",
-      "version": "6fe2b9d03a884e27",
+      "version": "50b21dc2dde1868d",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -1309,7 +1309,7 @@
         ],
         "in_types": [],
         "out_types": [
-          "verdict"
+          "count_check"
         ],
         "constraints": {
           "deterministic": true,
