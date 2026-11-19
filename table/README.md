@@ -4,6 +4,7 @@
 > - **产出台数据新字段**（每张表）：`id` 表 id（入参写了才有）；`ids` 各行的 `$id`（没写的为 null，全没写不给）；`src` 各行对应的入参行序号（分组挪过行时才给）；`col_kinds` 列一级的单元种类（input / formula / numbering）；`deps` 公式列引用的列（`columns`）与带式的格引用的格（`cells: [行, 列, [[表id, 行id, 列key]…], [同行引用的列…]]`）；派生表 `row_kind: "derived"` 与 `derived_keys`（来源行“表/行”的集合，派生表的行不可选）；`layout_keys` 生成行（组头、小计、合并行）的键，与 `layout` 逐项对齐，数据行为 null。
 > - 没写 id 的表、行，宿主按“#序号”定位：表在 `sheets` 里的序号、行在入参 `rows` 里的序号（分组时用 `src` 对回）。
 > - 旧输入的表模型、Markdown、CSV 逐字节不变，xlsx 逐格相同；产出台数据只多上述字段（`tests/test_contribution.py` 整表金样照旧）。`tests/test_230.py` 9 条。
+> - **2.2.0 做出的表逐字节不变**（架构线补查 b）：`tests/fixtures/out_220.json` 由 `tools/make_out_220.py` 在 2.2.0 代码上录，覆盖 `golden_cases.json` 里每条成功的 `table.build`、`table.export`（77 条）；本版同一入参：表模型、Markdown、CSV 逐字节相同，产出台数据去掉上述新字段后逐字节相同，xlsx 逐格相同（`tests/test_out_220.py`）。
 > - model.py、render.py 改了，lock 变为 `7055a72c7b0db91d`，须重新认证。
 
 > 2.2.0（执行令《首发后-table包2.2.0》，调度 11-12 派单；依据 mengosv2 #710 §5.5–§5.8、§6.3、§6.3a，#711 §2.5–§2.7、§六，返工稿 #717（§六 调度已定：层级按一列文字映射、合并行不算格级覆盖、T9-06 判部分），kernel-spec v0.2.98 08 PD-1e、17 TL-30/TL-30b，引擎 #719 对包的两条要求）：G7–G11 与 G17 的包内一项。**只放宽**：只加可选字段、枚举值、函数、核对项、告警码与输出字段；不带新字段的合规输入，表模型、Markdown、CSV 照旧逐字节相同（`tests/test_contribution.py`；入参 schema 剥掉 2.1.0、2.2.0 的新增项后与 1.0.1 逐键相同）。
