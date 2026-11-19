@@ -4,8 +4,8 @@
   "publisher": "mengos",
   "scope": "public",
   "title": "文档追问Pro",
-  "summary": "需要先安装并启用“长文档编排”包；单独安装没有作用。",
-  "content_hash": "484354a37ac4e1927d5c34cc6176a89dc1ad9c8a0f38ecfaaac6104d6acfbf47",
+  "summary": "需要先安装并启用文档包；单独安装没有作用。",
+  "content_hash": "3afc12df7ac4ab5e0fdd019e0fb5afe765cf4d16a1ceb24cafd47e12b3b3b1e4",
   "types": [],
   "tools": [],
   "tools_lock": {
