@@ -19,7 +19,7 @@ import json
 import sys
 
 from coverage import coverage
-from ops import Filter, aggregate, distribution, num_out, parse_aggregate, parse_num
+from ops import Agg, Dist, Filter, num_out, parse_aggregate, parse_num
 from readers import BadInput, assumptions_of, canonical, read_source, source_hash
 from series import chain, product
 
@@ -49,9 +49,9 @@ def _page(payload, lst):
 
 
 def count_rows(payload, max_rows=MAX_INLINE_ROWS, workdir=None):
+    """一遍读完：逐行判断条件，边读边累计条数、分组、合计、分布；要清单时只留本页的行（0.2.3，不建行表）。"""
     table = read_source(payload.get("source"), max_rows, workdir)
     flt = Filter(payload.get("where"), payload.get("any_of"), table.columns)
-    matched, unparsed = flt.apply(table)
     group_by = payload.get("group_by") or []
     if not isinstance(group_by, list) or not all(isinstance(g, str) for g in group_by):
         raise BadInput("group_by 须为列名数组")
@@ -65,6 +65,7 @@ def count_rows(payload, max_rows=MAX_INLINE_ROWS, workdir=None):
     if not isinstance(lst, bool):
         raise BadInput("list 须为布尔值")
     off, lim = _page(payload, lst)
+    dist = Dist(payload["distribution"], table.columns) if payload.get("distribution") is not None else None
     what = {**flt.echo(), "group_by": group_by,
             "aggregate": [{"col": c, "fn": f} for c, _, f in aggs],
             "distribution": payload.get("distribution"), "list": lst}
@@ -72,37 +73,61 @@ def count_rows(payload, max_rows=MAX_INLINE_ROWS, workdir=None):
         what["offset"] = off
     if lim is not None:
         what["limit"] = lim
+    total = [Agg(c, i, f) for c, i, f in aggs]
+    groups: dict[tuple, list] = {}             # 组键 → [条数, 该组各项合计]
+    start = off or 0
+    stop = start + lim if lim is not None else start + MAX_LIST_ITEMS + 1   # 不给 limit 时多留一条，只为判超
+    page = []
+    n = 0
+    unparsed, n_unparsed = [], 0
+    for hit, rid, cells in flt.scan(table.rows):
+        if not hit:
+            n_unparsed += 1
+            if len(unparsed) < 50:
+                unparsed.append(cells)
+            continue
+        nums = [parse_num(cells[i]) for _, i, _ in aggs]
+        if gidx:
+            key = tuple(cells[i] for i in gidx)
+            g = groups.get(key)
+            if g is None:
+                g = groups[key] = [0, [Agg(c, i, f) for c, i, f in aggs]]
+            g[0] += 1
+            for a, x in zip(g[1], nums):
+                a.add(rid, x)
+        for a, x in zip(total, nums):
+            a.add(rid, x)
+        if dist is not None:
+            dist.add(rid, cells)
+        if lst and start <= n < stop:
+            page.append((rid, cells))
+        n += 1
     out = {
-        "count": len(matched),
+        "count": n,
         "what": what,
-        "source": {**table.source, "rows_unparsed": len(unparsed)},
-        "unparsed": unparsed[:50],
+        "source": {**table.source, "rows_unparsed": n_unparsed},
+        "unparsed": unparsed,
         "checks": table.checks,
         "assumptions": assumptions_of(table),
     }
     if gidx:
-        groups: dict[tuple, list] = {}
-        for r in matched:
-            groups.setdefault(tuple(r[1][i] for i in gidx), []).append(r)
         gl = []
         for key in sorted(groups, key=lambda k: [(0, parse_num(x), x) if parse_num(x) is not None else (1, 0, x) for x in k]):
-            g = {"key": dict(zip(group_by, key)), "count": len(groups[key])}
+            g = {"key": dict(zip(group_by, key)), "count": groups[key][0]}
             if aggs:
-                g["aggregate"] = aggregate(groups[key], aggs)
+                g["aggregate"] = [a.result() for a in groups[key][1]]
             gl.append(g)
         out["groups"] = gl
         out["groups_count"] = len(gl)          # G-3：不同取值（组合）的个数
     if aggs:
-        out["aggregate"] = aggregate(matched, aggs)
-    if payload.get("distribution") is not None:
-        out["distribution"] = distribution(matched, payload["distribution"], table.columns)
+        out["aggregate"] = [a.result() for a in total]
+    if dist is not None:
+        out["distribution"] = dist.result()
     if lst:
-        start = off or 0
-        page = matched[start:start + lim] if lim is not None else matched[start:]
         if len(page) > MAX_LIST_ITEMS:
-            raise BadInput(f"清单 {len(matched)} 条超过 {MAX_LIST_ITEMS}，用 offset、limit 分批取")
+            raise BadInput(f"清单 {n} 条超过 {MAX_LIST_ITEMS}，用 offset、limit 分批取")
         out["items"] = [{"id": rid, "cells": dict(zip(table.columns, cells))} for rid, cells in page]
-        out["total_matched"] = len(matched)
+        out["total_matched"] = n
     return out
 
 

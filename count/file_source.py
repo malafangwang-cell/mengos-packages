@@ -30,6 +30,10 @@ UNIT_COL = "单元"
 FILE_KEYS = {"path", "sha256", "bytes", "media_type", "parsed"}
 PARSED_KEYS = {"path", "sha256", "parser"}
 ORIGINAL_OUT = ".count-original"      # 回原件读时解析库的输出目录（工作目录内，读完即删，不留产出）
+# 回原件读的内存上限（0.2.3，地址空间 RLIMIT_AS，同存储服务入库的做法 vetc cad-extract.ts）：只在回原件读时设、读完复原；
+# 超了 ⟹ 解析库的 CAD_RESOURCE_EXCEEDED，结构化失败，不截断（设计稿 §十四 风险 3）。依据见 README 版本记录 0.2.3。
+ORIGINAL_AS_LIMIT_MB = 4096
+RESOURCE_EXCEEDED = "原件读不了（CAD_RESOURCE_EXCEEDED：处理该图纸所需内存超过上限），不出数"   # 与解析库内存超限时经下面 CadFail 分支出的原文逐字相同
 
 
 def own_library() -> dict:
@@ -89,20 +93,62 @@ def _read_checked(path: str, sha256, nbytes, what: str) -> bytes:
     return data
 
 
+def _check_file(path: str, sha256, nbytes, what: str) -> int:
+    """核 sha256 与字节数，按块读、不留字节（原件可达数百 MB，只要核对与字节数）→ 字节数。"""
+    h, n = hashlib.sha256(), 0
+    with open(path, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+            n += len(b)
+    if not isinstance(sha256, str) or h.hexdigest() != sha256:
+        raise BadInput(f"{what}：文件字节与入参的 sha256 不符（被改动或截断），不出数")
+    if nbytes is not None and nbytes != n:
+        raise BadInput(f"{what}：文件字节数 {n} 与入参的 {nbytes} 不符，不出数")
+    return n
+
+
+class _AddressSpaceLimit:
+    """在 with 块内把本进程的地址空间软上限降到 mb（已有更紧的上限则不动），出块复原。"""
+
+    def __init__(self, mb: int):
+        self.mb = mb
+
+    def __enter__(self):
+        import resource
+        self.old = resource.getrlimit(resource.RLIMIT_AS)
+        soft, hard = self.old
+        lim = self.mb * 1024 * 1024
+        if hard != resource.RLIM_INFINITY:
+            lim = min(lim, hard)
+        if soft == resource.RLIM_INFINITY or lim < soft:
+            resource.setrlimit(resource.RLIMIT_AS, (lim, hard))
+        return self
+
+    def __exit__(self, *exc):
+        import resource
+        resource.setrlimit(resource.RLIMIT_AS, self.old)
+        return False
+
+
 def _parse_original(dxf_path: str, workdir: str, fid: str) -> dict:
-    """用本包带的解析库打开原件，出完整解析结构（与存储服务入库同一份代码；明细不设体量上限，全部留存）。"""
+    """用本包带的解析库打开原件，出完整解析结构（与存储服务入库同一份代码；明细不设体量上限，全部留存）。
+    整段在内存上限 ORIGINAL_AS_LIMIT_MB 之内做；超了干净失败，不出数。"""
     if CADLIB not in sys.path:
         sys.path.insert(0, CADLIB)
-    from mengos_cad import core
+    from mengos_cad import core           # 导入在上限之外（与文件大小无关）；上限只管解析与读回
     out = os.path.join(os.path.realpath(workdir), ORIGINAL_OUT)
     shutil.rmtree(out, ignore_errors=True)
     try:
-        # 解析库 1.0.1 起 run() 收 detail_cap：值为 None 的节不设上限（只影响解析结构里明细存不存，单元文本不变）
-        core.run(dxf_path, out, fid=fid, parsed=True, detail_cap={k: None for k in DETAIL_SECTIONS})
-        with open(os.path.join(out, "parsed.json"), "rb") as f:
-            return json.loads(f.read())
-    except core.CadFail as e:
-        raise BadInput(f"原件读不了（{e.code}：{e.message}），不出数") from None
+        with _AddressSpaceLimit(ORIGINAL_AS_LIMIT_MB):
+            try:
+                # 解析库 1.0.1 起 run() 收 detail_cap：值为 None 的节不设上限（只影响解析结构里明细存不存，单元文本不变）
+                core.run(dxf_path, out, fid=fid, parsed=True, detail_cap={k: None for k in DETAIL_SECTIONS})
+                with open(os.path.join(out, "parsed.json"), "rb") as f:
+                    return json.loads(f.read())
+            except core.CadFail as e:
+                raise BadInput(f"原件读不了（{e.code}：{e.message}），不出数") from None
+    except MemoryError:
+        raise BadInput(RESOURCE_EXCEEDED) from None
     finally:
         shutil.rmtree(out, ignore_errors=True)
         shutil.rmtree(out + ".partial", ignore_errors=True)
@@ -166,6 +212,29 @@ class Doc:
         return any(name == section and not stored for _, name, _, _, _, stored in self.details)
 
 
+class DetailRows:
+    """明细节的行（0.2.3）：不建行表，用到时逐行切格、给序号；可再读。条数在建时已逐节核过（= 声明条数）。
+    行序、序号、切格与原先建表时相同；某行列数与表头不符 ⟹ 读到那一行时 BadInput（不出数）。"""
+
+    def __init__(self, section: str, ncols: int, parts: list):
+        self.section, self.ncols, self.parts = section, ncols, parts
+        self.n = sum(len(lines) for _, lines in parts)
+
+    def __len__(self) -> int:
+        return self.n
+
+    def __iter__(self):
+        section, k = self.section, self.ncols - 1
+        for unit, lines in self.parts:
+            prefix = f"{unit or '-'}/{section}/"
+            for j, line in enumerate(lines, 1):
+                cells = line.split("|", k)
+                if len(cells) != k + 1:
+                    raise BadInput(f"节“{section}”第 {j} 行的列数与表头不符：{line[:80]}")
+                cells.insert(0, unit)
+                yield prefix + str(j), cells
+
+
 def _unparsed_summary(unparsed: list, unit: str | None) -> list:
     agg: dict[str, int] = {}
     for u in unparsed:
@@ -191,7 +260,7 @@ def read_file_source(src: dict, workdir) -> Table:
     lib = own_library()
     checks = []
     orig_path = _resolve(workdir, f["path"], "原件")
-    orig = _read_checked(orig_path, f["sha256"], f.get("bytes"), "原件")
+    orig_bytes = _check_file(orig_path, f["sha256"], f.get("bytes"), "原件")
     p = f.get("parsed")
     doc = None
     read_from = "original"
@@ -208,10 +277,12 @@ def read_file_source(src: dict, workdir) -> Table:
         if raw.get("library") != lib:
             raise BadInput("解析结构里记的解析库与工具所带的不同，不出数")
         doc = Doc(raw)
+        del pdata, raw
         read_from = "parsed"
     checks += [{"name": "sha256_eq", "ok": True}, {"name": "parser_eq_ingest", "ok": True}]
     if doc is None or doc.needs_original(section):
         fid = doc.raw.get("fid", "X") if doc is not None else "X"
+        doc = None                    # 先放掉已读的解析结构，再回原件读
         doc = Doc(_parse_original(orig_path, workdir, fid if isinstance(fid, str) else "X"))
         read_from = "original"
         if doc.raw.get("library") != lib:
@@ -233,10 +304,11 @@ def read_file_source(src: dict, workdir) -> Table:
         raise BadInput(f"这份附件里没有节“{section}”；有：" + "、".join(available))
 
     cols = available[section]
-    rows: list[tuple[str, list[str]]] = []
+    rows = []
     declared = 0
     units_read, without = 0, []
     if section in DETAIL_SECTIONS:
+        parts = []
         for unit, name, dcols, n, lines, _ in doc.details:
             if name != section or (scope_unit is not None and unit_key(unit) != unit_key(scope_unit)):
                 continue
@@ -244,13 +316,10 @@ def read_file_source(src: dict, workdir) -> Table:
                 raise BadInput(f"节“{section}”在各单元的列名不一致，不出数")
             if len(lines) != n:
                 raise BadInput(f"节“{section}”（{unit or '不属任何单元'}）读到 {len(lines)} 行，与声明的 {n} 行不符，不出数")
-            for j, line in enumerate(lines, 1):
-                cells = line.split("|", len(cols) - 1)
-                if len(cells) != len(cols):
-                    raise BadInput(f"节“{section}”第 {j} 行的列数与表头不符：{line[:80]}")
-                rows.append((f"{unit or '-'}/{section}/{j}", [unit] + cells))
+            parts.append((unit, lines))
             declared += n
             units_read += 1
+        rows = DetailRows(section, len(cols), parts)
         with_sec = {unit_key(u) for u, name, *_ in doc.details if name == section}
         without = [u for u in units if unit_key(u) not in with_sec]
     else:
@@ -271,7 +340,7 @@ def read_file_source(src: dict, workdir) -> Table:
         raise BadInput(f"节“{section}”读到 {len(rows)} 行，与声明的 {declared} 行不符，不出数")
     source = {
         "mode": "file", "read_from": read_from,
-        "file": {"sha256": f["sha256"], "bytes": len(orig)},
+        "file": {"sha256": f["sha256"], "bytes": orig_bytes},
         "parser": lib, "scope": "unit" if scope_unit is not None else "whole",
         "unit": scope_unit, "section": section,
         "unparsed": _unparsed_summary(doc.unparsed, scope_unit),

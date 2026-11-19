@@ -154,9 +154,9 @@ class Filter:
     def echo(self):
         return {"where": [c.echo() for c in self.where], "any_of": [[c.echo() for c in g] for g in self.any_of]}
 
-    def apply(self, table: Table):
-        matched, unparsed = [], []
-        for rid, cells in table.rows:
+    def scan(self, rows):
+        """逐行判断（不建行表）：命中 ⟹ (True, rid, cells)；数值比较解析不了 ⟹ (False, rid, {id, col, value})；不中不出。"""
+        for rid, cells in rows:
             bad = None
             ok = True
             for c in self.where:
@@ -181,9 +181,17 @@ class Filter:
                 if hit:
                     bad = None
             if ok:
-                matched.append((rid, cells))
+                yield True, rid, cells
             elif bad is not None:
-                unparsed.append({"id": rid, "col": bad.col, "value": bad.cell(cells)})
+                yield False, rid, {"id": rid, "col": bad.col, "value": bad.cell(cells)}
+
+    def apply(self, table: Table):
+        matched, unparsed = [], []
+        for hit, rid, x in self.scan(table.rows):
+            if hit:
+                matched.append((rid, x))
+            else:
+                unparsed.append(x)
         return matched, unparsed
 
 
@@ -211,24 +219,45 @@ def parse_aggregate(spec, columns):
     return out
 
 
+class Agg:
+    """一项列求和的累计（逐行加，不留行）：与先收齐再求和同一次序、同一结果。"""
+
+    def __init__(self, col, i, fn):
+        self.col, self.i, self.fn = col, i, fn
+        self.v = None
+        self.used = 0
+        self.bad = 0
+        self.bad_ids = []
+
+    def add(self, rid, n):
+        """n：该行这一列解析出的数（parse_num 的结果，None 表示解析不了）；同一行的数由调用方解析一次，分组与总计共用。"""
+        if n is None:
+            self.bad += 1
+            if len(self.bad_ids) < 50:
+                self.bad_ids.append(rid)
+            return
+        self.used += 1
+        if self.v is None:
+            self.v = Decimal(0) + n if self.fn == "sum" else n
+        elif self.fn == "sum":
+            self.v += n
+        elif (n < self.v) if self.fn == "min" else (n > self.v):
+            self.v = n
+
+    def result(self):
+        value = text = None
+        if self.used:
+            value, text = num_out(self.v), num_text(self.v)
+        return {"col": self.col, "fn": self.fn, "value": value, "value_text": text, "rows_used": self.used,
+                "rows_unparsed": self.bad, "unparsed_ids": self.bad_ids}
+
+
 def aggregate(rows, aggs):
-    res = []
-    for col, i, fn in aggs:
-        vals, bad = [], []
-        for rid, cells in rows:
-            n = parse_num(cells[i])
-            if n is None:
-                bad.append(rid)
-            else:
-                vals.append(n)
-        if vals:
-            v = sum(vals, Decimal(0)) if fn == "sum" else (min(vals) if fn == "min" else max(vals))
-            value, text = num_out(v), num_text(v)
-        else:
-            value = text = None
-        res.append({"col": col, "fn": fn, "value": value, "value_text": text, "rows_used": len(vals),
-                    "rows_unparsed": len(bad), "unparsed_ids": bad[:50]})
-    return res
+    acc = [Agg(col, i, fn) for col, i, fn in aggs]
+    for rid, cells in rows:
+        for a in acc:
+            a.add(rid, parse_num(cells[a.i]))
+    return [a.result() for a in acc]
 
 
 # ───────── 数值列间隔：聚类、步长、等距、网格 ─────────
@@ -280,43 +309,64 @@ def axis(values: list[Decimal], tol: Decimal) -> dict:
     }, reps
 
 
-def distribution(rows, spec, columns):
-    if not isinstance(spec, dict):
-        raise BadInput("distribution 须为对象 {x, y?, tol}")
-    tol = parse_num(spec.get("tol", 0))
-    if tol is None or tol < 0:
-        raise BadInput("distribution.tol 须为非负数")
-    xi = col_index(columns, spec.get("x"), "distribution.x")
-    yi = col_index(columns, spec["y"], "distribution.y") if spec.get("y") is not None else None
-    pts, bad = [], []
-    for rid, cells in rows:
-        x = parse_num(cells[xi])
-        y = parse_num(cells[yi]) if yi is not None else Decimal(0)
+class Dist:
+    """一维、二维分布的累计：只留不同取值（点）与各点的次数，不留行；聚类、步长、网格只看取值与次数。"""
+
+    def __init__(self, spec, columns):
+        if not isinstance(spec, dict):
+            raise BadInput("distribution 须为对象 {x, y?, tol}")
+        tol = parse_num(spec.get("tol", 0))
+        if tol is None or tol < 0:
+            raise BadInput("distribution.tol 须为非负数")
+        self.tol = tol
+        self.xi = col_index(columns, spec.get("x"), "distribution.x")
+        self.yi = col_index(columns, spec["y"], "distribution.y") if spec.get("y") is not None else None
+        self.echo = {"x": spec.get("x"), "tol": num_out(tol)}
+        if self.yi is not None:
+            self.echo["y"] = spec["y"]
+        self.pts: dict[tuple, int] = {}
+        self.used = 0
+        self.bad = 0
+        self.bad_ids = []
+
+    def add(self, rid, cells):
+        x = parse_num(cells[self.xi])
+        y = parse_num(cells[self.yi]) if self.yi is not None else Decimal(0)
         if x is None or y is None:
-            bad.append(rid)
-        else:
-            pts.append((x, y))
-    echo = {"x": spec.get("x"), "tol": num_out(tol)}
-    if yi is not None:
-        echo["y"] = spec["y"]
-    out = {"what": echo, "rows_used": len(pts), "rows_unparsed": len(bad), "unparsed_ids": bad[:50]}
-    if not pts:
-        out["x"] = None
+            self.bad += 1
+            if len(self.bad_ids) < 50:
+                self.bad_ids.append(rid)
+            return
+        self.used += 1
+        self.pts[(x, y)] = self.pts.get((x, y), 0) + 1
+
+    def result(self):
+        tol, yi = self.tol, self.yi
+        out = {"what": self.echo, "rows_used": self.used, "rows_unparsed": self.bad, "unparsed_ids": self.bad_ids}
+        if not self.used:
+            out["x"] = None
+            return out
+        out["x"], xr = axis([p[0] for p in self.pts], tol)
+        if yi is not None:
+            out["y"], yr = axis([p[1] for p in self.pts], tol)
+            cells = {}
+            for (x, y), c in self.pts.items():
+                k = (which_cluster(x, xr, tol), which_cluster(y, yr, tol))
+                cells[k] = cells.get(k, 0) + c
+            size = len(xr) * len(yr)
+            out["grid"] = {
+                "cols": len(xr), "rows": len(yr), "cells": size,
+                "occupied": len(cells), "missing": size - len(cells),
+                "stacked": sum(c - 1 for c in cells.values()),
+                "full": len(cells) == size and self.used == size,
+                "missing_cells": [{"x": num_out(xr[i]), "y": num_out(yr[j])}
+                                  for i in range(len(xr)) for j in range(len(yr)) if (i, j) not in cells][:50],
+            }
         return out
-    out["x"], xr = axis([p[0] for p in pts], tol)
-    if yi is not None:
-        out["y"], yr = axis([p[1] for p in pts], tol)
-        cells = {}
-        for x, y in pts:
-            k = (which_cluster(x, xr, tol), which_cluster(y, yr, tol))
-            cells[k] = cells.get(k, 0) + 1
-        size = len(xr) * len(yr)
-        out["grid"] = {
-            "cols": len(xr), "rows": len(yr), "cells": size,
-            "occupied": len(cells), "missing": size - len(cells),
-            "stacked": sum(c - 1 for c in cells.values()),
-            "full": len(cells) == size and len(pts) == size,
-            "missing_cells": [{"x": num_out(xr[i]), "y": num_out(yr[j])}
-                              for i in range(len(xr)) for j in range(len(yr)) if (i, j) not in cells][:50],
-        }
-    return out
+
+
+def distribution(rows, spec, columns):
+    d = Dist(spec, columns)
+    for rid, cells in rows:
+        d.add(rid, cells)
+    return d.result()
