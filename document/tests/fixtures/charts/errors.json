@@ -1,0 +1,179 @@
+{
+ "实例①的写法：2024 之后直接 2027": {
+  "chart": {
+   "type": "combo",
+   "categories": [
+    "2021",
+    "2022",
+    "2023",
+    "2024",
+    "2027"
+   ],
+   "series": [
+    {
+     "name": "投资额",
+     "as": "bar",
+     "unit": "亿元",
+     "values": [
+      12.4,
+      15.1,
+      18.6,
+      21.3,
+      31.0
+     ]
+    },
+    {
+     "name": "同比增速",
+     "as": "line",
+     "unit": "%",
+     "values": [
+      null,
+      21.8,
+      23.2,
+      14.5,
+      11.1
+     ]
+    }
+   ]
+  },
+  "error": {
+   "code": "BAD_INPUT",
+   "message": "横轴按年排，2024 之后直接是 2027，中间缺 2 个年",
+   "where": "doc.figures[i].source.chart.categories",
+   "hint": "把缺的年补进 categories；确实没有数据的，值写 null，图上会留空并标出"
+  }
+ },
+ "占比加起来不是 100%": {
+  "chart": {
+   "type": "pie",
+   "unit": "%",
+   "categories": [
+    "设备购置费",
+    "建筑工程费",
+    "安装工程费",
+    "其他"
+   ],
+   "series": [
+    {
+     "name": "占比",
+     "values": [
+      45,
+      22.5,
+      12,
+      8
+     ]
+    }
+   ]
+  },
+  "error": {
+   "code": "BAD_INPUT",
+   "message": "各项占比合计 87.5%，不是 100%",
+   "where": "doc.figures[i].source.chart.series[0].values",
+   "hint": "核对各项数字；如果只列了一部分，把其余的补成一项“其他”"
+  }
+ },
+ "数的个数与类别对不上": {
+  "chart": {
+   "type": "bar",
+   "unit": "亿元",
+   "categories": [
+    "2022",
+    "2023",
+    "2024"
+   ],
+   "series": [
+    {
+     "name": "营业收入",
+     "values": [
+      5.6,
+      6.9
+     ]
+    }
+   ]
+  },
+  "error": {
+   "code": "BAD_INPUT",
+   "message": "“营业收入”有 2 个数，类别有 3 个（2022…2024）",
+   "where": "doc.figures[i].source.chart.series[0].values",
+   "hint": "每组数据的个数要与 categories 相同；某一项没有数据写 null"
+  }
+ },
+ "数值里带了单位": {
+  "chart": {
+   "type": "bar",
+   "categories": [
+    "2022",
+    "2023"
+   ],
+   "series": [
+    {
+     "name": "营业收入",
+     "values": [
+      "5.6亿",
+      "6.9亿"
+     ]
+    }
+   ]
+  },
+  "error": {
+   "code": "BAD_INPUT",
+   "message": "“营业收入”的第 1 个值（2022）不是数：'5.6亿'",
+   "where": "doc.figures[i].source.chart.series[0].values[0]",
+   "hint": "只写数字，不带单位、逗号和百分号；单位写在 unit"
+  }
+ },
+ "饼图里有负数": {
+  "chart": {
+   "type": "pie",
+   "unit": "万元",
+   "categories": [
+    "主营业务",
+    "投资收益",
+    "资产减值"
+   ],
+   "series": [
+    {
+     "name": "利润构成",
+     "values": [
+      820,
+      140,
+      -210
+     ]
+    }
+   ]
+  },
+  "error": {
+   "code": "BAD_INPUT",
+   "message": "饼图不能有负数（资产减值）",
+   "where": "doc.figures[i].source.chart.series[0].values",
+   "hint": "有正有负的构成用柱状图"
+  }
+ },
+ "自己指定颜色": {
+  "chart": {
+   "type": "bar",
+   "categories": [
+    "A",
+    "B"
+   ],
+   "colors": [
+    "#ff0000"
+   ],
+   "series": [
+    {
+     "name": "x",
+     "values": [
+      1,
+      2
+     ]
+    }
+   ]
+  },
+  "error": {
+   "code": "BAD_INPUT",
+   "message": "doc.figures[i].source.chart 有不认识的字段：colors（可用：type, categories, series, unit, forecast_from, decimals, stacked, note）",
+   "where": "doc.figures[i].source.chart",
+   "hint": "颜色、字号、坐标范围由工具统一决定，不用写"
+  }
+ }
+}

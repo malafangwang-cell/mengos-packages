@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 313" width="720" height="313" font-family='"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif'>
+<title>各季度净利润</title>
+<rect x="0" y="0" width="720" height="313" fill="#ffffff"/>
+<text x="10.68" y="28" font-size="11" fill="#7d7d79" text-anchor="start">净利润（万元）</text>
+<line x1="44" y1="272" x2="700" y2="272" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="276" font-size="11" fill="#7d7d79" text-anchor="end">−600</text>
+<line x1="44" y1="238.86" x2="700" y2="238.86" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="242.86" font-size="11" fill="#7d7d79" text-anchor="end">−400</text>
+<line x1="44" y1="205.71" x2="700" y2="205.71" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="209.71" font-size="11" fill="#7d7d79" text-anchor="end">−200</text>
+<line x1="44" y1="172.57" x2="700" y2="172.57" stroke="#b9b8b2" stroke-width="1"/>
+<text x="36" y="176.57" font-size="11" fill="#7d7d79" text-anchor="end">0</text>
+<line x1="44" y1="139.43" x2="700" y2="139.43" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="143.43" font-size="11" fill="#7d7d79" text-anchor="end">200</text>
+<line x1="44" y1="106.29" x2="700" y2="106.29" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="110.29" font-size="11" fill="#7d7d79" text-anchor="end">400</text>
+<line x1="44" y1="73.14" x2="700" y2="73.14" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="77.14" font-size="11" fill="#7d7d79" text-anchor="end">600</text>
+<line x1="44" y1="40" x2="700" y2="40" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="44" font-size="11" fill="#7d7d79" text-anchor="end">800</text>
+<text x="85" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2023Q1</text>
+<text x="167" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2023Q2</text>
+<text x="249" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2023Q3</text>
+<text x="331" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2023Q4</text>
+<text x="413" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2024Q1</text>
+<text x="495" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2024Q2</text>
+<text x="577" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2024Q3</text>
+<text x="659" y="290" font-size="12" fill="#4a4a47" text-anchor="middle">2024Q4</text>
+<path d="M71 172.57L71 222.6Q71 225.6 74 225.6L96 225.6Q99 225.6 99 222.6L99 172.57Z" fill="#2a78d6"/>
+<text x="85" y="244.6" font-size="11" fill="#1a1a19" text-anchor="middle">−320</text>
+<path d="M153 172.57L153 199.4Q153 202.4 156 202.4L178 202.4Q181 202.4 181 199.4L181 172.57Z" fill="#2a78d6"/>
+<text x="167" y="221.4" font-size="11" fill="#1a1a19" text-anchor="middle">−180</text>
+<path d="M235 172.57L235 159.83Q235 156.83 238 156.83L260 156.83Q263 156.83 263 159.83L263 172.57Z" fill="#2a78d6"/>
+<text x="249" y="149.83" font-size="11" fill="#1a1a19" text-anchor="middle">95</text>
+<path d="M317 172.57L317 132.49Q317 129.49 320 129.49L342 129.49Q345 129.49 345 132.49L345 172.57Z" fill="#2a78d6"/>
+<text x="331" y="122.49" font-size="11" fill="#1a1a19" text-anchor="middle">260</text>
+<path d="M399 172.57L399 107.63Q399 104.63 402 104.63L424 104.63Q427 104.63 427 107.63L427 172.57Z" fill="#2a78d6"/>
+<text x="413" y="97.63" font-size="11" fill="#1a1a19" text-anchor="middle">410</text>
+<path d="M481 172.57L481 182Q481 185 484 185L506 185Q509 185 509 182L509 172.57Z" fill="#2a78d6"/>
+<text x="495" y="204" font-size="11" fill="#1a1a19" text-anchor="middle">−75</text>
+<path d="M563 172.57L563 89.4Q563 86.4 566 86.4L588 86.4Q591 86.4 591 89.4L591 172.57Z" fill="#2a78d6"/>
+<text x="577" y="79.4" font-size="11" fill="#1a1a19" text-anchor="middle">520</text>
+<path d="M645 172.57L645 62.89Q645 59.89 648 59.89L670 59.89Q673 59.89 673 62.89L673 172.57Z" fill="#2a78d6"/>
+<text x="659" y="52.89" font-size="11" fill="#1a1a19" text-anchor="middle">680</text>
+</svg>

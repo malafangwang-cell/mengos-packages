@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 335" width="720" height="335" font-family='"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif'>
+<title>园区月度最大用电负荷</title>
+<rect x="0" y="0" width="720" height="335" fill="#ffffff"/>
+<line x1="42" y1="22" x2="60" y2="22" stroke="#2a78d6" stroke-width="2"/><circle cx="51" cy="22" r="3.5" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<text x="64" y="26" font-size="12" fill="#4a4a47" text-anchor="start">一期厂区</text>
+<line x1="130" y1="22" x2="148" y2="22" stroke="#eb6834" stroke-width="2"/><circle cx="139" cy="22" r="3.5" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<text x="152" y="26" font-size="12" fill="#4a4a47" text-anchor="start">二期厂区</text>
+<text x="27.79" y="50" font-size="11" fill="#7d7d79" text-anchor="start">单位：MW</text>
+<line x1="44" y1="294" x2="700" y2="294" stroke="#b9b8b2" stroke-width="1"/>
+<text x="36" y="298" font-size="11" fill="#7d7d79" text-anchor="end">0</text>
+<line x1="44" y1="236" x2="700" y2="236" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="240" font-size="11" fill="#7d7d79" text-anchor="end">20</text>
+<line x1="44" y1="178" x2="700" y2="178" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="182" font-size="11" fill="#7d7d79" text-anchor="end">40</text>
+<line x1="44" y1="120" x2="700" y2="120" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="124" font-size="11" fill="#7d7d79" text-anchor="end">60</text>
+<line x1="44" y1="62" x2="700" y2="62" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="66" font-size="11" fill="#7d7d79" text-anchor="end">80</text>
+<text x="71.33" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-01</text>
+<text x="126" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-02</text>
+<text x="180.67" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-03</text>
+<text x="235.33" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-04</text>
+<text x="290" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-05</text>
+<text x="344.67" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-06</text>
+<text x="399.33" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-07</text>
+<text x="454" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-08</text>
+<text x="508.67" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-09</text>
+<text x="563.33" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-10</text>
+<text x="618" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-11</text>
+<text x="672.67" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024-12</text>
+<polyline points="71.33,175.1 126,180.9 180.67,169.3 235.33,160.6 290,143.2 344.67,117.1 399.33,96.8 454,91 508.67,120 563.33,146.1 618,160.6 672.67,166.4" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="71.33,230.2 126,233.1 180.67,224.4 235.33,215.7 290,204.1 344.67,183.8 399.33,166.4 454,163.5 508.67,186.7 563.33,207 618,218.6 672.67,221.5" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="71.33" cy="175.1" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="126" cy="180.9" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="180.67" cy="169.3" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="235.33" cy="160.6" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="290" cy="143.2" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="344.67" cy="117.1" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="399.33" cy="96.8" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="454" cy="91" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="508.67" cy="120" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="563.33" cy="146.1" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="618" cy="160.6" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="672.67" cy="166.4" r="4" fill="#2a78d6" stroke="#ffffff" stroke-width="1.5"/>
+<text x="672.67" y="156.4" font-size="11" fill="#1a1a19" text-anchor="middle">44</text>
+<circle cx="71.33" cy="230.2" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="126" cy="233.1" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="180.67" cy="224.4" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="235.33" cy="215.7" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="290" cy="204.1" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="344.67" cy="183.8" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="399.33" cy="166.4" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="454" cy="163.5" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="508.67" cy="186.7" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="563.33" cy="207" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="618" cy="218.6" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="672.67" cy="221.5" r="4" fill="#eb6834" stroke="#ffffff" stroke-width="1.5"/>
+<text x="672.67" y="211.5" font-size="11" fill="#1a1a19" text-anchor="middle">25</text>
+</svg>

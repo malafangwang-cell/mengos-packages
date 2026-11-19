@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 335" width="720" height="335" font-family='"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif'>
+<title>近五年营业收入与营业成本</title>
+<rect x="0" y="0" width="720" height="335" fill="#ffffff"/>
+<rect x="44" y="17" width="12" height="10" rx="2" fill="#2a78d6"/>
+<text x="64" y="26" font-size="12" fill="#4a4a47" text-anchor="start">营业收入</text>
+<rect x="132" y="17" width="12" height="10" rx="2" fill="#eb6834"/>
+<text x="152" y="26" font-size="12" fill="#4a4a47" text-anchor="start">营业成本</text>
+<text x="27.79" y="50" font-size="11" fill="#7d7d79" text-anchor="start">单位：亿元</text>
+<line x1="44" y1="294" x2="700" y2="294" stroke="#b9b8b2" stroke-width="1"/>
+<text x="36" y="298" font-size="11" fill="#7d7d79" text-anchor="end">0</text>
+<line x1="44" y1="247.6" x2="700" y2="247.6" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="251.6" font-size="11" fill="#7d7d79" text-anchor="end">2</text>
+<line x1="44" y1="201.2" x2="700" y2="201.2" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="205.2" font-size="11" fill="#7d7d79" text-anchor="end">4</text>
+<line x1="44" y1="154.8" x2="700" y2="154.8" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="158.8" font-size="11" fill="#7d7d79" text-anchor="end">6</text>
+<line x1="44" y1="108.4" x2="700" y2="108.4" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="112.4" font-size="11" fill="#7d7d79" text-anchor="end">8</text>
+<line x1="44" y1="62" x2="700" y2="62" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="66" font-size="11" fill="#7d7d79" text-anchor="end">10</text>
+<text x="109.6" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2020</text>
+<text x="240.8" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2021</text>
+<text x="372" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2022</text>
+<text x="503.2" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2023</text>
+<text x="634.4" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024</text>
+<path d="M80.6 294L80.6 222.76Q80.6 219.76 83.6 219.76L105.6 219.76Q108.6 219.76 108.6 222.76L108.6 294Z" fill="#2a78d6"/>
+<text x="94.6" y="212.76" font-size="11" fill="#1a1a19" text-anchor="middle">3.2</text>
+<path d="M110.6 294L110.6 236.68Q110.6 233.68 113.6 233.68L135.6 233.68Q138.6 233.68 138.6 236.68L138.6 294Z" fill="#eb6834"/>
+<text x="124.6" y="226.68" font-size="11" fill="#1a1a19" text-anchor="middle">2.6</text>
+<path d="M211.8 294L211.8 201.88Q211.8 198.88 214.8 198.88L236.8 198.88Q239.8 198.88 239.8 201.88L239.8 294Z" fill="#2a78d6"/>
+<text x="225.8" y="191.88" font-size="11" fill="#1a1a19" text-anchor="middle">4.1</text>
+<path d="M241.8 294L241.8 220.44Q241.8 217.44 244.8 217.44L266.8 217.44Q269.8 217.44 269.8 220.44L269.8 294Z" fill="#eb6834"/>
+<text x="255.8" y="210.44" font-size="11" fill="#1a1a19" text-anchor="middle">3.3</text>
+<path d="M343 294L343 167.08Q343 164.08 346 164.08L368 164.08Q371 164.08 371 167.08L371 294Z" fill="#2a78d6"/>
+<text x="357" y="157.08" font-size="11" fill="#1a1a19" text-anchor="middle">5.6</text>
+<path d="M373 294L373 194.92Q373 191.92 376 191.92L398 191.92Q401 191.92 401 194.92L401 294Z" fill="#eb6834"/>
+<text x="387" y="184.92" font-size="11" fill="#1a1a19" text-anchor="middle">4.4</text>
+<path d="M474.2 294L474.2 136.92Q474.2 133.92 477.2 133.92L499.2 133.92Q502.2 133.92 502.2 136.92L502.2 294Z" fill="#2a78d6"/>
+<text x="488.2" y="126.92" font-size="11" fill="#1a1a19" text-anchor="middle">6.9</text>
+<path d="M504.2 294L504.2 174.04Q504.2 171.04 507.2 171.04L529.2 171.04Q532.2 171.04 532.2 174.04L532.2 294Z" fill="#eb6834"/>
+<text x="518.2" y="164.04" font-size="11" fill="#1a1a19" text-anchor="middle">5.3</text>
+<path d="M605.4 294L605.4 102.12Q605.4 99.12 608.4 99.12L630.4 99.12Q633.4 99.12 633.4 102.12L633.4 294Z" fill="#2a78d6"/>
+<text x="619.4" y="92.12" font-size="11" fill="#1a1a19" text-anchor="middle">8.4</text>
+<path d="M635.4 294L635.4 150.84Q635.4 147.84 638.4 147.84L660.4 147.84Q663.4 147.84 663.4 150.84L663.4 294Z" fill="#eb6834"/>
+<text x="649.4" y="140.84" font-size="11" fill="#1a1a19" text-anchor="middle">6.3</text>
+</svg>

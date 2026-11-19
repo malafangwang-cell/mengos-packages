@@ -583,9 +583,17 @@ _BLOCK_KIND = {"paragraph_open": "paragraph", "heading_open": "heading", "bullet
 
 
 def block_list(a: "Assembled") -> list[dict]:
-    """→ [{id, kind, section, start, end, line_start, line_end, hash, figure? | table? , auto?}]（按节、按出现顺序）。"""
+    """→ [{id, kind, section, start, end, line_start, line_end, hash, figure? source? | table? , auto?}]（按节、按出现顺序）。
+    图块另带 source：chart（工具按数据画的图）、svg（手写矢量图）、image（位图），引擎与渲染器不必再翻 doc.figures。"""
     import hashlib
     out: list[dict] = []
+
+    figs = a.figures
+
+    def fig_extra(fid: str) -> dict:
+        f = figs.get(fid)
+        return {"figure": fid, **({"source": f.kind} if f is not None else {})}
+
     for o in a.sections:
         body = o.sec.body
         lines = body.split("\n")
@@ -602,7 +610,7 @@ def block_list(a: "Assembled") -> list[dict]:
         for kind, payload, line in split_body(body):
             if kind in ("fig", "tab"):
                 items.append(("figure" if kind == "fig" else "table", line - 1, line,
-                              {"figure" if kind == "fig" else "table": payload}))
+                              fig_extra(payload) if kind == "fig" else {"table": payload}))
                 continue
             base = line - 1
             depth = 0
@@ -629,5 +637,6 @@ def block_list(a: "Assembled") -> list[dict]:
                 key = "figure" if sg.kind == "fig" else "table"
                 out.append({"id": f"{o.sec.id}.b{n}", "kind": key, "section": o.sec.id,
                             "start": len(body), "end": len(body), "line_start": 0, "line_end": 0,
-                            "hash": hashlib.sha256(b"").hexdigest(), key: sg.ref, "auto": True})
+                            "hash": hashlib.sha256(b"").hexdigest(),
+                            **(fig_extra(sg.ref) if key == "figure" else {"table": sg.ref}), "auto": True})
     return out

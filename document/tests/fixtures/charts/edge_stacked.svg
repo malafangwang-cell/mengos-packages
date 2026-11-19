@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 335" width="720" height="335" font-family='"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif'>
+<title>各年度资金来源构成</title>
+<rect x="0" y="0" width="720" height="335" fill="#ffffff"/>
+<rect x="44" y="17" width="12" height="10" rx="2" fill="#2a78d6"/>
+<text x="64" y="26" font-size="12" fill="#4a4a47" text-anchor="start">自有资金</text>
+<rect x="132" y="17" width="12" height="10" rx="2" fill="#eb6834"/>
+<text x="152" y="26" font-size="12" fill="#4a4a47" text-anchor="start">银行贷款</text>
+<rect x="220" y="17" width="12" height="10" rx="2" fill="#1baf7a"/>
+<text x="240" y="26" font-size="12" fill="#4a4a47" text-anchor="start">财政补助</text>
+<text x="12.52" y="50" font-size="11" fill="#7d7d79" text-anchor="start">单位：万元</text>
+<line x1="44" y1="294" x2="700" y2="294" stroke="#b9b8b2" stroke-width="1"/>
+<text x="36" y="298" font-size="11" fill="#7d7d79" text-anchor="end">0</text>
+<line x1="44" y1="255.33" x2="700" y2="255.33" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="259.33" font-size="11" fill="#7d7d79" text-anchor="end">1,000</text>
+<line x1="44" y1="216.67" x2="700" y2="216.67" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="220.67" font-size="11" fill="#7d7d79" text-anchor="end">2,000</text>
+<line x1="44" y1="178" x2="700" y2="178" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="182" font-size="11" fill="#7d7d79" text-anchor="end">3,000</text>
+<line x1="44" y1="139.33" x2="700" y2="139.33" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="143.33" font-size="11" fill="#7d7d79" text-anchor="end">4,000</text>
+<line x1="44" y1="100.67" x2="700" y2="100.67" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="104.67" font-size="11" fill="#7d7d79" text-anchor="end">5,000</text>
+<line x1="44" y1="62" x2="700" y2="62" stroke="#e4e4e1" stroke-width="1"/>
+<text x="36" y="66" font-size="11" fill="#7d7d79" text-anchor="end">6,000</text>
+<text x="126" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2022</text>
+<text x="290" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2023</text>
+<text x="454" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2024</text>
+<text x="618" y="312" font-size="12" fill="#4a4a47" text-anchor="middle">2025</text>
+<path d="M104 294L104 248.6Q104 248.6 104 248.6L148 248.6Q148 248.6 148 248.6L148 294Z" fill="#2a78d6"/>
+<text x="126" y="274.8" font-size="11" fill="#ffffff" text-anchor="middle">1,200</text>
+<path d="M104 247.6L104 155.8Q104 155.8 104 155.8L148 155.8Q148 155.8 148 155.8L148 247.6Z" fill="#eb6834"/>
+<text x="126" y="205.2" font-size="11" fill="#ffffff" text-anchor="middle">2,400</text>
+<path d="M104 154.8L104 146.2Q104 143.2 107 143.2L145 143.2Q148 143.2 148 146.2L148 154.8Z" fill="#1baf7a"/>
+<text x="126" y="136.2" font-size="11" fill="#1a1a19" text-anchor="middle">3,900</text>
+<path d="M268 294L268 237Q268 237 268 237L312 237Q312 237 312 237L312 294Z" fill="#2a78d6"/>
+<text x="290" y="269" font-size="11" fill="#ffffff" text-anchor="middle">1,500</text>
+<path d="M268 236L268 136.47Q268 136.47 268 136.47L312 136.47Q312 136.47 312 136.47L312 236Z" fill="#eb6834"/>
+<text x="290" y="189.73" font-size="11" fill="#ffffff" text-anchor="middle">2,600</text>
+<path d="M268 135.47L268 121.07Q268 118.07 271 118.07L309 118.07Q312 118.07 312 121.07L312 135.47Z" fill="#1baf7a"/>
+<text x="290" y="130.77" font-size="11" fill="#ffffff" text-anchor="middle">450</text>
+<text x="290" y="111.07" font-size="11" fill="#1a1a19" text-anchor="middle">4,550</text>
+<path d="M432 294L432 225.4Q432 225.4 432 225.4L476 225.4Q476 225.4 476 225.4L476 294Z" fill="#2a78d6"/>
+<text x="454" y="263.2" font-size="11" fill="#ffffff" text-anchor="middle">1,800</text>
+<path d="M432 224.4L432 128.73Q432 128.73 432 128.73L476 128.73Q476 128.73 476 128.73L476 224.4Z" fill="#eb6834"/>
+<text x="454" y="180.07" font-size="11" fill="#ffffff" text-anchor="middle">2,500</text>
+<path d="M432 127.73L432 107.53Q432 104.53 435 104.53L473 104.53Q476 104.53 476 107.53L476 127.73Z" fill="#1baf7a"/>
+<text x="454" y="120.13" font-size="11" fill="#ffffff" text-anchor="middle">600</text>
+<text x="454" y="97.53" font-size="11" fill="#1a1a19" text-anchor="middle">4,900</text>
+<path d="M596 294L596 213.8Q596 213.8 596 213.8L640 213.8Q640 213.8 640 213.8L640 294Z" fill="#2a78d6"/>
+<text x="618" y="257.4" font-size="11" fill="#ffffff" text-anchor="middle">2,100</text>
+<path d="M596 212.8L596 124.87Q596 124.87 596 124.87L640 124.87Q640 124.87 640 124.87L640 212.8Z" fill="#eb6834"/>
+<text x="618" y="172.33" font-size="11" fill="#ffffff" text-anchor="middle">2,300</text>
+<path d="M596 123.87L596 103.67Q596 100.67 599 100.67L637 100.67Q640 100.67 640 103.67L640 123.87Z" fill="#1baf7a"/>
+<text x="618" y="116.27" font-size="11" fill="#ffffff" text-anchor="middle">600</text>
+<text x="618" y="93.67" font-size="11" fill="#1a1a19" text-anchor="middle">5,000</text>
+</svg>

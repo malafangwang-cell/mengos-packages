@@ -1,4 +1,15 @@
-# document · 通用长文包 2.3.1
+# document · 通用长文包 2.4.0
+
+> 2.4.0（设计-长文内置图表-2026-11-18，立法者 2026-11-18 裁定；工单 C1）：**长文内置数据图**。`doc.figures` 的 `source` 加第三种 `{chart}`：模型只写类型和数据，柱状、折线、饼、柱线组合由本包按固定规则画（§3.1）。
+> - 新文件 `chart.py`（出图、校验、Word 后备位图），进 `tools_lock.covers`。画法以页面稿为准（裁定 1）：页面稿 8 组数据出的 SVG 与页面稿 `charts/*.svg` 逐字节相同（金样 `tests/fixtures/charts/`）。组合图两种单位取左右双轴（裁定 3）。
+> - 数据不自洽就退回 `BAD_INPUT`（年、季度、月跳号；个数对不上；数里带单位；饼图合计不是 100%、有负数等），不画、不写任何文件。
+> - 导出：网页、产出台、PDF 走矢量（与手写 SVG 同路）；Word 里是 SVG 部件加**真实后备位图**（工具自己画的 PNG，不再是浅灰框），旧版 Word 也看得到图；Markdown 另附 `.svg`。`.doc.json` 存图表数据，不存画好的图。
+> - 块清单的图块加 `source`：`chart` / `svg` / `image`（§2.1）。
+> - 手写 SVG 保留为兜底（裁定 2）；只有 svg、位图的旧文档，产出文件、提醒与块清单（除新增的 `source`）与 2.3.1 逐字节相同（`tests/test_chart.py` 对 2.3.1 跑出的哈希核对）。
+> - 图表数据不标 `x-mengos-data`（裁定 5：与长文表格一致，本期不查证件）。
+> - **schema 有意放宽**（立法者 11-18 裁定）：`chart` 与 `series` 两层不限字段，`values` 的元素也收文字。引擎调用前先按 input_schema 校验，若在 schema 拦下，模型只看到 schema 报错；放宽后“数里带单位”“写了颜色等不认识的字段”两类进到工具，由工具退回 §六 原话。这与说明文字（values 只写数）不一致，是有意的。
+> - 给模型看的文字：`doc` 说明里“图放进 figures……”一句、新增 `chart` 的说明、doc.build 一条示例、一条 non_goals 措辞，均为**草案**（C2），先用于测试，由立法者定稿；定稿即升版重认证。
+> - 工具代码与登记变，lock 变，须重新认证（TL-25a）。
 
 > 2.3.1（立法者 2026-11-13 同意，表面层渲染卡死诊断修复项④⑤；只改渲染器，认证继承 TL-25）：
 > - **分批排版**：长文不再整篇一次写进页面。目录与首屏几节当场排出，其余各节空闲时分批追加（每批最多约 8 ms）；节容器加 `content-visibility: auto` 与按字数估的 `contain-intrinsic-size`（排过一次后记住实高），屏外的节不排版不绘制。视图文件超过 1 MB 时解码与解析交后台线程（起不来就当场解析）。目录跳转、文内链接（含节内锚点）先把要去的节补齐再跳，跳后两帧内校正一次落点，改为即时跳转（不再平滑滚动）；打印（`beforeprint`，另 `@media print` 把各节设为 visible）与 Ctrl/⌘+F、Ctrl/⌘+P 先补齐全文。屏外节仍在文档里，页内查找能找到。
@@ -136,6 +147,7 @@ stdout {"ok": true, "output": {..., "files": [{path, format, role, media_type, b
 - **块哈希** `hash`：`body[start:end]` 这段源文字（UTF-8）的 sha256。按源文字算，图表编号、目录、别的节变了，块哈希不变。
 - **块 id**：`<节 id>.b<序号>`，序号 1 起。同一份文档两次成型，块清单逐字节相同；段内改字只改这一块的哈希。
 - 只被引用、没有放置的图表补在第一次引用它的那一节末尾，这一块 `start = end = len(body)`、`auto: true`、哈希为空串的 sha256。
+- **图的来源** `source`（2.4.0，只在图块上）：`chart`（本包按数据画的图）、`svg`（手写矢量图）、`image`（位图）。局部追问按它分流，不必再翻 `doc.figures`。
 
 ## 3 文档内容（`doc`）
 
@@ -164,6 +176,33 @@ stdout {"ok": true, "output": {..., "files": [{path, format, role, media_type, b
   "tables":  [ { "id": "devices", "caption": "主要设备清单", "columns": ["设备", "数量"], "rows": [["枪机", 132]], "note": "…" } ]
 }
 ```
+
+### 3.1 数据图 `chart`（2.4.0）
+
+```jsonc
+{ "id": "inv", "caption": "2021—2027 年项目投资额与同比增速",
+  "source": { "chart": {
+    "type": "combo",                                  // bar 柱状 · line 折线 · pie 饼 · combo 柱线组合
+    "categories": ["2021","2022","2023","2024","2025","2026","2027"],   // 横轴类别；饼图是各项名称；不重复
+    "forecast_from": "2025",                          // 可选：从这一期起是预测（浅灰底、虚线、空心点、图例“预测”）
+    "series": [
+      { "name": "投资额",   "as": "bar",  "unit": "亿元", "values": [12.4,15.1,18.6,21.3,24.5,27.9,31.0] },
+      { "name": "同比增速", "as": "line", "unit": "%",    "values": [null,21.8,23.2,14.5,15.0,13.9,11.1] } ] } } }
+```
+
+| 字段 | 说明 |
+|---|---|
+| `type`、`categories`、`series[].name`、`series[].values` | 必填。`values` 只收数和 `null`，个数与 `categories` 相同 |
+| `unit` | 单位，写进轴标题；`%` 时数值带百分号 |
+| `series[].as`、`series[].unit` | 只在组合图：画成柱还是线、各自单位（柱共用一个单位，线共用一个单位；两种单位时柱走左轴、线走右轴） |
+| `forecast_from` | 必须是 `categories` 里的一项，且不是第一项 |
+| `stacked` | 只用于柱状图 |
+| `decimals` | 数值标签小数位 0–4；不写时取输入里最多的小数位，最多 2 |
+| `note` | 图下一行脚注 |
+
+颜色、字号、坐标范围、图例位置、图内标题都由本包决定，写了就退回。规则（画布 720 宽、六个固定色位、整齐刻度、图例、数值标签密度、饼图最大余数法凑整等）见设计文档 §五；边界：柱最多 24 个类别、线最多 60 个点、最多 6 组、饼图最多 30 项且超过 6 项并入“其他”（提醒 `chart_pie_merged`）；缺值留空（提醒 `chart_gap`）。
+
+**退回**（`BAD_INPUT`，带 `where` 与 `hint`，原话见 `tests/test_chart.py` 的 `REJECT`）：年、季度、月跳号（如“横轴按年排，2024 之后直接是 2027，中间缺 2 个年”）；数的个数与类别对不上；数里带单位或逗号；饼图单位为 % 而合计不是 100、有负数、合计为 0、不足两项；组合图只有柱或只有线、单位超过两种；不认识的字段。
 
 **旧契约的简写**：`{title, sections:[{heading, body}]}` 在 doc.check、doc.export 上仍是合法输入；doc.build 自 2.0.0 起要求每节带 id。缺省值如下：
 - id 依次为 `s1`、`s2`…（doc.check、doc.export；doc.build 需显式给出）；
@@ -360,6 +399,7 @@ uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider      # 项
 | `test_figures_embed.py` | 2.1.0 图文能力（图片全由 `tools/synth.py` 程序生成）：嵌入副本（2048²→1600² JPEG、800×600 不变、1600/1601 边界、透明合成白底、去 EXIF 与 ICC、字节确定、坏流拒收）；Word/网页/产出台/PDF/`.doc.json` 内嵌用副本，原图单独成文件、Markdown 引用它；单张 15 MB 收、16 MB 恰收、多 1 字节与 17 MB 拒（含图 id 与字节数）；原图合计与嵌入合计（36 MB）各自的上限与报错；像素上限；规范模型文件将超 48 MB 时输入阶段拒收；20 张 2K（可压缩与不可压缩各一）整篇成功，各产出文件 <48 MB，`.doc.json` 不含原图 base64、原图文件的 sha256 与 `original.sha256` 逐一相等；原图随 `doc.build` 恒出、随 `doc.export` 仅 md 与 json 出；同节多图顺序；孤立图 `figure_orphan` 提醒 |
 | `test_blocks.py` | 2.3.0 块清单：两次成型逐字节相同；段内改字只改一块的哈希；起止切回 body 与哈希相符；放置行成图块、表块；只被引用的表补在节末 |
 | `test_pdf.py` | 2.2.0 PDF：每份样例都能出 PDF 且双跑逐字节相同；跨进程、跨哈希种子一致；元数据无当前时间；中英文结构金样（页数区间、书签树与标题一致、目录页码与书签单调一致、页脚页码、图表题文字与位置、内部链接数、字体全是嵌入子集）；位图用嵌入副本；提纲、封面与目录开关；SVG 转不了时的占位框与提醒；缺字提醒；SVG 字体不查系统；超长表、代码、列表分页；单个超大单元格；`object` 入参；`doc.build` 不出 PDF；20 张 2K 图的体积与耗时 |
+| `test_chart.py` | 2.4.0 数据图：页面稿 8 组数据与金样逐字节相同（同进程、跨进程、不同哈希种子）；出图过静态 SVG 白名单；`.doc.json` 存数据，再交一次逐字节相同；§六 退回原话逐条（doc.build、doc.export 各一遍，不写任何文件）；schema 拒收样式字段与带单位的数、不标 `x-mengos-data`；提醒；上限；四种图进一份样例，Word/PDF/网页/Markdown/`.doc.json` 都出、PDF 无 `pdf_figure_unsupported` 且图中文字是矢量文字；Word 有 SVG 部件与真实后备位图；编号、交叉引用、Word 书签、块清单 `source`；旧文档对 2.3.1 逐字节不变 |
 | `test_safety.py` | 源码不执行代码；十种不合格 SVG 拒收且不写文件；正文里的原始 HTML 被转义、`javascript:` 链接失效；文件名不能越出 workdir；控制字符拒收；超时结构化 |
 
 **开销**：同一台机器，进程冷启动，含 Word。
@@ -380,6 +420,7 @@ uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider      # 项
 | `model.py` | 文档模型：校验、缺省、图片与 SVG 检查、规范化、doc_sha256 |
 | `assemble.py` | 组装：编号、放置、引用、字数、结构提醒、要求追溯 |
 | `render.py` | Markdown、产出台数据、单文件网页 |
+| `chart.py` | 数据图：校验与退回、确定性出 SVG、Word 后备位图 |
 | `pdf_writer.py` | PDF：reportlab 排版、两遍目录页码、书签与内部链接、SVG 转矢量、缺字与降级提醒 |
 | `fonts/` | 随包字体（Noto Serif SC、Noto Sans SC 的常规与粗体静态子集）与 OFL 许可全文，见顶部版本记录 |
 | `tools/make_fonts.py` | 由可变字体重新生成 `fonts/` 的脚本（固定时间戳，可复现） |

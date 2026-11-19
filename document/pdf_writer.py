@@ -429,7 +429,7 @@ class _Builder:
             width, height = width * MAX_FIG_H / height, MAX_FIG_H
         width, height = max(width, 4), max(height, 4)
         pic = None
-        if f.kind == "svg":
+        if f.kind in ("svg", "chart"):
             pic = self._svg(f, width, height)
             if pic is None:
                 self.svg_failed.add(f.id)

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" width="720" height="300" font-family='"Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif'>
+<title>投资构成</title>
+<rect x="0" y="0" width="720" height="300" fill="#ffffff"/>
+<path d="M168 150L168 32A118 118 0 0 1 204.46 262.22Z" fill="#2a78d6" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<text x="226.27" y="144.77" font-size="12" fill="#ffffff" text-anchor="middle" font-weight="500">45.0%</text>
+<path d="M168 150L204.46 262.22A118 118 0 0 1 62.86 203.57Z" fill="#eb6834" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<text x="140" y="221.59" font-size="12" fill="#ffffff" text-anchor="middle" font-weight="500">22.5%</text>
+<path d="M168 150L62.86 203.57A118 118 0 0 1 54.69 117.08Z" fill="#1baf7a" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<text x="95.16" y="160.88" font-size="12" fill="#ffffff" text-anchor="middle" font-weight="500">12.0%</text>
+<path d="M168 150L54.69 117.08A118 118 0 0 1 84.56 66.56Z" fill="#eda100" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<text x="105.03" y="116.76" font-size="12" fill="#1a1a19" text-anchor="middle" font-weight="500">8.0%</text>
+<path d="M168 150L84.56 66.56A118 118 0 0 1 114.43 44.86Z" fill="#e87ba4" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<path d="M168 150L114.43 44.86A118 118 0 0 1 168 32Z" fill="#a9a7a0" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+<text x="150.92" y="82.86" font-size="12" fill="#1a1a19" text-anchor="middle" font-weight="500">7.5%</text>
+<text x="338" y="51" font-size="11" fill="#7d7d79" text-anchor="start">项目</text>
+<text x="596" y="51" font-size="11" fill="#7d7d79" text-anchor="end">数值（万元）</text>
+<text x="692" y="51" font-size="11" fill="#7d7d79" text-anchor="end">占比</text>
+<line x1="318" y1="59" x2="692" y2="59" stroke="#e4e4e1" stroke-width="1"/>
+<rect x="318" y="70" width="12" height="12" rx="2" fill="#2a78d6"/>
+<text x="338" y="80" font-size="12.5" fill="#1a1a19" text-anchor="start">设备购置费</text>
+<text x="596" y="80" font-size="12.5" fill="#4a4a47" text-anchor="end">4,860</text>
+<text x="692" y="80" font-size="12.5" fill="#1a1a19" text-anchor="end">45.0%</text>
+<rect x="318" y="96" width="12" height="12" rx="2" fill="#eb6834"/>
+<text x="338" y="106" font-size="12.5" fill="#1a1a19" text-anchor="start">建筑工程费</text>
+<text x="596" y="106" font-size="12.5" fill="#4a4a47" text-anchor="end">2,430</text>
+<text x="692" y="106" font-size="12.5" fill="#1a1a19" text-anchor="end">22.5%</text>
+<rect x="318" y="122" width="12" height="12" rx="2" fill="#1baf7a"/>
+<text x="338" y="132" font-size="12.5" fill="#1a1a19" text-anchor="start">安装工程费</text>
+<text x="596" y="132" font-size="12.5" fill="#4a4a47" text-anchor="end">1,296</text>
+<text x="692" y="132" font-size="12.5" fill="#1a1a19" text-anchor="end">12.0%</text>
+<rect x="318" y="148" width="12" height="12" rx="2" fill="#eda100"/>
+<text x="338" y="158" font-size="12.5" fill="#1a1a19" text-anchor="start">工程建设其他费</text>
+<text x="596" y="158" font-size="12.5" fill="#4a4a47" text-anchor="end">864</text>
+<text x="692" y="158" font-size="12.5" fill="#1a1a19" text-anchor="end">8.0%</text>
+<rect x="318" y="174" width="12" height="12" rx="2" fill="#e87ba4"/>
+<text x="338" y="184" font-size="12.5" fill="#1a1a19" text-anchor="start">预备费</text>
+<text x="596" y="184" font-size="12.5" fill="#4a4a47" text-anchor="end">540</text>
+<text x="692" y="184" font-size="12.5" fill="#1a1a19" text-anchor="end">5.0%</text>
+<rect x="318" y="200" width="12" height="12" rx="2" fill="#a9a7a0"/>
+<text x="338" y="210" font-size="12.5" fill="#1a1a19" text-anchor="start">其他</text>
+<text x="596" y="210" font-size="12.5" fill="#4a4a47" text-anchor="end">810</text>
+<text x="692" y="210" font-size="12.5" fill="#1a1a19" text-anchor="end">7.5%</text>
+<line x1="318" y1="221" x2="692" y2="221" stroke="#e4e4e1" stroke-width="1"/>
+<text x="338" y="238" font-size="12.5" fill="#4a4a47" text-anchor="start">合计</text>
+<text x="596" y="238" font-size="12.5" fill="#4a4a47" text-anchor="end">10,800</text>
+<text x="692" y="238" font-size="12.5" fill="#4a4a47" text-anchor="end">100.0%</text>
+<text x="318" y="261" font-size="11" fill="#7d7d79" text-anchor="start">其他含：建设期利息 486、铺底流动资金 324</text>
+</svg>

@@ -564,10 +564,14 @@ class _Writer:
         p = self._para(style=self.s_plain, align=WD_ALIGN_PARAGRAPH.CENTER, keep=True)
         p.paragraph_format.space_before = Pt(6)
         run = p.add_run()
-        if f.kind == "svg":
-            scale = 300 / max(w_px, h_px)
-            box = _png_box(max(8, min(600, round(w_px * scale))), max(8, min(600, round(h_px * scale))))
-            inline = self._picture(run, box, "png", "image/png", width, height, f"{f.id}.png")
+        if f.kind in ("svg", "chart"):
+            if f.kind == "chart":                # 数据图：后备是工具自己画的真实位图，旧版 Word 也看得到图
+                import chart
+                fallback = chart.raster(f.data.decode("utf-8"))
+            else:
+                scale = 300 / max(w_px, h_px)
+                fallback = _png_box(max(8, min(600, round(w_px * scale))), max(8, min(600, round(h_px * scale))))
+            inline = self._picture(run, fallback, "png", "image/png", width, height, f"{f.id}.png")
             self.svg_n += 1
             part = Part(PackURI(f"/word/media/mengos_svg{self.svg_n}.svg"), "image/svg+xml", f.data,
                         self.doc.part.package)
