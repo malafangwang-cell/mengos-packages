@@ -1,0 +1,14 @@
+{
+  "package": "table-pro",
+  "version": "0.1.0",
+  "publisher": "mengos",
+  "scope": "public",
+  "title": "表格追问Pro",
+  "summary": "需要先安装并启用“表格”包；单独安装没有作用。",
+  "content_hash": "f34e6fc326b704682b6a5c0bcbc6f4c2a632a9750d39f35d1777fdaddd1a4048",
+  "types": [],
+  "tools": [],
+  "tools_lock": {
+    "covers": []
+  }
+}
