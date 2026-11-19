@@ -1,4 +1,4 @@
-# count 0.2.1 · 工程文件读取器
+# count 0.2.2 · 工程文件读取器
 
 行式数据与结构化附件文件上的确定性计数工具包。四件工具，T1、效应 none、process 执行器、不出网、不调模型；同一入参两次输出逐字节相同。包标识 `count`、工具标识与类型名不变，中文名 0.2.0 起为“工程文件读取器”（立法者 2026-11-19 定）。
 
@@ -70,3 +70,4 @@ uv run --frozen python tools/run_golden.py
 - 0.1.1（2026-11-18）：产物类型改用包自带的两个新根类型 `count_receipt`（count.rows、count.series）与 `count_check`（count.coverage、count.agree），不再登记在平台的 number、verdict 上，PLAN 不把它们匹配到通用目标，只在域包显式列出时使用（立法者 11-18 裁定，经调度转）。工具逻辑不变。
 - 0.2.0（2026-11-19）：中文名改为“工程文件读取器”，摘要随改；按文件读的来源（`source.file`，17 TL-9d；默认读解析结构，结构里没有的用带入的解析库回原件读）；按版本带入解析库 mengos-cad 1.0.0；`count.rows` 清单分页（`offset`、`limit`、`total_matched`）；回执回显节与列、未解析清单；`count.coverage` 清单取自文件、标记取自产出内容加字段名；登记 `parsers`、`attachment_file`；`runtime.process.workdir` 为 true，Python ≥ 3.11；`cost.timeout` 120 秒。
 - 0.2.1（2026-11-19）：带入解析库 mengos-cad 1.0.1（`run()` 新增可选参数 `detail_cap`；立法者 2026-11-19 批乙方案）；回原件读改用这个参数，去掉 0.2.0 运行时临时调整解析库全局上限的做法。行为与 0.2.0 相同。
+- 0.2.2（2026-11-19）：读文件三件 `attachment_file.max_bytes` 由 50 MiB 改为 256 MiB（并到上传上限；立法者 2026-11-19 裁，目标图纸 115 MB、162 MB 曾被挡住）；`max_total_bytes` 400 MiB 不变（不小于单件上限）。其余一字不改，进模型的文字零改动。
