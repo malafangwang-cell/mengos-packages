@@ -1,12 +1,12 @@
 {
   "family": "count",
-  "family_version": "0.1.1",
-  "lock_hash": "50b21dc2dde1868d",
-  "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。第一阶段（零引擎改动）来源只能由调用方给出（source_modes = inline），行数上限 max_inline_rows；回执带假设声明（TL-22a）。input_schema 各层 description、examples、input_example 为草案，待立法者定稿。",
+  "family_version": "0.2.0",
+  "lock_hash": "1fb36467a9917402",
+  "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。来源两类：调用方给出（inline，行数上限 max_inline_rows，回执带假设声明 TL-22a）；按文件读（file，17 TL-9d，source.file 声明 x-mengos-attachment-file，引擎交原件与解析结构）。读文件的件登记 parsers（所带解析库的名字、规格版本、库版本、内容哈希，安装与认证时与存储服务现行版本核对）与 attachment_file（接受的媒体类型闭集、个数与大小上限）。",
   "units": [
     {
       "tool_id": "count.rows",
-      "version": "50b21dc2dde1868d",
+      "version": "1fb36467a9917402",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -17,7 +17,7 @@
       "cost": {
         "latency": 150,
         "price": 0,
-        "timeout": 10000
+        "timeout": 120000
       },
       "input_example": {
         "source": {
@@ -89,9 +89,15 @@
                     "text",
                     "reader"
                   ]
+                },
+                {
+                  "required": [
+                    "file",
+                    "section"
+                  ]
                 }
               ],
-              "description": "要数的行。两种给法二选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）。行数上限 50，超过时得到失败回执。",
+              "description": "要数的行。三种给法选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）；或 file 加 section（附件里的一节）。前两种行数上限 50，超过时得到失败回执。",
               "properties": {
                 "columns": {
                   "type": "array",
@@ -150,7 +156,64 @@
                 "section": {
                   "type": "string",
                   "minLength": 1,
-                  "description": "mengos-cad-v1 单元里要数的节，写节名（节头“#”与“（”之间的字，如 图块插入、尺寸标注、线段统计、文字）；单元只有一节有行时可省。"
+                  "description": "读哪一节，写节名（如 文字、尺寸标注、图块插入、线段明细、嵌套插入、未插入图块文字）。写错时回执会列出这份附件里有哪些节。"
+                },
+                "file": {
+                  "type": "object",
+                  "x-mengos-attachment-file": true,
+                  "additionalProperties": false,
+                  "required": [
+                    "path",
+                    "sha256",
+                    "bytes",
+                    "media_type"
+                  ],
+                  "description": "要读的附件。写 {\"attachment\": 附件的节点 id}。这里只写引用，不要抄原文；文件由系统交给工具，每次读的是整份。",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "media_type": {
+                      "type": "string"
+                    },
+                    "parsed": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "sha256",
+                        "parser"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "parser": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "unit": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "只读某一个单元时写它的编号（照图幅目录）；不写则读全部单元。"
                 }
               }
             },
@@ -318,6 +381,17 @@
             "list": {
               "type": "boolean",
               "description": "true 时回执带满足条件的逐行清单，每行有稳定序号。"
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "清单太长时分批取：offset 从第几条起，limit 取几条；回执里的 total_matched 是命中的总条数。"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2000,
+              "description": "清单太长时分批取：offset 从第几条起，limit 取几条；回执里的 total_matched 是命中的总条数。"
             }
           }
         },
@@ -359,6 +433,9 @@
             "items": {
               "type": "array"
             },
+            "total_matched": {
+              "type": "integer"
+            },
             "unparsed": {
               "type": "array"
             },
@@ -393,7 +470,8 @@
             "gfm"
           ],
           "source_modes": [
-            "inline"
+            "inline",
+            "file"
           ],
           "ops": [
             "eq",
@@ -424,14 +502,30 @@
         ],
         "non_goals": [
           "不判断一行在业务上是什么",
-          "不读附件，来源行由调用方给出",
+          "不猜解析库拿不到的内容",
           "不估算"
         ]
+      },
+      "parsers": [
+        {
+          "name": "mengos-cad",
+          "spec": "1",
+          "version": "1.0.0",
+          "sha256": "33fefb18293338369ad9a6b5d3ca2cbe62ba16ba985456640fe606d2900c7c45"
+        }
+      ],
+      "attachment_file": {
+        "media_types": [
+          "image/vnd.dxf"
+        ],
+        "max_bytes": 52428800,
+        "max_total_bytes": 419430400,
+        "max_count": 1
       }
     },
     {
       "tool_id": "count.series",
-      "version": "50b21dc2dde1868d",
+      "version": "1fb36467a9917402",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -442,7 +536,7 @@
       "cost": {
         "latency": 150,
         "price": 0,
-        "timeout": 10000
+        "timeout": 120000
       },
       "input_example": {
         "source": {
@@ -530,9 +624,15 @@
                     "text",
                     "reader"
                   ]
+                },
+                {
+                  "required": [
+                    "file",
+                    "section"
+                  ]
                 }
               ],
-              "description": "要数的行。两种给法二选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）。行数上限 50，超过时得到失败回执。",
+              "description": "要数的行。三种给法选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）；或 file 加 section（附件里的一节）。前两种行数上限 50，超过时得到失败回执。",
               "properties": {
                 "columns": {
                   "type": "array",
@@ -591,7 +691,64 @@
                 "section": {
                   "type": "string",
                   "minLength": 1,
-                  "description": "mengos-cad-v1 单元里要数的节，写节名（节头“#”与“（”之间的字，如 图块插入、尺寸标注、线段统计、文字）；单元只有一节有行时可省。"
+                  "description": "读哪一节，写节名（如 文字、尺寸标注、图块插入、线段明细、嵌套插入、未插入图块文字）。写错时回执会列出这份附件里有哪些节。"
+                },
+                "file": {
+                  "type": "object",
+                  "x-mengos-attachment-file": true,
+                  "additionalProperties": false,
+                  "required": [
+                    "path",
+                    "sha256",
+                    "bytes",
+                    "media_type"
+                  ],
+                  "description": "要读的附件。写 {\"attachment\": 附件的节点 id}。这里只写引用，不要抄原文；文件由系统交给工具，每次读的是整份。",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "bytes": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "media_type": {
+                      "type": "string"
+                    },
+                    "parsed": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "sha256",
+                        "parser"
+                      ],
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "parser": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "unit": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "只读某一个单元时写它的编号（照图幅目录）；不写则读全部单元。"
                 }
               }
             },
@@ -815,7 +972,8 @@
             "gfm"
           ],
           "source_modes": [
-            "inline"
+            "inline",
+            "file"
           ]
         },
         "examples": [
@@ -836,11 +994,27 @@
           "不判断哪个因子是个数",
           "不纠正不自洽的乘积串"
         ]
+      },
+      "parsers": [
+        {
+          "name": "mengos-cad",
+          "spec": "1",
+          "version": "1.0.0",
+          "sha256": "33fefb18293338369ad9a6b5d3ca2cbe62ba16ba985456640fe606d2900c7c45"
+        }
+      ],
+      "attachment_file": {
+        "media_types": [
+          "image/vnd.dxf"
+        ],
+        "max_bytes": 52428800,
+        "max_total_bytes": 419430400,
+        "max_count": 1
       }
     },
     {
       "tool_id": "count.coverage",
-      "version": "50b21dc2dde1868d",
+      "version": "1fb36467a9917402",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -851,7 +1025,7 @@
       "cost": {
         "latency": 150,
         "price": 0,
-        "timeout": 10000
+        "timeout": 120000
       },
       "input_example": {
         "inventory": {
@@ -950,9 +1124,15 @@
                         "text",
                         "reader"
                       ]
+                    },
+                    {
+                      "required": [
+                        "file",
+                        "section"
+                      ]
                     }
                   ],
-                  "description": "要数的行。两种给法二选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）。行数上限 50，超过时得到失败回执。",
+                  "description": "要数的行。三种给法选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）；或 file 加 section（附件里的一节）。前两种行数上限 50，超过时得到失败回执。",
                   "properties": {
                     "columns": {
                       "type": "array",
@@ -1011,7 +1191,64 @@
                     "section": {
                       "type": "string",
                       "minLength": 1,
-                      "description": "mengos-cad-v1 单元里要数的节，写节名（节头“#”与“（”之间的字，如 图块插入、尺寸标注、线段统计、文字）；单元只有一节有行时可省。"
+                      "description": "读哪一节，写节名（如 文字、尺寸标注、图块插入、线段明细、嵌套插入、未插入图块文字）。写错时回执会列出这份附件里有哪些节。"
+                    },
+                    "file": {
+                      "type": "object",
+                      "x-mengos-attachment-file": true,
+                      "additionalProperties": false,
+                      "required": [
+                        "path",
+                        "sha256",
+                        "bytes",
+                        "media_type"
+                      ],
+                      "description": "要读的附件。写 {\"attachment\": 附件的节点 id}。这里只写引用，不要抄原文；文件由系统交给工具，每次读的是整份。",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "bytes": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "media_type": {
+                          "type": "string"
+                        },
+                        "parsed": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "path",
+                            "sha256",
+                            "parser"
+                          ],
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{64}$"
+                            },
+                            "parser": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "unit": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "只读某一个单元时写它的编号（照图幅目录）；不写则读全部单元。"
                     }
                   }
                 },
@@ -1031,32 +1268,51 @@
               "description": "原文写明的清单条数；给了就核对，不符得到失败回执。"
             },
             "marks": {
-              "type": "array",
-              "maxItems": 100,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "id",
-                  "status"
-                ],
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "status": {
-                    "enum": [
-                      "done",
-                      "empty"
-                    ]
-                  },
-                  "note": {
-                    "type": "string",
-                    "maxLength": 400
+              "anyOf": [
+                {
+                  "type": "array",
+                  "maxItems": 100,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "status"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "status": {
+                        "enum": [
+                          "done",
+                          "empty"
+                        ]
+                      },
+                      "note": {
+                        "type": "string",
+                        "maxLength": 400
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "content",
+                    "field"
+                  ],
+                  "properties": {
+                    "content": {},
+                    "field": {
+                      "type": "string",
+                      "minLength": 1
+                    }
                   }
                 }
-              },
+              ],
               "description": "已处理的记录，每条 {id, status, note}；id 照清单原样写；status 为 done（已处理）或 empty（看过、没有相关内容）。"
             }
           }
@@ -1133,7 +1389,8 @@
             "gfm"
           ],
           "source_modes": [
-            "inline"
+            "inline",
+            "file"
           ]
         },
         "examples": [
@@ -1155,6 +1412,22 @@
           "不保存状态"
         ]
       },
+      "parsers": [
+        {
+          "name": "mengos-cad",
+          "spec": "1",
+          "version": "1.0.0",
+          "sha256": "33fefb18293338369ad9a6b5d3ca2cbe62ba16ba985456640fe606d2900c7c45"
+        }
+      ],
+      "attachment_file": {
+        "media_types": [
+          "image/vnd.dxf"
+        ],
+        "max_bytes": 52428800,
+        "max_total_bytes": 419430400,
+        "max_count": 1
+      },
       "review_coverage": {
         "by_criterion_pattern": [
           "每个对象都有处理记录",
@@ -1167,7 +1440,7 @@
     },
     {
       "tool_id": "count.agree",
-      "version": "50b21dc2dde1868d",
+      "version": "1fb36467a9917402",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -1178,7 +1451,7 @@
       "cost": {
         "latency": 150,
         "price": 0,
-        "timeout": 10000
+        "timeout": 120000
       },
       "input_example": {
         "left": {

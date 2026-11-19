@@ -7,7 +7,9 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SOURCES = ["readers.py", "ops.py", "series.py", "coverage.py", "count_tool.py", "pyproject.toml", "uv.lock"]
+SOURCES = ["readers.py", "file_source.py", "ops.py", "series.py", "coverage.py", "count_tool.py", "pyproject.toml", "uv.lock",
+           "cadlib.lock.json", "cadlib/VERSION", "cadlib/cadx.py", "cadlib/mengos_cad/__init__.py", "cadlib/mengos_cad/core.py",
+           "requirements-cad.txt"]   # 与 mengos-package.json tools_lock.covers 同一组（登记资产另算）
 
 
 def _registration_bytes() -> bytes:

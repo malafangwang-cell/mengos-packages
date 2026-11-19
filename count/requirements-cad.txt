@@ -1,0 +1,20 @@
+# CAD 抽取 (支 d) 的 Python 依赖锁: pip install --require-hashes --no-deps -r requirements-cad.txt
+# 承 设计-VETC二期缺口-CAD图纸输入-2026-11-03 §4.4 与立法者 11-03 L-3: 只装 ezdxf 的运行时必需传递依赖 (numpy、pyparsing、typing_extensions、fonttools), 不装绘图等可选附件。
+# 每个包列出 CPython 3.11 (bookworm 的 apt python3)、3.12、3.13 的 manylinux x86_64 wheel (纯 Python 包各一个) 的 sha256, 任一匹配即可。
+# 本文件整份字节进 PIPELINE_VERSION 哈希 (vetc/src/pipeline-version.ts); 头注只写来历, 不写变更记录。
+ezdxf==1.4.5 \
+    --hash=sha256:500b21a3de29711ca1ac3401f482da88bded991f4872d17bebda49f85f20b5ad \
+    --hash=sha256:0b2b1bd330a4919433434585a363dc981e0d62833f3bde3582b40bedc0b31425 \
+    --hash=sha256:d22fd3bad579b6a190f620540df06c4fe5b6283442662041ddd104d568fa0d0b
+fonttools==4.68.0 \
+    --hash=sha256:4b9c89b5876f1a74b1341632dfaf4c4c2be565d76c060445df401ebe7a4ceefa \
+    --hash=sha256:3edce69ecdefa73ab1041901ca22eefed6ebb93a77bc77e889d940479f25bf7d \
+    --hash=sha256:08851f7d2b983412f490b73a7c56f17cbda1d4d85d2ad3f857564bf15b5d9475
+numpy==2.4.6 \
+    --hash=sha256:89cd468399cfd2504718f0ba50e410dca55a170b61a02ad92bb18c8a65186e93 \
+    --hash=sha256:90f9849678c75fe7afa2d348ac842c168b0a4d3d61919687216dfc547976d853 \
+    --hash=sha256:a7830bab239b79cda9c08c2da014761cafb48da6150e1da17ac06283f43b6089
+pyparsing==3.3.3 \
+    --hash=sha256:ece8c00a69cf01b45d0b1dedabb469c90d8caf996d4fda40f147627a122849a4
+typing_extensions==4.16.0 \
+    --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8

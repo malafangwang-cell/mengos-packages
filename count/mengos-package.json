@@ -1,17 +1,17 @@
 {
   "package": "count",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "mengos",
   "scope": "public",
-  "title": "确定性计数",
-  "summary": "按条件数行、求合计与分布，核乘积串与连续链，查清单里还没处理的项",
+  "title": "工程文件读取器",
+  "summary": "读全工程图纸等结构化附件里的行：按条件筛选、计数、求合计与分布，核乘积串与连续链，查清单里还没处理的项。",
   "tool_titles": {
     "count.rows": "按条件数行与看分布",
     "count.series": "核乘积串与连续链",
     "count.coverage": "查清单里未处理的项",
     "count.agree": "核两个数是否一致"
   },
-  "content_hash": "606e47afefead898a9301e3bc574f596429366a5e40b66ce5b131870e9c97afb",
+  "content_hash": "c51dd55f28c33e93b54c716be3835ced68ff82dbde5b8fd566dca0183a6b7e3b",
   "types": [
     {
       "name": "count_receipt",
@@ -31,13 +31,20 @@
   "tools_lock": {
     "covers": [
       "readers.py",
+      "file_source.py",
       "ops.py",
       "series.py",
       "coverage.py",
       "count_tool.py",
       "pyproject.toml",
       "uv.lock",
-      "registration.json"
+      "registration.json",
+      "cadlib.lock.json",
+      "cadlib/VERSION",
+      "cadlib/cadx.py",
+      "cadlib/mengos_cad/__init__.py",
+      "cadlib/mengos_cad/core.py",
+      "requirements-cad.txt"
     ],
     "note": "工具 version（lock hash）只覆盖这些文件；tests/、tools/、README 不在其内，改它们不使认证失效（TL-25）"
   },
@@ -49,12 +56,12 @@
   "runtime": {
     "process": {
       "lang": "python",
-      "requires": ">=3.10",
+      "requires": ">=3.11",
       "project": "pyproject.toml",
       "lock": "uv.lock",
       "entry": "count_tool.py",
       "network": "none",
-      "workdir": false
+      "workdir": true
     }
   },
   "certification": []
