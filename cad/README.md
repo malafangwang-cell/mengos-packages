@@ -1,5 +1,7 @@
 # cad v2（W3 的 CAD 工具包）
 
+> 2.7.0-alpha.1（装配工具第 1 阶段原型；mengosv2《立项-CAD装配工具-2026-11-16》§九 第 1 阶段，立法者 2026-11-19 裁）：加 `assembly.py`（`cad.assemble` 原型）、两道题的人手写装配计划 `samples/assembly/`、`tests/test_assembly.py`（46 条）与读数脚本 `tools/assembly_readings.py`，用法与读数见 §11。**只做包内离线验证：不进登记、不接引擎**。`assembly.py` 不在 `tools_lock.covers` 内，lock 仍为 `3625f3c31608de88`，四件旧工具的版本与输出都不变，不需重跑认证；registration.json、cad_tool.py、builder.py、geometry.py 一字未改。content_hash 随新文件变化。
+
 > 2.6.2（渲染器修卡死；只改 `renderer/`，工具代码、登记与 lock 都不变，lock 仍为 `3625f3c31608de88`，不需重跑工具认证）：
 > - **按需绘制**：去掉常驻 `requestAnimationFrame` 循环。只在视角变化（OrbitControls `change`，含阻尼收尾）、缩放、尺寸变化、主题与配色变化、数据到达、剖切与边线切换时画一帧，同一帧里的多次请求合并成一次；“处理中”呼吸动画进行时才连续绘制。去掉 `preserveDrawingBuffer`（本页不读回像素）。静置时主线程不再被占满。
 > - **WebGL 上下文丢失**：监听 `webglcontextlost`（`preventDefault`）与 `webglcontextrestored`（材质重编译、重画）。浏览器同时开的三维视图过多（Chrome 约 16 个）而收回本页上下文时，三维区显示“点这里重新显示”，点了换一块新画布重建，场景与视角保留；不再变白不恢复。
@@ -299,7 +301,7 @@ feature boss                         # 这个特征还在零件上
 ## 8 测试
 
 ```
-uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 230 条，约 150 s
+uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 276 条（原 230 条 + 装配 46 条），约 5 分钟
 ```
 
 不要用不带 `--frozen` 的 `uv sync` / `uv run`：环境变量里配了别的索引（例如国内镜像）时，uv 会重新解析并改写 `uv.lock`，工具版本（lock hash）与 content_hash 随之失配。安装区里只用环境解释器跑，不运行 uv。
@@ -373,3 +375,64 @@ uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 230 �
 - **水密与三角形数**来自网格，是确定的，但依赖网格参数：弦高取外形对角线的 0.05%，限制在 0.005–0.1 mm 之间。
 - **入口探测**沿 `at` 的那一条射线进行。型腔的中心正对已有孔时，`depth=` 会报"没有材料"，要换 `at` 或改用 through。
 - **`fillet edges=vertical`** 会选中所有竖直棱。相邻两条棱距离小于 2r 时做不出来，错误提示会给出这组边能做的最大半径。
+
+## 11 装配工具 cad.assemble（第 1 阶段原型，未登记）
+
+依据 mengosv2 `docs/alignment/arch/立项-CAD装配工具-2026-11-16.md` §四、§九。本节是技术说明，不是给模型看的说明文字；工具说明与报错提示的定稿属于第 2 阶段，逐条报批。
+
+**入口。** `assembly.py`，协议与 `cad_tool.py` 相同（stdin 一行 JSON、stdout 一行 JSON，进程入口固定 `PYTHONHASHSEED=0`）。第 2 阶段并进 `cad_tool.TOOLS` 与 registration.json。
+
+**入参：装配计划。**
+
+```json
+{"name": "reducer",
+ "parts":  [{"id": "箱座", "plan": "零件计划（与 cad.build 同一种文字）"}, …],
+ "layout": "摆位表",
+ "formats": ["step", "glb", "csv", "svg", "dxf"]}
+```
+
+- 零件计划与 `cad.build` 用同一个解析器、同一个建模程序：同一份计划在两件工具里建出的零件逐面相同。同一零件摆多处只写一份。
+- 零件名与行名：字母、数字、下划线、汉字，不含点（点用来写“行名.特征名”）。
+- 缺省出 STEP、GLB、明细表 CSV、三视图 SVG；DXF 要点名。
+
+**摆位表。** 一行摆一个零件，从上到下依次摆，后面的行只能引用前面的行。不做联立求解。
+
+```
+b:   fix 箱座                                     # 基准件，至少一行；可带 at=(x,y,z) rot=(rx,ry,rz)
+c:   put 箱盖 face=bottom to=b.top face2=left to2=b.left flush2 face3=front to3=b.front flush3
+k1:  put 轴承6206 coaxial=b.孔1 face=bottom to=b.box.front flush
+g1:  put 齿轮1 coaxial=s1 face=bottom to=s1.肩.top angle=0
+g2:  put 齿轮2 coaxial=s2 face=top to=s2.肩.bottom mesh=g1
+h:   put 手柄 at=(-23,0,45)                        # 给定位姿兜底
+pattern bt1 linear n=2 dy=100                     # 或 circular n= axis=行名[.特征名] [angle=]
+```
+
+| 约束 | 写法 | 说明 |
+|---|---|---|
+| 固定 | `fix 零件 [at= rot=]` | 零件坐标就是装配坐标（或按给定位姿） |
+| 给定位姿 | `put 零件 at=(x,y,z) [rot=(rx,ry,rz)]` | 转角为度，先绕 x、再绕 y、再绕 z（固定轴）；与其他约束同写报冲突 |
+| 同轴 | `coaxial=行名[.特征名]`，本件轴 `axis=特征名`（缺省为本件第一个带轴的特征） | 轴来自圆柱、圆锥、回转体、齿轮的参数，或特征名下的圆柱面（孔） |
+| 面贴合 | `face=本件面 to=面 [gap=]`，`flush` 改为齐平 | 贴合：法向相对；齐平：法向相同。`gap` 沿目标面法向量 |
+| 转角 | `angle=度` | 同轴之后绕轴的转动；不写取 0，零件不是绕该轴的回转体时给 `spin_default` 提醒 |
+| 只用面贴合 | 至多三对：`face= to=`、`face2= to2=`、`face3= to3=`，`gap2=`、`flush2`… | 三对法向两两垂直时定死；不够定死报欠约束 |
+| 阵列 | `pattern 行名 linear n= dx= dy= dz=` / `circular n= axis= [angle=360]` | n 含源件；复制件行名为 `源#2`、`源#3`… |
+| 直齿轮啮合 | `mesh=行名[.齿轮特征]`，本件齿轮多于一个时 `gear=特征名` | 核模数、压力角、轴平行、中心距 = m(z1+z2)/2（差 0.01 mm 以内），再按齿数把本件转到齿对齿槽；与 `angle=` 同写报冲突 |
+
+**面与轴怎么指。** `[行名.][特征名.]方位词` 或 `[行名.]特征名`。方位词 top、bottom、front、back、left、right 指（该特征名下）朝该方向的最外平面，坐标是零件自己的坐标。面归属沿用 `face_owner`：与先建的面共面时，面归先建的特征（例如端座左面与底座左面共面，要写零件的 `left`）。`to=`、`coaxial=` 开头的名字先按行名找，找不到再按零件名找（该零件只摆了一处时）。
+
+**出错。** 摆位表的问题一次报全：`BAD_INPUT` 的 `problems` 里每行一项 `{line, row, status: 欠约束|冲突|引用错误|写法错误, message, free?}`；引用了出错行的行只说“先改那一行”，不连锁报。零件计划的错误同样一次报全，每项带零件名与零件计划里的行号。
+
+**产出记录。** `measure`（整体包围盒、体积、总质量、质心、零件种数、实例数）、`bom`（序号、名称、数量、材料、单件质量、合计质量）、`interference`（检查过的对数、干涉对、公共体积与位置）、`mesh`（每对啮合齿轮的中心距与公共体积）、`constraints`（约束表：每行状态、剩余自由度、啮合转角）、`parts`（每种零件的摘要与特征名清单）、`instances`（每个实例的行名、零件、序号、世界包围盒）、`warnings`、`files`。
+
+**文件。**
+
+| 格式 | role | 说明 |
+|---|---|---|
+| STEP | model.exact | AP214 装配结构：每种零件一份几何，每处摆放一个实例（NEXT_ASSEMBLY_USAGE_OCCURRENCE），实例名为行名、产品名为零件名；非 ASCII 名字按 ISO 10303-21 写成 `\X2\…\X0\` |
+| GLB | model.view | 根 → 零件实例（矩阵；extras 带零件名、明细表序号、实例号、行名）→ 特征（与零件 GLB 同结构）。同一零件的实例共用网格；有干涉时另有一个 `interference` 节点画出公共体积 |
+| CSV | table.bom | 明细表，UTF-8 带 BOM，CRLF，末行合计 |
+| SVG、DXF | drawing | 装配三视图，沿用零件三视图程序（第一角画法），标题栏材料写“见明细表”；不带序号气泡与尺寸 |
+
+**干涉。** 两两先用包围盒筛，再求公共体积。公共体积不超过 max(0.001 mm³, 1e-7 × 较小零件体积) 的算接触；声明了啮合的齿轮对单列，阈值 max(1 mm³, 1e-4 × 较小零件体积)。阈值的依据见 PR 读数。
+
+**测试与读数。** `tests/test_assembly.py`（46 条，约 2 分钟）；`tools/assembly_readings.py [次数]` 输出 JSON 读数（耗时中位数、文件大小、三角形数、回执字数、全对检查耗时、接触对公共体积、啮合相位灵敏度）。
