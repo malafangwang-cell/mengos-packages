@@ -454,6 +454,7 @@ const DENY = {
   merged: "这一行由几行明细合并而成，不能单独选；要改，改明细或合并的规则",
   totals: "合计由表格工具算出，不能单独选；要改合计，改上面的格子或公式",
   derived: "这张表的行由各分部合并而成，不能单独选；要改，改分部里的那一行",
+  no_row_source: "这张表分了组，行对不回原表，不能单独选",   // 立法者 2026-11-19 定稿（文字总表 §五）
   too_many: `一次最多改 ${MAX_CELLS} 格；少选几格，或者分几次改`,
   kind: "一次只改一种：都是格，或都是整行；列的定义、列的公式一次改一处",
   formula_multi: "公式列只能一列一列改：一次选一列的格，就是改这一列的公式",
@@ -549,7 +550,10 @@ $("#grid").addEventListener("mousedown", (e) => {
   if (th) { e.preventDefault(); return choose({ sheet: st.sheet, kind: "column_def", col: Number(th.dataset.th) }, th, isMod(e)); }
   if (tot) { e.preventDefault(); return deny("totals", tot); }
   if (gen) { e.preventDefault(); return deny({ g: "group", s: "subtotal", m: "merged" }[gen.dataset.gen] || "group", gen); }
-  if ((idx || td) && s.row_kind === "derived") { e.preventDefault(); return deny("derived", idx || td); }
+  // 判据按缺什么写（立法者 2026-11-19）：表数据里有 derive ⟹ 派生表（行上没有 row_kind 也照拒）；
+  //   行上没有 src 而这张表有分组或合并（layout）⟹ 行对不回入参，这些行不能选
+  if ((idx || td) && (s.row_kind === "derived" || s.derive)) { e.preventDefault(); return deny("derived", idx || td); }
+  if ((idx || td) && s.layout && !s.src) { e.preventDefault(); return deny("no_row_source", idx || td); }
   if (idx) { e.preventDefault(); const r = Number(idx.dataset.row); st.drag = { kind: "rows", r, r2: r, mod: isMod(e) }; return; }
   if (td) { e.preventDefault(); const r = Number(td.dataset.r), c = Number(td.dataset.c); st.drag = { kind: "cells", r, c, r2: r, c2: c, mod: isMod(e) }; preview(); return; }
   if (st.sel && !isMod(e)) emit(null);       // 点空白处：清掉选区

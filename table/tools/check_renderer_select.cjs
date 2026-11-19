@@ -1,4 +1,4 @@
-// 表格渲染器选区走查（2.3.1；r10 改：句柄按入参序号、公式吸附为 formula、合计不可选）：真浏览器里点格、拖选、点行号、点列头、点合计、Ctrl / ⌘ 加选，核对渲染器发出的 mengos.select / select_denied，
+// 表格渲染器选区走查（2.3.1；r10 改：句柄按入参序号、公式吸附为 formula、合计不可选；立法者 11-19：缺 src 的分组表行不可选、有 derive 的按派生表拒）：真浏览器里点格、拖选、点行号、点列头、点合计、Ctrl / ⌘ 加选，核对渲染器发出的 mengos.select / select_denied，
 // 以及宿主回发 mengos.open / busy 后的描边。用法：先用 table.build 跑出夹具目录（每个子目录含 out.json 与视图文件，另放 renderer.html），
 //   node tools/check_renderer_select.cjs <夹具目录>     需要 playwright（不在包的依赖里，只给施工方本机用）。
 const { chromium } = require(process.env.PLAYWRIGHT || "playwright");
@@ -9,10 +9,10 @@ const results = []; const ok = (n, c) => results.push(`${c ? "过" : "败"} ${n}
   const b = await chromium.launch();
   const p = await b.newPage({ viewport: { width: 1200, height: 800 } });
   const errs = []; p.on("pageerror", (e) => errs.push(String(e)));
-  async function load(name) {
-    const out = JSON.parse(fs.readFileSync(path.join(D, name, "out.json"), "utf8"));
+  async function load(name, dir = D) {
+    const out = JSON.parse(fs.readFileSync(path.join(dir, name, "out.json"), "utf8"));
     const vf = out.files.find((f) => f.format === "view");
-    const bytes = [...fs.readFileSync(path.join(D, name, vf.path))];
+    const bytes = [...fs.readFileSync(path.join(dir, name, vf.path))];
     const html = fs.readFileSync(path.join(D, "renderer.html"), "utf8");
     await p.setContent(`<!doctype html><body style="margin:0"><iframe id="f" style="width:1180px;height:760px;border:0"></iframe><script>
       window.msgs = [];
@@ -91,6 +91,20 @@ const results = []; const ok = (n, c) => results.push(`${c ? "过" : "败"} ${n}
   f = await load("der");
   const tabs = f.locator("#tabs button"); const n = await tabs.count();
   for (let i = 0; i < n; i++) { await tabs.nth(i).click(); if (await f.locator('td[data-r="0"]').count()) { await clear(); await f.locator('td[data-r="0"][data-c="1"]').click(); const d = await last("mengos.select_denied"); if (d && d.why_not === "derived") { ok("派生表的行：select_denied derived", true); break; } } if (i === n - 1) ok("派生表的行：select_denied derived", false); }
+  // 2.2.0 做的表（tests/fixtures/views_220：产出台数据没有 src、row_kind 等字段）：判据按缺什么写（立法者 2026-11-19）
+  const V220 = path.join(__dirname, "..", "tests", "fixtures", "views_220");
+  f = await load("bom", V220);
+  await clear(); await f.locator('td.idx[data-row="1"]').click(); m = await last("mengos.select");
+  ok("2.2.0 普通表：能选，行键按入参序号", m && m.kind === "rows" && m.rows[0] === "#1");
+  f = await load("grp", V220);
+  await clear(); await f.locator('td.idx[data-row]').first().click(); m = await last("mengos.select_denied");
+  ok("2.2.0 分组表：数据行拒，no_row_source", m && m.why_not === "no_row_source" && m.message === "这张表分了组，行对不回原表，不能单独选");
+  await clear(); await f.locator('td[data-r="3"][data-c="5"]').click(); m = await last("mengos.select_denied");
+  ok("2.2.0 分组表：数据格同样拒", m && m.why_not === "no_row_source");
+  f = await load("der", V220);
+  { const tabs = f.locator("#tabs button"); const n = await tabs.count(); let d = null;
+    for (let i = 0; i < n; i++) { await tabs.nth(i).click(); await clear(); if (await f.locator('td[data-r="0"][data-c="1"]').count()) { await f.locator('td[data-r="0"][data-c="1"]').click(); const x = await last("mengos.select_denied"); if (x && x.why_not === "derived") d = x; } }
+    ok("2.2.0 派生表：派生行拒（按 derive），用派生表那句", d && d.message.startsWith("这张表的行由各分部合并而成")); }
   ok("页面无报错", errs.length === 0);
   console.log(results.join("\n")); if (errs.length) console.log(errs.join("\n"));
   await b.close();

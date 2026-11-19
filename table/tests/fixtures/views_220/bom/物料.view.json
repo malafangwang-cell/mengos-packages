@@ -1,0 +1,113 @@
+{
+ "lang": "zh-CN",
+ "schema": "mengos.table.view/1",
+ "sheets": [
+  {
+   "columns": [
+    {
+     "align": "right",
+     "header": "序号",
+     "key": "no",
+     "numbering": "seq",
+     "title": "序号",
+     "type": "integer"
+    },
+    {
+     "align": "left",
+     "header": "名称",
+     "key": "name",
+     "title": "名称",
+     "type": "text"
+    },
+    {
+     "align": "right",
+     "header": "数量",
+     "key": "qty",
+     "title": "数量",
+     "type": "integer"
+    },
+    {
+     "align": "right",
+     "header": "单价",
+     "key": "price",
+     "title": "单价",
+     "type": "money"
+    },
+    {
+     "align": "right",
+     "formula": "数量 * 单价",
+     "formula_display": "数量 × 单价",
+     "header": "金额",
+     "key": "amt",
+     "title": "金额",
+     "type": "money"
+    }
+   ],
+   "keys": [
+    [
+     1.0,
+     "输入轴",
+     1.0,
+     860.0,
+     860.0
+    ],
+    [
+     2.0,
+     "齿轮",
+     2.0,
+     1250.5,
+     2501.0
+    ],
+    [
+     3.0,
+     "轴承",
+     4.0,
+     95.0,
+     380.0
+    ]
+   ],
+   "name": "物料",
+   "rows": [
+    [
+     "1",
+     "输入轴",
+     "1",
+     "860.00",
+     "860.00"
+    ],
+    [
+     "2",
+     "齿轮",
+     "2",
+     "1,250.50",
+     "2,501.00"
+    ],
+    [
+     "3",
+     "轴承",
+     "4",
+     "95.00",
+     "380.00"
+    ]
+   ],
+   "totals": [
+    "合计",
+    "",
+    "",
+    "",
+    "3,741.00"
+   ]
+  }
+ ],
+ "stats": {
+  "cells": 15,
+  "columns": 5,
+  "empty_cells": 0,
+  "formula_columns": 1,
+  "rows": 3,
+  "sheets": 1,
+  "warnings": 0
+ },
+ "table_sha256": "4f9c15c41479f5dcb7af48d2379b8adba8ff73f5d26982abb751bc9c2a8b3b03",
+ "title": "物料"
+}
