@@ -1,13 +1,10 @@
 # table 2.3.0 — 表格交付物包
 
-> 2.3.0（mengosv2 局部追问设计 r9.2 §四 B1；L13、L18；终审 M4；调度 11-18 排期）：给“只改表格里的几格、几行”补包内的东西。**只放宽**：只加可选字段（`row_patch`）、输出字段（`normalized`）、产出台数据字段与登记顶层的 `local_patch`；不带新字段的合规输入，表模型、Markdown、CSV 与 1.0.1 逐字节相同，xlsx 逐格相同（`tests/test_contribution.py`，2.3.0 的新字段剥掉后比对）。
-> - **规范化入参**（§4.1）：table.build 的输出加 `normalized`——恒为 sheets 写法、每张表有 id（单表写法由包补 `_sa`），行一律是对象行（列的 key → 格；数组行按列序换过来；公式列、编号列的格不写），缺 id 的行按入参行序补 `_r` 加字母（`_ra`、`_rb`…，跳过已用的 id），`row_patch` 已施加并清空。按它再建一次，视图逐格相同；对它再规范化一次不变（幂等）。代码在 `canon.py`（进 lock 覆盖清单）。
-> - **保留前缀**：调用方写别的 `_r…` 行 id、`_s…` 表 id 回 BAD_INPUT；只认包发的形状（`_r` / `_s` 加小写字母），规范化入参再交回来照收。
-> - **`row_patch`**（§4.4，表级、可选，只给 table.build；单表写法写在顶层）：按行 id 改已有的行，登记上标 `x-mengos-merge: {mode: by-id, id: $id}`、`x-mengos-data`、`x-mengos-expr`（与 rows 同样收式，位数、步长参数同声明）。`$delete`、`$after`、`$clear` 是本工具自定义的键：① 补丁施加进 rows、不跨步累积；② 清空一格写 `{"$clear": true}`（`null` 回 BAD_INPUT）；③ 同一 `$after` 的几行按补丁里的次序排，`$after` 指向已删的行、不存在的行或成环回 BAD_INPUT 并点名；④ 已有的行写 `$after` 等于移行；⑤ id 不存在又没写 `$after` 回“找不到这一行”，被 `@行id.列` 引用的行被删回 BAD_INPUT 并列出引用它的格。新行的 id 不能以 `_r` 开头；公式列、编号列的格不能写；派生表不能写 row_patch。
-> - **产出台数据**（每张表，只加字段）：`id`（单表为 `_sa`）、`ids`（每行的行 id）、`col_kinds`（每列 input / formula / numbering；带式的格见原有的 `exprs`，合计、小计、生成的组头、合并行见原有的 `totals`、`layout`）、`deps`（`columns`：公式列引用的列；`cells`：带式的格引用的格 `[表id, 行id, 列]` 与同行的列——随动闭包用，宿主不解析公式）、`layout_keys`（与 `layout` 逐项对齐的生成行的键：组头、小计取分组值，合并行取合并键，数据行为 null）、派生表的 `row_kind: "derived"` 与 `derived_keys`（每行来源行 `表id/行id` 的集合）。
-> - **`local_patch`**（L18）：registration.json 顶层加 `{tool_id: table.build, field: table, wrap: sheet, schema: {row_patch?, columns?, totals?}}`，随登记进 lock；形状里没有表 id，引擎按选区包成 `sheets: [{id, …补丁}]` 再合并。**给模型看的说明（`row_patch` 与 `local_patch` 的 description）本版不写**：属进模型上下文的文字，草案交 mengosv2 调度、由立法者定稿后再补，补上时 lock 随之变。
-> - 表模型（`.table.json`）里不写包补的 id（旧输入逐字节不变）；从表模型再导入时补的 id 按表模型里的行序发（分组表与原入参的次序不同），局部修改取规范化入参，不经表模型。
-> - 测试：`tests/test_230.py` 30 条（在 2.2.0 上 29 条红；余下一条“旧输入的表模型里没有包补的 id”在旧版本来就成立）。lock 与 content_hash 见 PR。
+> 2.3.0（mengosv2 局部追问设计 r10 §3.2、§四、工单 P-1；本版取代 r9.2 B1 的做法）：**只加产出台数据的输出字段，入参不动**。三件工具的 `input_schema` 与 2.2.0 逐键相同，`table.build` 的输出不加字段；不收 `row_patch`，不出“规范化入参”，包不补表 id、行 id，不保留 `_r`、`_s` 前缀，不加报错；登记顶层没有 `local_patch`。局部修改的契约由引擎从 `table.build` 入参契约里的节点原样取来（选区即契约）。
+> - **产出台数据新字段**（每张表）：`id` 表 id（入参写了才有）；`ids` 各行的 `$id`（没写的为 null，全没写不给）；`src` 各行对应的入参行序号（分组挪过行时才给）；`col_kinds` 列一级的单元种类（input / formula / numbering）；`deps` 公式列引用的列（`columns`）与带式的格引用的格（`cells: [行, 列, [[表id, 行id, 列key]…], [同行引用的列…]]`）；派生表 `row_kind: "derived"` 与 `derived_keys`（来源行“表/行”的集合，派生表的行不可选）；`layout_keys` 生成行（组头、小计、合并行）的键，与 `layout` 逐项对齐，数据行为 null。
+> - 没写 id 的表、行，宿主按“#序号”定位：表在 `sheets` 里的序号、行在入参 `rows` 里的序号（分组时用 `src` 对回）。
+> - 旧输入的表模型、Markdown、CSV 逐字节不变，xlsx 逐格相同；产出台数据只多上述字段（`tests/test_contribution.py` 整表金样照旧）。`tests/test_230.py` 9 条。
+> - model.py、render.py 改了，lock 变为 `7055a72c7b0db91d`，须重新认证。
 
 > 2.2.0（执行令《首发后-table包2.2.0》，调度 11-12 派单；依据 mengosv2 #710 §5.5–§5.8、§6.3、§6.3a，#711 §2.5–§2.7、§六，返工稿 #717（§六 调度已定：层级按一列文字映射、合并行不算格级覆盖、T9-06 判部分），kernel-spec v0.2.98 08 PD-1e、17 TL-30/TL-30b，引擎 #719 对包的两条要求）：G7–G11 与 G17 的包内一项。**只放宽**：只加可选字段、枚举值、函数、核对项、告警码与输出字段；不带新字段的合规输入，表模型、Markdown、CSV 照旧逐字节相同（`tests/test_contribution.py`；入参 schema 剥掉 2.1.0、2.2.0 的新增项后与 1.0.1 逐键相同）。
 > - **G17 格公式**：输入列的格可写 `{"$expr": 式}`（数、函数、本行的列、`@行id.列`、`@表id/行id.列`），行带保留键 `$id`；`rows` 上声明 `"x-mengos-expr": true`（引擎沿 properties/items 可达），格的 schema 收 `{"$expr"}`；公式列、编号列的格写 `$expr` 回 BAD_INPUT（工具把关）。整本表一起算、成环报错；每格在 Excel 里写自己的公式（别表加引号）。取整的步长、位数可省（`ceiling(x)`、`roundup(x)`、`round(x)`），导出时补全为 `CEILING(…,1)` 等。不连续函数照 G4 用双精度再算一遍，不同就告警。
@@ -80,7 +77,7 @@ uv sync --frozen
 .venv/bin/python tools/lo_roundtrip.py # Excel 往返：LibreOffice 无头重算读回逐格比（要 soffice 与系统 Python 的 uno）
 ```
 
-改动源码后依次运行 `python tools/make_registration.py`、`python lock.py`、`python tools/make_package.py`。lock 覆盖的文件见 `mengos-package.json` 的 `tools_lock.covers`（2.3.0 起含 `canon.py`）。
+改动源码后依次运行 `python tools/make_registration.py`、`python lock.py`、`python tools/make_package.py`。
 
 ## 文件
 

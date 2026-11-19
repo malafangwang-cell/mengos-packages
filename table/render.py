@@ -242,27 +242,31 @@ LAYOUT_KIND = {"data": "d", "group": "g", "subtotal": "s", "merged": "m"}
 
 
 def _view_local(t, sh, s, lang):
-    """2.3.0 B1（局部追问 r9.2 §4.1、§4.5；r8 §4.1、§4.4）：表 id、行 id、单元种类、每格依赖、派生行与生成行的键。
-    宿主与渲染器只读这些，不解析公式。单表写法的表 id 由包补 _sa；缺 id 的行由包补 _r 加字母（与规范化入参一致）。"""
+    """2.3.0（mengosv2 局部追问 r10 §3.2、§四、§十一 §4.5）：只加产出台数据的输出字段，入参不动。
+    宿主与渲染器只读这些，不解析公式；包不补 id——没写 id 的表、行，宿主按“#序号”定位（表在 sheets 里的序号、行在入参 rows 里的序号）。
+      · id：表 id（入参写了才有）；ids：各行的 $id（没写的是 null；派生表不给）；src：各行对应的入参行序号（分组挪过行时才给）；
+      · col_kinds：列一级的单元种类（input / formula / numbering）；deps：公式列引用的列、带式的格引用的格；
+      · row_kind = derived 与 derived_keys：派生表的行不可选，键 = 来源行（表/行）的集合；
+      · layout_keys：生成行（组头、小计、合并行）的键，与 layout 逐项对齐，数据行为 null。"""
     import formula as F
-    from model import SINGLE_SHEET_ID
-    sid = sh.id or (SINGLE_SHEET_ID if len(t.sheets) == 1 else None)
-    if sid is not None:
-        s["id"] = sid
+    loc = lambda o: o.id if o.id else f"#{t.book.index(o)}"
+    if sh.id:
+        s["id"] = sh.id
     if sh.derive:
-        # 派生表的行不可选：键 = 来源行（表id/行id）的集合（终审 M4 第 2 条）
         s["row_kind"] = "derived"
         keys = []
         for gi in range(len(sh.rows)):
             src = set()
             for mem in sh.derive_src.get(gi, {}).values():
                 for o, ri, _ in mem:
-                    src.add(f"{o.id or SINGLE_SHEET_ID}/{o.row_ids[ri]}")
+                    src.add(f"{loc(o)}/{o.row_ids[ri] or '#' + str(o.src[ri] if o.src else ri)}")
             keys.append(sorted(src))
         s["derived_keys"] = keys
-    elif sh.row_ids:
-        s["ids"] = list(sh.row_ids)
-    # 单元种类：列一级（输入 / 公式 / 编号）；带式的输入格见 exprs；合计、小计、生成的组头、合并行见 totals 与 layout
+    else:
+        if any(x is not None for x in sh.row_ids):
+            s["ids"] = list(sh.row_ids)
+        if sh.src is not None and sh.src != list(range(len(sh.src))):
+            s["src"] = list(sh.src)
     s["col_kinds"] = ["formula" if c.formula is not None else "numbering" if c.numbering is not None else "input" for c in sh.columns]
     deps = {}
     col_refs = {c.key: sorted(F.refs(c.node)) for c in sh.columns if c.formula is not None and c.node is not None}
@@ -270,17 +274,14 @@ def _view_local(t, sh, s, lang):
         deps["columns"] = col_refs
     cells = []
     for (ri, j), node in sorted(sh.expr_nodes.items()):
-        locs = sorted({(loc[1], loc[2], loc[3]) for loc in F.cell_refs(node)})
-        same = sorted(F.refs(node))
-        refs = [[(t.book[si].id or (SINGLE_SHEET_ID if len(t.sheets) == 1 else None)), t.book[si].row_ids[r2], t.book[si].columns[j2].key] for si, r2, j2 in locs]
-        cells.append([ri, j, refs, same])
+        locs = sorted({(l[1], l[2], l[3]) for l in F.cell_refs(node)})
+        refs = [[t.book[si].id, t.book[si].row_ids[r2], t.book[si].columns[j2].key] for si, r2, j2 in locs]
+        cells.append([ri, j, refs, sorted(F.refs(node))])
     if cells:
         deps["cells"] = cells
     if deps:
         s["deps"] = deps
     if "layout" in s:
-        # 生成行的键（按 ⟨行种类, 键⟩ 对齐比较，不按行 id）：组头、小计取分组值，合并行取合并键
-        # 与 layout 逐项对齐；数据行为 null（数据行按行 id 对齐）
         keys = []
         for e in sh.layout:
             if e["kind"] in ("group", "subtotal"):
@@ -291,6 +292,7 @@ def _view_local(t, sh, s, lang):
             else:
                 keys.append(None)
         s["layout_keys"] = keys
+
 
 
 def layout_label_col(sh):
