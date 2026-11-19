@@ -17,7 +17,8 @@ PARSERS = [{k: CADLIB[k] for k in ("name", "spec", "version", "sha256")}]   # �
 # 附件文件入参（17 TL-9d）：接受的媒体类型闭集与个数、大小上限（一份附件 = 原件 + 解析结构两个文件）
 # 口径与 E-1 施工方核对（2026-11-19）：media_type 真源是存储服务刚性格式登记（.dxf = image/vnd.dxf，调度定）；
 # max_bytes 只管原件；max_total_bytes 管本次交的全部文件（原件 + 解析结构，解析结构可能大于原件，取平台合计上限）；max_count 按附件计
-ATTACHMENT_FILE = {"media_types": ["image/vnd.dxf"], "max_bytes": 52428800, "max_total_bytes": 419430400, "max_count": 1}
+# 0.2.2：原件上限并到上传上限 256 MiB（立法者 2026-11-19 裁；目标图纸 115 MB、162 MB 曾被 50 MiB 挡住）
+ATTACHMENT_FILE = {"media_types": ["image/vnd.dxf"], "max_bytes": 268435456, "max_total_bytes": 419430400, "max_count": 1}
 
 # ── 立法者 2026-11-19 批准的 M-1 原文（逐字，不得改写） ──
 M1_FILE = "要读的附件。写 {\"attachment\": 附件的节点 id}。这里只写引用，不要抄原文；文件由系统交给工具，每次读的是整份。"
@@ -276,7 +277,7 @@ AGREE = unit(
 
 REG = {
     "family": "count",
-    "family_version": "0.2.1",
+    "family_version": "0.2.2",
     "lock_hash": "",
     "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。来源两类：调用方给出（inline，行数上限 max_inline_rows，回执带假设声明 TL-22a）；按文件读（file，17 TL-9d，source.file 声明 x-mengos-attachment-file，引擎交原件与解析结构）。读文件的件登记 parsers（所带解析库的名字、规格版本、库版本、内容哈希，安装与认证时与存储服务现行版本核对）与 attachment_file（接受的媒体类型闭集、个数与大小上限）。",
     "units": [ROWS, SERIES, COVERAGE, AGREE],
