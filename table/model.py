@@ -267,7 +267,7 @@ class Sheet:
     __slots__ = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols", "formula_errors",
                  "header_style", "rules", "row_styles", "displays", "raw", "_styles",
                  "row_ids", "exprs", "outline_from", "levels", "group", "subtotals", "merge_rows", "derive",
-                 "layout", "merged", "derive_src", "_spec", "_where", "_index")
+                 "layout", "merged", "derive_src", "_spec", "_where", "_index", "expr_nodes", "src")
 
     def col(self, key):
         return next(c for c in self.columns if c.key == key)
@@ -597,7 +597,7 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     sh.raw = {}
     sh._styles = None
     sh._spec, sh._where = s, where
-    sh.row_ids, sh.exprs = [], {}
+    sh.row_ids, sh.exprs, sh.expr_nodes, sh.src = [], {}, {}, None
     sh.outline_from = sh.levels = sh.group = sh.merge_rows = sh.derive = None
     sh.subtotals, sh.layout, sh.merged, sh.derive_src = [], [], [], {}
     sid = s.get("id")
@@ -638,6 +638,7 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     plain = [j for j, c in enumerate(sh.columns) if c.formula is None]
     sh.displays = []
     raw_rows = [_row(r, f"{where}.rows[{ri}]", sh, plain, t, from_model, ri) for ri, r in enumerate(rows)]
+    sh.src = list(range(len(raw_rows)))     # 2.3.0：每行对应的入参行序号
     # 没写 type 的列按内容推断（公式列恒为数值；编号列 outline 为文字、seq 为整数；派生表的列取来源表同名列的类型）
     for j, c in enumerate(sh.columns):
         if c.type is None and c.numbering is not None:
@@ -953,6 +954,7 @@ def _exprs(t):
         if k != "num":
             raise BadInput(f"格公式“{e.src}”的结果要是数（{'条件' if k == 'bool' else '文字'}不行）", e.where)
         nodes[("cell", sh._index, ri, j)] = (node, e)
+        sh.expr_nodes[(ri, j)] = node         # 2.3.0：视图发布每格依赖（随动闭包）
     state, val = {}, {}
 
     class Ext:
@@ -1258,6 +1260,8 @@ def _reorder_by_group(sh):
     sh.rows = [sh.rows[i] for i in perm]
     sh.displays = [sh.displays[i] for i in perm]
     sh.row_ids = [sh.row_ids[i] for i in perm]
+    base = sh.src if sh.src is not None and len(sh.src) == len(perm) else list(range(len(perm)))
+    sh.src = [base[i] for i in perm]          # 2.3.0：每行对应的入参行序号（分组挪过行时视图据此对回入参）
     sh.exprs = {(new_index[ri], j2): v for (ri, j2), v in sh.exprs.items()}
 
 

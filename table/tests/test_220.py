@@ -146,6 +146,8 @@ def test_model_round_trip_keeps_structure_exprs_and_ids(cid, tmp_path):
     assert r2["output"]["table_sha256"] == r["output"]["table_sha256"]
     a, b = render.to_view(model.normalize(m)), json.loads(files(r, w)["view"])
     a["stats"].pop("warnings"), b["stats"].pop("warnings")      # build 才有的告警（如空表 no_rows）导出时不再报
+    for x, y in zip(a["sheets"], b["sheets"]):                  # 2.3.0：src 是对回入参行序号用的；表模型里的行已是分组后的次序，
+        x.pop("src", None), y.pop("src", None)                  #   再导入时没有挪行，不出 src
     assert json.loads(json.dumps(a)) == b
 
 

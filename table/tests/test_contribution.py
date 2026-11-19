@@ -409,7 +409,9 @@ WM = json.loads((FIX / "whole-mode-1.0.1.json").read_text(encoding="utf-8"))
 
 
 WX = json.loads((FIX / "whole-mode-2.0.1-xlsx.json").read_text(encoding="utf-8"))
-NEW_VIEW_FIELDS_210 = ("totals_fn",)      # 2.1.0 产出台数据新增的输出字段（只加，不改原有字段）
+NEW_VIEW_FIELDS_210 = ("totals_fn",      # 2.1.0 产出台数据新增的输出字段（只加，不改原有字段）
+                       # 2.3.0：表 id、行 id、入参行序号、单元种类、每格依赖、派生行与生成行的键（局部追问 r10）
+                       "id", "ids", "src", "col_kinds", "deps", "row_kind", "derived_keys", "layout_keys")
 
 
 def _unwrap_210(new, old):

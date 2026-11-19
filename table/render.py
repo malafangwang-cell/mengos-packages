@@ -217,6 +217,7 @@ def to_view(t: Table) -> dict:
                 s["totals_fn"] = fns
         _view_styles(sh, s)
         _view_structure(sh, s, lang)
+        _view_local(t, sh, s, lang)
         if sh.caption:
             s["caption"] = sh.caption
         if sh.note:
@@ -238,6 +239,61 @@ def to_view(t: Table) -> dict:
 
 
 LAYOUT_KIND = {"data": "d", "group": "g", "subtotal": "s", "merged": "m"}
+
+
+def _view_local(t, sh, s, lang):
+    """2.3.0（mengosv2 局部追问 r10 §3.2、§四、§十一 §4.5）：只加产出台数据的输出字段，入参不动。
+    宿主与渲染器只读这些，不解析公式；包不补 id——没写 id 的表、行，宿主按“#序号”定位（表在 sheets 里的序号、行在入参 rows 里的序号）。
+      · id：表 id（入参写了才有）；ids：各行的 $id（没写的是 null；派生表不给）；src：各行对应的入参行序号（有分组或合并就给，原序也给；没有就不给）；
+      · col_kinds：列一级的单元种类（input / formula / numbering）；deps：公式列引用的列、带式的格引用的格；
+      · row_kind = derived 与 derived_keys：派生表的行不可选，键 = 来源行（表/行）的集合；
+      · layout_keys：生成行（组头、小计、合并行）的键，与 layout 逐项对齐，数据行为 null。"""
+    import formula as F
+    loc = lambda o: o.id if o.id else f"#{t.book.index(o)}"
+    if sh.id:
+        s["id"] = sh.id
+    if sh.derive:
+        s["row_kind"] = "derived"
+        keys = []
+        for gi in range(len(sh.rows)):
+            src = set()
+            for mem in sh.derive_src.get(gi, {}).values():
+                for o, ri, _ in mem:
+                    src.add(f"{loc(o)}/{o.row_ids[ri] or '#' + str(o.src[ri] if o.src else ri)}")
+            keys.append(sorted(src))
+        s["derived_keys"] = keys
+    else:
+        if any(x is not None for x in sh.row_ids):
+            s["ids"] = list(sh.row_ids)
+        # 有分组或合并 (layout) 一律给 src, 原序也给: 缺 src 的分组表只可能是 2.3.0 之前做的 (立法者 2026-11-19 第十一件判据按缺什么写)
+        if sh.src is not None and (sh.layout or sh.src != list(range(len(sh.src)))):
+            s["src"] = list(sh.src)
+    s["col_kinds"] = ["formula" if c.formula is not None else "numbering" if c.numbering is not None else "input" for c in sh.columns]
+    deps = {}
+    col_refs = {c.key: sorted(F.refs(c.node)) for c in sh.columns if c.formula is not None and c.node is not None}
+    if col_refs:
+        deps["columns"] = col_refs
+    cells = []
+    for (ri, j), node in sorted(sh.expr_nodes.items()):
+        locs = sorted({(l[1], l[2], l[3]) for l in F.cell_refs(node)})
+        refs = [[t.book[si].id, t.book[si].row_ids[r2], t.book[si].columns[j2].key] for si, r2, j2 in locs]
+        cells.append([ri, j, refs, sorted(F.refs(node))])
+    if cells:
+        deps["cells"] = cells
+    if deps:
+        s["deps"] = deps
+    if "layout" in s:
+        keys = []
+        for e in sh.layout:
+            if e["kind"] in ("group", "subtotal"):
+                keys.append(e.get("label"))
+            elif e["kind"] == "merged":
+                first = sh.merged[e["mi"]]["members"][0]
+                keys.append([display(sh.col(b), sh.rows[first][next(k for k, c in enumerate(sh.columns) if c.key == b)], lang) for b in sh.merge_rows["by"]])
+            else:
+                keys.append(None)
+        s["layout_keys"] = keys
+
 
 
 def layout_label_col(sh):
