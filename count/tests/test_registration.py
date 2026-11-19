@@ -132,3 +132,27 @@ def test_out_types_are_package_root_types_not_platform_generic():
     for s in SEL:
         if s["required_type"] in ("number", "verdict"):
             assert s["expect_selected"] is False, s
+
+
+
+def test_file_node_takes_reference_and_replaced_shape_passes():
+    """0.2.3：source.file 登记模型写的引用 {attachment}（与说明一致）；引擎替换后的形状照样过签名校验；形状由执行体自己核。"""
+    readers_ = [u for u in REG["units"] if u["tool_id"] in ("count.rows", "count.series", "count.coverage")]
+    assert len(readers_) == 3
+    for u in readers_:
+        sig = u["signature"]
+        node = (sig["input_schema"]["properties"]["source"] if u["tool_id"] != "count.coverage"
+                else sig["input_schema"]["properties"]["inventory"]["properties"]["source"])["properties"]["file"]
+        assert node["x-mengos-attachment-file"] is True and node["properties"] == {"attachment": {"type": "string"}}
+        assert "required" not in node and "additionalProperties" not in node
+        assert node["description"].startswith("要读的附件。写 {\"attachment\": 附件的节点 id}")
+        v = jsonschema.Draft202012Validator(node)
+        assert v.is_valid({"attachment": "n1"})            # 模型照说明写的引用
+        assert v.is_valid(DUMMY_FILE)                        # 引擎替换后的形状
+        assert not v.is_valid({"attachment": 1}) and not v.is_valid("n1")
+    # 执行体自己核替换后的形状：没换（仍是引用）、多键、缺键一律 BAD_INPUT
+    for f, msg in (({"attachment": "n1"}, "引擎未交文件"),
+                   ({**DUMMY_FILE, "extra": 1}, "source.file 须为"),
+                   ({k: v for k, v in DUMMY_FILE.items() if k != "sha256"}, "source.file 须为")):
+        r = run({"tool": "count.rows", "payload": {"source": {"file": f, "section": "文字"}}, "workdir": "/nonexistent"})
+        assert r["ok"] is False and r["error"]["code"] == "BAD_INPUT" and msg in r["error"]["message"], (f, r)

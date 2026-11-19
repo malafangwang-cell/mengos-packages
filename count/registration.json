@@ -1,12 +1,12 @@
 {
   "family": "count",
   "family_version": "0.2.2",
-  "lock_hash": "c9a360676714a9ff",
+  "lock_hash": "2fcfa990c526ab57",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。来源两类：调用方给出（inline，行数上限 max_inline_rows，回执带假设声明 TL-22a）；按文件读（file，17 TL-9d，source.file 声明 x-mengos-attachment-file，引擎交原件与解析结构）。读文件的件登记 parsers（所带解析库的名字、规格版本、库版本、内容哈希，安装与认证时与存储服务现行版本核对）与 attachment_file（接受的媒体类型闭集、个数与大小上限）。",
   "units": [
     {
       "tool_id": "count.rows",
-      "version": "c9a360676714a9ff",
+      "version": "2fcfa990c526ab57",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -161,52 +161,10 @@
                 "file": {
                   "type": "object",
                   "x-mengos-attachment-file": true,
-                  "additionalProperties": false,
-                  "required": [
-                    "path",
-                    "sha256",
-                    "bytes",
-                    "media_type"
-                  ],
                   "description": "要读的附件。写 {\"attachment\": 附件的节点 id}。这里只写引用，不要抄原文；文件由系统交给工具，每次读的是整份。",
                   "properties": {
-                    "path": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "sha256": {
-                      "type": "string",
-                      "pattern": "^[0-9a-f]{64}$"
-                    },
-                    "bytes": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "media_type": {
+                    "attachment": {
                       "type": "string"
-                    },
-                    "parsed": {
-                      "type": "object",
-                      "additionalProperties": false,
-                      "required": [
-                        "path",
-                        "sha256",
-                        "parser"
-                      ],
-                      "properties": {
-                        "path": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "sha256": {
-                          "type": "string",
-                          "pattern": "^[0-9a-f]{64}$"
-                        },
-                        "parser": {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      }
                     }
                   }
                 },
@@ -525,7 +483,7 @@
     },
     {
       "tool_id": "count.series",
-      "version": "c9a360676714a9ff",
+      "version": "2fcfa990c526ab57",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -696,52 +654,10 @@
                 "file": {
                   "type": "object",
                   "x-mengos-attachment-file": true,
-                  "additionalProperties": false,
-                  "required": [
-                    "path",
-                    "sha256",
-                    "bytes",
-                    "media_type"
-                  ],
                   "description": "要读的附件。写 {\"attachment\": 附件的节点 id}。这里只写引用，不要抄原文；文件由系统交给工具，每次读的是整份。",
                   "properties": {
-                    "path": {
-                      "type": "string",
-                      "minLength": 1
-                    },
-                    "sha256": {
-                      "type": "string",
-                      "pattern": "^[0-9a-f]{64}$"
-                    },
-                    "bytes": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "media_type": {
+                    "attachment": {
                       "type": "string"
-                    },
-                    "parsed": {
-                      "type": "object",
-                      "additionalProperties": false,
-                      "required": [
-                        "path",
-                        "sha256",
-                        "parser"
-                      ],
-                      "properties": {
-                        "path": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "sha256": {
-                          "type": "string",
-                          "pattern": "^[0-9a-f]{64}$"
-                        },
-                        "parser": {
-                          "type": "string",
-                          "minLength": 1
-                        }
-                      }
                     }
                   }
                 },
@@ -1014,7 +930,7 @@
     },
     {
       "tool_id": "count.coverage",
-      "version": "c9a360676714a9ff",
+      "version": "2fcfa990c526ab57",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -1196,52 +1112,10 @@
                     "file": {
                       "type": "object",
                       "x-mengos-attachment-file": true,
-                      "additionalProperties": false,
-                      "required": [
-                        "path",
-                        "sha256",
-                        "bytes",
-                        "media_type"
-                      ],
                       "description": "要读的附件。写 {\"attachment\": 附件的节点 id}。这里只写引用，不要抄原文；文件由系统交给工具，每次读的是整份。",
                       "properties": {
-                        "path": {
-                          "type": "string",
-                          "minLength": 1
-                        },
-                        "sha256": {
-                          "type": "string",
-                          "pattern": "^[0-9a-f]{64}$"
-                        },
-                        "bytes": {
-                          "type": "integer",
-                          "minimum": 0
-                        },
-                        "media_type": {
+                        "attachment": {
                           "type": "string"
-                        },
-                        "parsed": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": [
-                            "path",
-                            "sha256",
-                            "parser"
-                          ],
-                          "properties": {
-                            "path": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "sha256": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{64}$"
-                            },
-                            "parser": {
-                              "type": "string",
-                              "minLength": 1
-                            }
-                          }
                         }
                       }
                     },
@@ -1440,7 +1314,7 @@
     },
     {
       "tool_id": "count.agree",
-      "version": "c9a360676714a9ff",
+      "version": "2fcfa990c526ab57",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {

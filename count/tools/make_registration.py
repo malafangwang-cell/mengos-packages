@@ -25,17 +25,12 @@ M1_FILE = "要读的附件。写 {\"attachment\": 附件的节点 id}。这里�
 M1_SECTION = "读哪一节，写节名（如 文字、尺寸标注、图块插入、线段明细、嵌套插入、未插入图块文字）。写错时回执会列出这份附件里有哪些节。"
 M1_UNIT = "只读某一个单元时写它的编号（照图幅目录）；不写则读全部单元。"
 M1_PAGE = "清单太长时分批取：offset 从第几条起，limit 取几条；回执里的 total_matched 是命中的总条数。"
-SHA = {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+# 0.2.3：登记的是模型写的形状（引用）。替换后的 {path, sha256, bytes, media_type, parsed?} 由执行体自己核（file_source.py），
+# 这里不约束；0.2.2 前登记的是替换后的形状，与说明矛盾，模型照 schema 写不出引用（架构线归因端到端第 1 次）。说明一字不动。
 FILE = {
-    "type": "object", "x-mengos-attachment-file": True, "additionalProperties": False,
-    "required": ["path", "sha256", "bytes", "media_type"],
+    "type": "object", "x-mengos-attachment-file": True,
     "description": M1_FILE,
-    "properties": {
-        "path": {"type": "string", "minLength": 1}, "sha256": SHA, "bytes": {"type": "integer", "minimum": 0},
-        "media_type": {"type": "string"},
-        "parsed": {"type": "object", "additionalProperties": False, "required": ["path", "sha256", "parser"],
-                   "properties": {"path": {"type": "string", "minLength": 1}, "sha256": SHA, "parser": {"type": "string", "minLength": 1}}},
-    },
+    "properties": {"attachment": {"type": "string"}},
 }
 OPS = ["eq", "ne", "in", "contains", "regex", "lt", "le", "gt", "ge", "between"]
 
