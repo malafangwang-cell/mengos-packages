@@ -1,0 +1,82 @@
+{
+  "name": "reducer",
+  "parts": [
+    {
+      "id": "箱座",
+      "plan": "material Q235\nbox: box 424 174 140 at=(-57,-12,-140)\nflange: add box 484 174 12 at=(-87,-12,-12)\ncavity: cut box 400 150 126 at=(-45,0,-125)\n孔1: cut cylinder d=62 h=176 axis=y at=(0,-13,0)\n孔2: cut cylinder d=72 h=176 axis=y at=(90,-13,0)\n孔3: cut cylinder d=90 h=176 axis=y at=(228,-13,0)\n孔b: hole d=11 at=(-72,25) from=top through\npattern 孔b linear n=2 dy=100\n孔c: hole d=11 at=(382,25) from=top through\npattern 孔c linear n=2 dy=100\n"
+    },
+    {
+      "id": "箱盖",
+      "plan": "material Q235\nbox: box 424 174 140 at=(-57,-12,0)\nflange: add box 484 174 12 at=(-87,-12,0)\ncavity: cut box 400 150 126 at=(-45,0,-1)\n孔1: cut cylinder d=62 h=176 axis=y at=(0,-13,0)\n孔2: cut cylinder d=72 h=176 axis=y at=(90,-13,0)\n孔3: cut cylinder d=90 h=176 axis=y at=(228,-13,0)\n孔b: hole d=11 at=(-72,25) from=top through\npattern 孔b linear n=2 dy=100\n孔c: hole d=11 at=(382,25) from=top through\npattern 孔c linear n=2 dy=100\n"
+    },
+    {
+      "id": "高速轴",
+      "plan": "material 45\n杆: cylinder d=30 h=212\n肩: add cylinder d=36 h=8 at=(0,0,62)\n"
+    },
+    {
+      "id": "中间轴",
+      "plan": "material 45\n杆: cylinder d=35 h=174\n肩: add cylinder d=42 h=30 at=(0,0,62)\n"
+    },
+    {
+      "id": "低速轴",
+      "plan": "material 45\n杆: cylinder d=50 h=224\n肩: add cylinder d=58 h=20 at=(0,0,72)\n"
+    },
+    {
+      "id": "齿轮1",
+      "plan": "material 45\n齿: gear m=2 z=20 width=30 bore=30\n"
+    },
+    {
+      "id": "齿轮2",
+      "plan": "material 45\n齿: gear m=2 z=70 width=30 bore=35\n"
+    },
+    {
+      "id": "齿轮3",
+      "plan": "material 45\n齿: gear m=3 z=20 width=45 bore=35\n"
+    },
+    {
+      "id": "齿轮4",
+      "plan": "material 45\n齿: gear m=3 z=72 width=45 bore=50\n"
+    },
+    {
+      "id": "轴承6206",
+      "plan": "material 45\nlet ri = 30/2\nlet ro = 62/2\nlet t = (ro-ri)/4\nlet b = 16\nring: revolve (ri,0) (ri+t,0) (ri+t,b/4) (ro-t,b/4) (ro-t,0) (ro,0) (ro,b) (ro-t,b) (ro-t,b*3/4) (ri+t,b*3/4) (ri+t,b) (ri,b)\n"
+    },
+    {
+      "id": "轴承6207",
+      "plan": "material 45\nlet ri = 35/2\nlet ro = 72/2\nlet t = (ro-ri)/4\nlet b = 17\nring: revolve (ri,0) (ri+t,0) (ri+t,b/4) (ro-t,b/4) (ro-t,0) (ro,0) (ro,b) (ro-t,b) (ro-t,b*3/4) (ri+t,b*3/4) (ri+t,b) (ri,b)\n"
+    },
+    {
+      "id": "轴承6210",
+      "plan": "material 45\nlet ri = 50/2\nlet ro = 90/2\nlet t = (ro-ri)/4\nlet b = 20\nring: revolve (ri,0) (ri+t,0) (ri+t,b/4) (ro-t,b/4) (ro-t,0) (ro,0) (ro,b) (ro-t,b) (ro-t,b*3/4) (ri+t,b*3/4) (ri+t,b) (ri,b)\n"
+    },
+    {
+      "id": "透盖62",
+      "plan": "material Q235\ndisc: cylinder d=82 h=10\n孔: cut cylinder d=32 h=12 at=(0,0,-1)\n"
+    },
+    {
+      "id": "闭盖62",
+      "plan": "material Q235\ndisc: cylinder d=82 h=10\n"
+    },
+    {
+      "id": "闭盖72",
+      "plan": "material Q235\ndisc: cylinder d=92 h=10\n"
+    },
+    {
+      "id": "闭盖90",
+      "plan": "material Q235\ndisc: cylinder d=110 h=10\n"
+    },
+    {
+      "id": "透盖90",
+      "plan": "material Q235\ndisc: cylinder d=110 h=10\n孔: cut cylinder d=52 h=12 at=(0,0,-1)\n"
+    },
+    {
+      "id": "螺栓",
+      "plan": "material 45\n杆: cylinder d=10 h=40\n头: add prism (8,0) (4,6.928) (-4,6.928) (-8,0) (-4,-6.928) (4,-6.928) h=7 off=40\n"
+    },
+    {
+      "id": "螺母M10",
+      "plan": "material 45\n体: prism (8,0) (4,6.928) (-4,6.928) (-8,0) (-4,-6.928) (4,-6.928) h=8\n孔: cut cylinder d=10 h=10 at=(0,0,-1)\n"
+    }
+  ],
+  "layout": "# 两级展开式直齿圆柱齿轮减速器：轴沿 y，剖分面 z=0\nb:   fix 箱座\nc:   put 箱盖 face=bottom to=b.top face2=left to2=b.left flush2 face3=front to3=b.front flush3\n# 轴承：前后各一，外侧与壁外面齐平\nk1:  put 轴承6206 coaxial=b.孔1 face=bottom to=b.box.front flush\nk2:  put 轴承6206 coaxial=b.孔1 face=top to=b.box.back flush\nk3:  put 轴承6207 coaxial=b.孔2 face=bottom to=b.box.front flush\nk4:  put 轴承6207 coaxial=b.孔2 face=top to=b.box.back flush\nk5:  put 轴承6210 coaxial=b.孔3 face=bottom to=b.box.front flush\nk6:  put 轴承6210 coaxial=b.孔3 face=top to=b.box.back flush\n# 轴\ns1:  put 高速轴 coaxial=b.孔1 face=bottom to=b.box.front flush gap=38\ns2:  put 中间轴 coaxial=b.孔2 face=bottom to=b.box.front flush\ns3:  put 低速轴 coaxial=b.孔3 face=bottom to=b.box.front flush\n# 齿轮：靠轴肩定位，从动轮按齿数自动对齿\ng1:  put 齿轮1 coaxial=s1 face=bottom to=s1.肩.top angle=0\ng2:  put 齿轮2 coaxial=s2 face=top to=s2.肩.bottom mesh=g1\ng3:  put 齿轮3 coaxial=s2 face=bottom to=s2.肩.top angle=0\ng4:  put 齿轮4 coaxial=s3 face=bottom to=s3.肩.top mesh=g3\n# 端盖\ne1:  put 透盖62 coaxial=b.孔1 face=bottom to=b.box.front\ne2:  put 闭盖62 coaxial=b.孔1 face=bottom to=b.box.back\ne3:  put 闭盖72 coaxial=b.孔2 face=bottom to=b.box.front\ne4:  put 闭盖72 coaxial=b.孔2 face=bottom to=b.box.back\ne5:  put 闭盖90 coaxial=b.孔3 face=bottom to=b.box.front\ne6:  put 透盖90 coaxial=b.孔3 face=bottom to=b.box.back\n# 凸缘螺栓：两端各 2 个\nbt1: put 螺栓 coaxial=c.孔b face=头.bottom to=c.flange.top angle=0\npattern bt1 linear n=2 dy=100\nbt3: put 螺栓 coaxial=c.孔c face=头.bottom to=c.flange.top angle=0\npattern bt3 linear n=2 dy=100\nn1:  put 螺母M10 coaxial=bt1 face=top to=b.flange.bottom angle=0\npattern n1 linear n=2 dy=100\nn3:  put 螺母M10 coaxial=bt3 face=top to=b.flange.bottom angle=0\npattern n3 linear n=2 dy=100\n"
+}

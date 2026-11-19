@@ -1,0 +1,38 @@
+{
+  "name": "vise",
+  "parts": [
+    {
+      "id": "固定钳身",
+      "plan": "material Q235\nbase: box 260 100 25 at=(0,-50,0)\njaw: add box 30 100 50 at=(230,-50,25)\nend: add box 15 60 40 at=(0,-30,25)\n孔: cut cylinder d=18 h=17 axis=x at=(-1,0,45)\nt1: hole d=6 at=(-25,55) from=right depth=30\nt2: hole d=6 at=(25,55) from=right depth=30\n"
+    },
+    {
+      "id": "钳口板",
+      "plan": "material 45\nplate: box 10 100 40 at=(0,-50,0)\nm1: hole d=6.6 at=(-25,20) from=left through csk=(13,90)\nm2: hole d=6.6 at=(25,20) from=left through csk=(13,90)\n"
+    },
+    {
+      "id": "螺钉",
+      "plan": "material 45\nshank: cylinder d=6 h=22\nhead: add cone d1=6 d2=12 h=3 at=(0,0,22)\n"
+    },
+    {
+      "id": "活动钳身",
+      "plan": "material Q235\nbody: box 60 100 50 at=(0,-50,25)\n孔: cut cylinder d=30 h=62 axis=x at=(-1,0,45)\nt1: hole d=6 at=(-25,55) from=right depth=20\nt2: hole d=6 at=(25,55) from=right depth=20\n"
+    },
+    {
+      "id": "螺母",
+      "plan": "material H62\nbody: cylinder d=30 h=60\n孔: cut cylinder d=18 h=62 at=(0,0,-1)\n"
+    },
+    {
+      "id": "丝杠",
+      "plan": "material 45\n杆: cylinder d=18 h=120\n肩: add cylinder d=28 h=8 at=(0,0,-8)\n头: add cylinder d=18 h=30 at=(0,0,-38)\n横孔: cut cylinder d=10 h=20 axis=y at=(0,-10,-23)\n"
+    },
+    {
+      "id": "手柄",
+      "plan": "material Q235\n杆: cylinder d=10 h=140 axis=y at=(0,-70,0)\n球1: add sphere d=16 at=(0,-70,0)\n球2: add sphere d=16 at=(0,70,0)\n"
+    },
+    {
+      "id": "挡圈",
+      "plan": "material 45\n环: cylinder d=28 h=5\n孔: cut cylinder d=18 h=7 at=(0,0,-1)\n"
+    }
+  ],
+  "layout": "# 平口虎钳：x 沿丝杠，钳口开到最大 80\nb:   fix 固定钳身\np1:  put 钳口板 face=right to=b.jaw.left face2=bottom to2=b.base.top gap2=10 face3=front to3=b.front flush3\nsc1: put 螺钉 coaxial=p1.m1 face=top to=p1.left flush gap=-0.5\npattern sc1 linear n=2 dy=50\nm:   put 活动钳身 coaxial=b.孔 face=right to=p1.left gap=90 angle=0\np2:  put 钳口板 face=right to=m.right face2=bottom to2=b.base.top gap2=10 face3=back to3=m.front flush3\nsc3: put 螺钉 coaxial=p2.m1 face=top to=p2.left flush gap=-0.5\npattern sc3 linear n=2 dy=-50\nn:   put 螺母 coaxial=m.孔 face=bottom to=m.left flush\ns:   put 丝杠 coaxial=b.孔 face=肩.top to=b.left angle=0\nh:   put 手柄 at=(-23,0,45)\nr:   put 挡圈 coaxial=s face=bottom to=b.end.right\n"
+}
