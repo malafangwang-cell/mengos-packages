@@ -1,6 +1,6 @@
 {
   "package": "count",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "mengos",
   "scope": "public",
   "title": "工程文件读取器",
@@ -11,7 +11,7 @@
     "count.coverage": "查清单里未处理的项",
     "count.agree": "核两个数是否一致"
   },
-  "content_hash": "c51dd55f28c33e93b54c716be3835ced68ff82dbde5b8fd566dca0183a6b7e3b",
+  "content_hash": "b4c547c85c9ff0124f5069133556025193e721c3351181a0fbdf379eba327ed0",
   "types": [
     {
       "name": "count_receipt",

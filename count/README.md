@@ -1,4 +1,4 @@
-# count 0.2.0 · 工程文件读取器
+# count 0.2.1 · 工程文件读取器
 
 行式数据与结构化附件文件上的确定性计数工具包。四件工具，T1、效应 none、process 执行器、不出网、不调模型；同一入参两次输出逐字节相同。包标识 `count`、工具标识与类型名不变，中文名 0.2.0 起为“工程文件读取器”（立法者 2026-11-19 定）。
 
@@ -25,7 +25,7 @@
 
 - `{file, section, unit?}`（0.2.0，按文件读）：`file` 声明 `x-mengos-attachment-file`（17 TL-9d）。模型只写附件引用；引擎派单时把原件与存储服务入库时存下的完整解析结构放进工作目录下的只读输入子目录，把 `file` 换成 `{path, sha256, bytes, media_type, parsed?: {path, sha256, parser}}`，信封带 `workdir`。执行体（`file_source.py`）：
   - 核原件与解析结构的 sha256 与字节数；`parsed.parser`（存储服务记在文件上的解析核串，引擎原样转交）与结构里记的 `library` 须与本包带的解析库同一版。任一不过 ⟹ `BAD_INPUT`，不出数。
-  - 默认读解析结构，不重新解析；结构里标 `stored: false` 的明细节、或没有解析结构时，用包里带的同一份解析库（`cadlib/`）回原件读，明细全部留存；回原件读时只在工作目录里临时写解析输出，读完即删。
+  - 默认读解析结构，不重新解析；结构里标 `stored: false` 的明细节、或没有解析结构时，用包里带的同一份解析库（`cadlib/`）回原件读，以 `run(..., detail_cap={节名: None})` 取消明细上限、全部留存；回原件读时只在工作目录里临时写解析输出，读完即删。
   - `section` 写节名：单元文本里的各节（文字、尺寸标注、图块插入、闭合轮廓、线段统计、丢失声明、图块）与三类明细（线段明细、嵌套插入、未插入图块文字）；行前加一列“单元”，行序号写成 `单元/节/第几条`。`unit` 只读一个单元（`图幅k` 与 `Sk` 同指、空白不计）。表单元（GFM）不分节，按节读时列在 `units_without_section`。
   - 逐节核读到条数 = 声明条数；回执 `source` 回显 `read_from`、`file`（哈希与字节数）、`parser`、`scope`、`unparsed`（这份图里标为未解析的类型与处数）、`units_read`、`rows_declared`、`rows_read`、`sections_available`（各节与列名）、`units_without_section`。写错节名 ⟹ 失败消息列出有哪些节；节名正落在未解析的类型上 ⟹ 答“拿不到”并给处数，不出数。
   - 不设行数上限，不挂转录假设。文件内容不进回执。
@@ -44,7 +44,7 @@
 
 ## 解析库（按版本带入）
 
-`cadlib/`（`VERSION`、`cadx.py`、`mengos_cad/`）与 `requirements-cad.txt` 逐字节拷自 mengosv2 `vetc/cadlib/` 与 `vetc/requirements-cad.txt`，由 `tools/vendor_cadlib.py <vetc/cadlib> --version V --sha256 H` 带入：带入后重算解析库版本，与给定的不同即不写。`cadlib.lock.json` 记名字、规格版本、库版本、内容哈希与逐文件 sha256。读文件的三件在登记里声明 `parsers`（安装与认证时由引擎与存储服务登记的现行版本核对，对不上判不过）与 `attachment_file`（接受的媒体类型闭集、个数与大小上限）。依赖按 `requirements-cad.txt` 的钉版写进 `pyproject.toml` 与 `uv.lock`，测试钉住两边一致。
+`cadlib/`（`VERSION`、`cadx.py`、`mengos_cad/`）与 `requirements-cad.txt` 逐字节拷自 mengosv2 `vetc/cadlib/` 与 `vetc/requirements-cad.txt`，由 `tools/vendor_cadlib.py <vetc/cadlib> --version V --sha256 H` 带入（现为 mengos-cad 1.0.1）：带入后重算解析库版本，与给定的不同即不写。`cadlib.lock.json` 记名字、规格版本、库版本、内容哈希与逐文件 sha256。读文件的三件在登记里声明 `parsers`（安装与认证时由引擎与存储服务登记的现行版本核对，对不上判不过）与 `attachment_file`（接受的媒体类型闭集、个数与大小上限）。依赖按 `requirements-cad.txt` 的钉版写进 `pyproject.toml` 与 `uv.lock`，测试钉住两边一致。
 
 ## 进模型上下文的文字（提示词禁触区）
 
@@ -69,3 +69,4 @@ uv run --frozen python tools/run_golden.py
 - 0.1.0（2026-11-18）：首版，四件工具，第一阶段（inline 来源、行数上限 50）。未入册。
 - 0.1.1（2026-11-18）：产物类型改用包自带的两个新根类型 `count_receipt`（count.rows、count.series）与 `count_check`（count.coverage、count.agree），不再登记在平台的 number、verdict 上，PLAN 不把它们匹配到通用目标，只在域包显式列出时使用（立法者 11-18 裁定，经调度转）。工具逻辑不变。
 - 0.2.0（2026-11-19）：中文名改为“工程文件读取器”，摘要随改；按文件读的来源（`source.file`，17 TL-9d；默认读解析结构，结构里没有的用带入的解析库回原件读）；按版本带入解析库 mengos-cad 1.0.0；`count.rows` 清单分页（`offset`、`limit`、`total_matched`）；回执回显节与列、未解析清单；`count.coverage` 清单取自文件、标记取自产出内容加字段名；登记 `parsers`、`attachment_file`；`runtime.process.workdir` 为 true，Python ≥ 3.11；`cost.timeout` 120 秒。
+- 0.2.1（2026-11-19）：带入解析库 mengos-cad 1.0.1（`run()` 新增可选参数 `detail_cap`；立法者 2026-11-19 批乙方案）；回原件读改用这个参数，去掉 0.2.0 运行时临时调整解析库全局上限的做法。行为与 0.2.0 相同。
