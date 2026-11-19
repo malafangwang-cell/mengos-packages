@@ -4,8 +4,8 @@
   "publisher": "mengos",
   "scope": "public",
   "title": "CAD追问Pro",
-  "summary": "需要先安装并启用CAD 包；单独安装没有作用。",
-  "content_hash": "ef577e3421e7a7468a9c07dcf12aa3134896f378e47dd07caed8caea741ad755",
+  "summary": "需要先安装并启用‘三维零件建模’包；单独安装没有作用。",
+  "content_hash": "a0e89bdf28485d36d2213ce03be9fc8920cd1b10a7ae2de55a511dfa39797195",
   "types": [],
   "tools": [],
   "tools_lock": {
