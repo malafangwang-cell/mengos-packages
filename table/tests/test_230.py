@@ -76,6 +76,19 @@ def test_grouped_rows_publish_their_input_row_index(tmp_path):
     assert len(data) == 3
 
 
+
+def test_src_is_published_whenever_the_sheet_has_a_layout_even_in_input_order(tmp_path):
+    """立法者 2026-11-19 第十一件：渲染器判据“行上没有 src 而表有分组或合并 ⟹ 不能选”；2.3.x 有 layout 就一律给 src，原序也给。"""
+    t = {"title": "原序分组", "columns": [{"key": "g", "title": "组"}, {"key": "v", "title": "值", "type": "integer"}],
+         "rows": [["甲", 1], ["甲", 3], ["乙", 2]], "group": {"by": "g"}}
+    _, view = build(tmp_path, t)
+    s = view["sheets"][0]
+    assert "layout" in s and s["src"] == [0, 1, 2]
+    t2 = {"title": "无分组", "columns": [{"key": "v", "title": "值", "type": "integer"}], "rows": [[1], [2]]}
+    _, view2 = build(tmp_path, t2, "c")
+    assert "layout" not in view2["sheets"][0] and "src" not in view2["sheets"][0]
+
+
 def test_generated_rows_carry_kind_and_key(tmp_path):
     _, view = build(tmp_path, G["t3_07_group_subtotal"]["payload"]["table"])
     s = view["sheets"][0]
