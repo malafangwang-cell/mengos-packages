@@ -1,4 +1,4 @@
-# count 0.2.2 · 工程文件读取器
+# count 0.2.3 · 工程文件读取器
 
 行式数据与结构化附件文件上的确定性计数工具包。四件工具，T1、效应 none、process 执行器、不出网、不调模型；同一入参两次输出逐字节相同。包标识 `count`、工具标识与类型名不变，中文名 0.2.0 起为“工程文件读取器”（立法者 2026-11-19 定）。
 
@@ -71,3 +71,4 @@ uv run --frozen python tools/run_golden.py
 - 0.2.0（2026-11-19）：中文名改为“工程文件读取器”，摘要随改；按文件读的来源（`source.file`，17 TL-9d；默认读解析结构，结构里没有的用带入的解析库回原件读）；按版本带入解析库 mengos-cad 1.0.0；`count.rows` 清单分页（`offset`、`limit`、`total_matched`）；回执回显节与列、未解析清单；`count.coverage` 清单取自文件、标记取自产出内容加字段名；登记 `parsers`、`attachment_file`；`runtime.process.workdir` 为 true，Python ≥ 3.11；`cost.timeout` 120 秒。
 - 0.2.1（2026-11-19）：带入解析库 mengos-cad 1.0.1（`run()` 新增可选参数 `detail_cap`；立法者 2026-11-19 批乙方案）；回原件读改用这个参数，去掉 0.2.0 运行时临时调整解析库全局上限的做法。行为与 0.2.0 相同。
 - 0.2.2（2026-11-19）：读文件三件 `attachment_file.max_bytes` 由 50 MiB 改为 256 MiB（并到上传上限；立法者 2026-11-19 裁，目标图纸 115 MB、162 MB 曾被挡住）；`max_total_bytes` 400 MiB 不变（不小于单件上限）。其余一字不改，进模型的文字零改动。
+- 0.2.3（2026-11-19）：两处，分开提交。① 回原件读的耗时与内存（架构线第十六件）：明细节不建行表，`count.rows` 一遍读完、边读边算条数、分组、合计、分布，要清单时只留本页的行；原件按块核哈希、不留字节；回原件读设内存上限（地址空间 `ORIGINAL_AS_LIMIT_MB` = 4096 MiB，读完复原），超了得解析库的 `CAD_RESOURCE_EXCEEDED`，结构化失败、不截断。上限依据：合成大图 840 万条线段回原件读，地址空间峰值 3.3 GiB（RSS 3.0 GiB，几乎全是解析库本身），4096 MiB 留约两成余量。同图 0.2.2 为 80–117 秒、RSS 5.8–6.3 GiB，0.2.3 为 54–69 秒、3.0 GiB；结果逐项一致（`tests/test_streaming.py`：256 条用例比回执 sha256，期望值由 0.2.2 跑出）。不改解析库、不改引擎、不调超时。② 契约（架构线归因端到端第 1 次）：`source.file` 的登记 schema 改为模型写的引用形状（properties 只留 `attachment`，去掉必填四键与 `additionalProperties:false`），与说明一致；替换后的形状由执行体自己核。两处进模型的文字均零改动（description、examples、input_example 逐串对比无变化）。

@@ -272,7 +272,7 @@ AGREE = unit(
 
 REG = {
     "family": "count",
-    "family_version": "0.2.2",
+    "family_version": "0.2.3",
     "lock_hash": "",
     "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。来源两类：调用方给出（inline，行数上限 max_inline_rows，回执带假设声明 TL-22a）；按文件读（file，17 TL-9d，source.file 声明 x-mengos-attachment-file，引擎交原件与解析结构）。读文件的件登记 parsers（所带解析库的名字、规格版本、库版本、内容哈希，安装与认证时与存储服务现行版本核对）与 attachment_file（接受的媒体类型闭集、个数与大小上限）。",
     "units": [ROWS, SERIES, COVERAGE, AGREE],
