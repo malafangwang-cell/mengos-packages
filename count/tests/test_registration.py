@@ -65,9 +65,26 @@ def test_examples_follow_schemas():
         jsonschema.validate(res["output"], sig["output_schema"])
 
 
+DUMMY_FILE = {"path": "in/1.dxf", "sha256": "0" * 64, "bytes": 1, "media_type": "image/vnd.dxf",
+              "parsed": {"path": "in/1.parsed.json", "sha256": "0" * 64, "parser": "mengos-cad@0+sha256:0"}}
+
+
+def _subst(v):
+    if v == {"$file": True}:
+        return DUMMY_FILE
+    if isinstance(v, dict):
+        return {k: _subst(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_subst(x) for x in v]
+    return v
+
+
 def test_golden_payloads_follow_schemas():
     for c in CASES:
         sig = UNITS[c["tool"]]["signature"]
+        if "fixture" in c:      # 按文件读的金样：载荷换成引擎交文件后的形状再核 schema；执行见 test_file_source.py 与 run_golden.py
+            jsonschema.validate(_subst(c["payload"]), sig["input_schema"])
+            continue
         if c["id"] == "rows-over-cap":     # 故意超 maxItems，测执行体自己的上限
             assert not jsonschema.Draft202012Validator(sig["input_schema"]).is_valid(c["payload"])
         else:
@@ -96,7 +113,7 @@ def test_selection_cases_per_tool():
 def test_no_domain_words_in_executor_sources():
     """工具保持通用：执行体源码不出现行业词（图块、货架、立柱、横梁、巷道、图幅、分解单）。注释与说明文字除外的检查简化为全文扫描。"""
     words = ("货架", "立柱", "横梁", "巷道", "分解单", "投标")
-    for name in ("ops.py", "series.py", "coverage.py", "count_tool.py"):
+    for name in ("ops.py", "series.py", "coverage.py", "count_tool.py", "file_source.py"):
         text = (ROOT / name).read_text(encoding="utf-8")
         for w in words:
             assert w not in text, (name, w)

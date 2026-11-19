@@ -5,10 +5,13 @@ certify 在安装区用包环境的解释器运行本文件：
 不导入包内模块：每条金样都按与引擎相同的进程入口与信封调用工具（stdin 一行 JSON，stdout 一行 JSON），测的是装好的工具。
 每条金样的 expect 是 {JSON 指针: 期望值}，指针相对回执 output；expect_error 是期望的失败码。
 另跑一遍同一信封，核对两次 stdout 逐字节相同（TL-12 ② 确定性）。
+按文件读的金样带 "fixture": {"name": 合成图纸名, "parsed": 是否带解析结构}：现场生成图纸、用包里带的解析库出解析结构，
+摆成引擎交文件后的样子（tools/fixture_files.py），把载荷里的 {"$file": true} 换成 source.file 对象，信封带 workdir。
 标准输出：{"tools": {"<tool_id>": {"total": n, "passed": n, "failed": [{"id", "reason"}]}}}；全过退出码 0，否则 1。
 """
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -18,8 +21,21 @@ CASES = json.loads((ROOT / "golden_cases.json").read_text(encoding="utf-8"))
 ENTRY = ROOT / json.loads((ROOT / "mengos-package.json").read_text(encoding="utf-8"))["runtime"]["process"]["entry"]
 
 
-def call(tool, payload):
-    env = json.dumps({"tool": tool, "payload": payload, "budget": {"timeout_ms": 10000}}).encode("utf-8")
+def _subst(v, file_obj):
+    if v == {"$file": True}:
+        return file_obj
+    if isinstance(v, dict):
+        return {k: _subst(x, file_obj) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_subst(x, file_obj) for x in v]
+    return v
+
+
+def call(tool, payload, workdir=None):
+    envelope = {"tool": tool, "payload": payload, "budget": {"timeout_ms": 10000}}
+    if workdir is not None:
+        envelope["workdir"] = workdir
+    env = json.dumps(envelope).encode("utf-8")
     outs = []
     for seed in ("1", "77"):
         p = subprocess.run([sys.executable, str(ENTRY)], input=env, capture_output=True, timeout=60, cwd=str(ROOT),
@@ -40,8 +56,22 @@ def pointer(doc, ptr):
     return cur
 
 
+FIXTURES = {}
+
+
 def check(case):
-    res = call(case["tool"], case["payload"])
+    fx = case.get("fixture")
+    if fx is None:
+        res = call(case["tool"], case["payload"])
+    else:
+        sys.path.insert(0, str(ROOT / "tools"))
+        from fixture_files import Fixture
+        if fx["name"] not in FIXTURES:
+            FIXTURES[fx["name"]] = Fixture(fx["name"])
+        wd, file_obj = FIXTURES[fx["name"]].workdir(fx.get("parsed", True))
+        res = call(case["tool"], _subst(case["payload"], file_obj), wd)
+        left = sorted(os.listdir(wd))
+        assert left == ["in"], f"调用后工作目录里多了文件：{left}"
     if "expect_error" in case:
         assert res["ok"] is False, "期望失败，实际成功"
         assert res["error"]["code"] == case["expect_error"], f"错误码 {res['error']['code']}，期望 {case['expect_error']}"
@@ -67,6 +97,8 @@ def main():
             t["passed"] += 1
         except Exception as e:  # 单条失败不影响其余
             t["failed"].append({"id": case["id"], "reason": (str(e) or type(e).__name__)[:400]})
+    for f in FIXTURES.values():
+        f.cleanup()
     print(json.dumps({"tools": tools}, ensure_ascii=False))
     return 0 if tools and all(not t["failed"] for t in tools.values()) else 1
 

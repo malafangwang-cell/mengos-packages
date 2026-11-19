@@ -1,10 +1,10 @@
 """行读取器：把一段来源变成“列名 + 带稳定序号的行”。
 
-读取器按数据格式分，不按行业分（设计-确定性计数工具 §11.2）。首发三种：
+读取器按数据格式分，不按行业分（设计-确定性计数工具 §11.2）。调用方给出原文的三种：
   - rows：调用方直接给列名与行（每行是单元格数组）；
   - mengos-cad-v1：图纸解析单元的节（竖线分隔，节头带列名，多数带“共 N 条/组”，按行块再切时带“本块第 a–b 条”）；
   - gfm：GFM 表格（首行表头、次行分隔，续块重复表头）。
-认不出的文本一律报 BadInput，不猜。
+认不出的文本一律报 BadInput，不猜。按文件读（source.file，引擎交附件文件本身）见 file_source.py。
 """
 from __future__ import annotations
 
@@ -103,7 +103,8 @@ def _split_cells(line: str, n: int) -> list[str] | None:
     return cells if len(cells) == n else None
 
 
-def read_cad(texts: list[str], section: str | None, max_rows) -> Table:
+def parse_cad_unit(texts: list[str]) -> dict:
+    """一个单元的各段（同一单元的若干分块）→ {unit, found, order, total_chunks, given, chunks_complete}；不取节。"""
     chunks = []
     unit_line = None
     for ci, t in enumerate(texts):
@@ -176,19 +177,16 @@ def read_cad(texts: list[str], section: str | None, max_rows) -> Table:
                 continue          # 其他头部行（标题栏等）
             if cur is not None:
                 cur["rows"].append(l)
-    if not found:
-        raise BadInput("单元里没有认得出的节")
-    if section is None:
-        with_rows = [n for n in order if any(p["rows"] for p in found[n]["parts"])]
-        if len(with_rows) != 1:
-            raise BadInput("单元里有多个节，须用 section 指定：" + "、".join(order))
-        section = with_rows[0]
-    if section not in found:
-        raise BadInput(f"单元里没有节“{section}”；有：" + "、".join(order))
-    sec = found[section]
+    return {"unit": _unit_short(unit_line), "found": found, "order": order, "total_chunks": total_chunks,
+            "given": len(chunks), "chunks_complete": chunks_complete}
+
+
+def cad_section_rows(pu: dict, section: str, max_rows) -> tuple[list[str], list[tuple[str, list[str]]], int | None, list[dict]]:
+    """从 parse_cad_unit 的结果里取一节 → (列名, 行, 声明条数, 核对项)；读到条数与声明不符、分块不连续或不全 ⟹ BadInput。"""
+    sec = pu["found"][section]
     cols = sec["columns"]
     declared = sec["declared"]
-    unit = _unit_short(unit_line)
+    unit = pu["unit"]
     rows: list[tuple[str, list[str]]] = []
     contiguous = True
     expect_a = 1
@@ -214,12 +212,28 @@ def read_cad(texts: list[str], section: str | None, max_rows) -> Table:
         if not contiguous:
             raise BadInput(f"节“{section}”的分块行号不连续，不出数")
     else:
-        checks.append({"name": "chunks_complete", "ok": chunks_complete})
-        if not chunks_complete:
-            raise BadInput(f"节“{section}”没有声明条数，分块又不全（{total_chunks} 块只给了 {len(chunks)} 块），无法核对完整，不出数")
-    return Table(cols, rows, {"form": "text", "reader": "mengos-cad-v1", "section": section, "unit": unit,
+        checks.append({"name": "chunks_complete", "ok": pu["chunks_complete"]})
+        if not pu["chunks_complete"]:
+            raise BadInput(f"节“{section}”没有声明条数，分块又不全（{pu['total_chunks']} 块只给了 {pu['given']} 块），无法核对完整，不出数")
+    return cols, rows, declared, checks
+
+
+def read_cad(texts: list[str], section: str | None, max_rows) -> Table:
+    pu = parse_cad_unit(texts)
+    found, order = pu["found"], pu["order"]
+    if not found:
+        raise BadInput("单元里没有认得出的节")
+    if section is None:
+        with_rows = [n for n in order if any(p["rows"] for p in found[n]["parts"])]
+        if len(with_rows) != 1:
+            raise BadInput("单元里有多个节，须用 section 指定：" + "、".join(order))
+        section = with_rows[0]
+    if section not in found:
+        raise BadInput(f"单元里没有节“{section}”；有：" + "、".join(order))
+    cols, rows, declared, checks = cad_section_rows(pu, section, max_rows)
+    return Table(cols, rows, {"form": "text", "reader": "mengos-cad-v1", "section": section, "unit": pu["unit"],
                               "rows_declared": declared, "rows_read": len(rows),
-                              "chunks": {"given": len(chunks), "total": total_chunks}}, checks)
+                              "chunks": {"given": pu["given"], "total": pu["total_chunks"]}}, checks)
 
 
 # ───────── gfm ─────────
@@ -309,11 +323,19 @@ def read_gfm(texts: list[str], max_rows) -> Table:
 ASSUMPTION_TRANSCRIBED = "来源行由调用方转录，程序未与原文逐字核对"
 
 
-def read_source(src, max_rows) -> Table:
+def read_source(src, max_rows, workdir=None) -> Table:
     if not isinstance(src, dict):
         raise BadInput("source 须为对象")
-    if ("rows" in src) == ("text" in src):
-        raise BadInput("source 须且只须给 rows（列与行）或 text（解析单元或表格原文）之一")
+    if sum(k in src for k in ("rows", "text", "file")) != 1:
+        raise BadInput("source 须且只须给 rows（列与行）、text（解析单元或表格原文）、file（附件）之一")
+    if "file" in src:
+        extra = set(src) - {"file", "section", "unit"}
+        if extra:
+            raise BadInput("按文件读时 source 只认 file、section、unit；多了：" + "、".join(sorted(extra)))
+        from file_source import read_file_source
+        return read_file_source(src, workdir)
+    if "unit" in src:
+        raise BadInput("unit 只在按文件读（source.file）时用")
     if "rows" in src:
         t = read_rows(src, max_rows)
     else:
@@ -333,3 +355,8 @@ def read_source(src, max_rows) -> Table:
             raise BadInput("reader 须为 mengos-cad-v1 或 gfm")
     t.source = {"mode": "inline", **t.source, "columns": t.columns, "source_sha256": source_hash(src)}
     return t
+
+
+def assumptions_of(table: Table) -> list[str]:
+    """按文件读的来源由引擎交文件、程序核过哈希与条数，不挂转录假设；调用方给的来源照旧挂。"""
+    return [ASSUMPTION_TRANSCRIBED] if table.source.get("mode") == "inline" else []

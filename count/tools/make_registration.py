@@ -1,13 +1,40 @@
 """生成 registration.json（TL-6 登记资产）。登记的单一来源是本文件；改完跑 python lock.py、python tools/make_package.py。
 
-【草案】本文件里进模型上下文的文字（input_schema 各层 description、capability.examples、input_example）
-是施工方草案，待立法者定稿（提示词禁触区）。定稿只改这些字符串，结构不动；改后重算 lock、重新认证。
+本文件里进模型上下文的文字（input_schema 各层 description、capability.examples、input_example）属提示词禁触区：
+0.1.1 的各句沿用（立法者 11-18：按草案先用）；0.2.0 新增与改写的只有 source.file、source.section、source.unit、
+offset、limit 五处说明，原文照 立法者 2026-11-19 批准的 M-1（设计-附件按引用由工具读取-2026-11-19 附二），一字不改。
+改任何一句须经立法者定稿；改后重算 lock、重新认证。
 """
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_INLINE_ROWS = 50
+MAX_LIST_ITEMS = 2000
+CADLIB = json.loads((ROOT / "cadlib.lock.json").read_text(encoding="utf-8"))
+PARSERS = [{k: CADLIB[k] for k in ("name", "spec", "version", "sha256")}]   # 登记所带解析库（I-1 安装与认证时与存储服务现行版本核对）
+# 附件文件入参（17 TL-9d）：接受的媒体类型闭集与个数、大小上限（一份附件 = 原件 + 解析结构两个文件）
+# 口径与 E-1 施工方核对（2026-11-19）：media_type 真源是存储服务刚性格式登记（.dxf = image/vnd.dxf，调度定）；
+# max_bytes 只管原件；max_total_bytes 管本次交的全部文件（原件 + 解析结构，解析结构可能大于原件，取平台合计上限）；max_count 按附件计
+ATTACHMENT_FILE = {"media_types": ["image/vnd.dxf"], "max_bytes": 52428800, "max_total_bytes": 419430400, "max_count": 1}
+
+# ── 立法者 2026-11-19 批准的 M-1 原文（逐字，不得改写） ──
+M1_FILE = "要读的附件。写 {\"attachment\": 附件的节点 id}。这里只写引用，不要抄原文；文件由系统交给工具，每次读的是整份。"
+M1_SECTION = "读哪一节，写节名（如 文字、尺寸标注、图块插入、线段明细、嵌套插入、未插入图块文字）。写错时回执会列出这份附件里有哪些节。"
+M1_UNIT = "只读某一个单元时写它的编号（照图幅目录）；不写则读全部单元。"
+M1_PAGE = "清单太长时分批取：offset 从第几条起，limit 取几条；回执里的 total_matched 是命中的总条数。"
+SHA = {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+FILE = {
+    "type": "object", "x-mengos-attachment-file": True, "additionalProperties": False,
+    "required": ["path", "sha256", "bytes", "media_type"],
+    "description": M1_FILE,
+    "properties": {
+        "path": {"type": "string", "minLength": 1}, "sha256": SHA, "bytes": {"type": "integer", "minimum": 0},
+        "media_type": {"type": "string"},
+        "parsed": {"type": "object", "additionalProperties": False, "required": ["path", "sha256", "parser"],
+                   "properties": {"path": {"type": "string", "minLength": 1}, "sha256": SHA, "parser": {"type": "string", "minLength": 1}}},
+    },
+}
 OPS = ["eq", "ne", "in", "contains", "regex", "lt", "le", "gt", "ge", "between"]
 
 CELL = {"type": ["string", "number", "null"]}
@@ -15,7 +42,7 @@ CELL = {"type": ["string", "number", "null"]}
 SOURCE = {
     "type": "object",
     "additionalProperties": False,
-    "anyOf": [{"required": ["columns", "rows"]}, {"required": ["text", "reader"]}],
+    "anyOf": [{"required": ["columns", "rows"]}, {"required": ["text", "reader"]}, {"required": ["file", "section"]}],
     "description": "要数的行。两种给法二选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）。"
                    f"行数上限 {MAX_INLINE_ROWS}，超过时得到失败回执。",
     "properties": {
@@ -30,8 +57,9 @@ SOURCE = {
                  "description": "原文一段或多段。同一单元被切成多块时，把各块一起给（次序不限）；缺块时读到的行数与声明不符，得到失败回执。"},
         "reader": {"enum": ["mengos-cad-v1", "gfm"],
                    "description": "原文格式：mengos-cad-v1 是首行为 #mengos-cad v1 的图纸解析单元；gfm 是首行表头、次行分隔线的表格。"},
-        "section": {"type": "string", "minLength": 1,
-                    "description": "mengos-cad-v1 单元里要数的节，写节名（节头“#”与“（”之间的字，如 图块插入、尺寸标注、线段统计、文字）；单元只有一节有行时可省。"},
+        "section": {"type": "string", "minLength": 1, "description": M1_SECTION},
+        "file": FILE,
+        "unit": {"type": "string", "minLength": 1, "description": M1_UNIT},
     },
 }
 
@@ -62,6 +90,7 @@ ROWS_OUT = {
         "aggregate": {"type": "array"},
         "distribution": {"type": "object"},
         "items": {"type": "array"},
+        "total_matched": {"type": "integer"},
         "unparsed": {"type": "array"},
         "checks": {"type": "array"},
         "assumptions": {"type": "array", "items": {"type": "string"}},
@@ -73,18 +102,29 @@ def unit(tool_id, input_schema, output_schema, capability, example, review=None)
     u = {
         "tool_id": tool_id, "version": "", "trust_claim": "T1", "effect": "none",
         "executor": {"kind": "process", "entry": "count_tool.py", "mode": "sync"},
-        "cost": {"latency": 150, "price": 0, "timeout": 10000},
+        "cost": {"latency": 150, "price": 0, "timeout": 120000},
         "input_example": example,
         "signature": {"input_schema": input_schema, "output_schema": output_schema},
         "capability": capability,
     }
+    if reads_files(input_schema):
+        u["parsers"] = PARSERS
+        u["attachment_file"] = ATTACHMENT_FILE
     if review is not None:
         u["review_coverage"] = review
     return u
 
 
+def reads_files(schema) -> bool:
+    if isinstance(schema, dict):
+        return schema.get("x-mengos-attachment-file") is True or any(reads_files(v) for v in schema.values())
+    if isinstance(schema, list):
+        return any(reads_files(v) for v in schema)
+    return False
+
+
 CONSTRAINTS = {"deterministic": True, "network": "none", "model_calls": 0, "max_inline_rows": MAX_INLINE_ROWS,
-               "readers": ["rows", "mengos-cad-v1", "gfm"], "source_modes": ["inline"]}
+               "readers": ["rows", "mengos-cad-v1", "gfm"], "source_modes": ["inline", "file"]}
 
 ROWS = unit(
     "count.rows",
@@ -101,6 +141,8 @@ ROWS = unit(
                              "properties": {"x": {"type": "string", "minLength": 1}, "y": {"type": "string", "minLength": 1}, "tol": TOL},
                              "description": "取一列（x）或两列（x、y）数值看分布：不同取值个数、相邻间隔、是否等距；两列时给网格的列数、行数与缺位。tol 内的值算同一位置。"},
             "list": {"type": "boolean", "description": "true 时回执带满足条件的逐行清单，每行有稳定序号。"},
+            "offset": {"type": "integer", "minimum": 0, "description": M1_PAGE},
+            "limit": {"type": "integer", "minimum": 1, "maximum": MAX_LIST_ITEMS, "description": M1_PAGE},
         },
     },
     ROWS_OUT,
@@ -110,7 +152,7 @@ ROWS = unit(
          {"input": "同一个图块在这个视图里插了几次、排成几列几行", "output": "count 660；x 向 33 个位置、步长 2760；网格 33×20，无缺位"},
          {"input": "设备台账里状态为在用的设备各车间各有几台", "output": "groups：一车间 12、二车间 7；groups_count 2"},
      ],
-     "non_goals": ["不判断一行在业务上是什么", "不读附件，来源行由调用方给出", "不估算"]},
+     "non_goals": ["不判断一行在业务上是什么", "不猜解析库拿不到的内容", "不估算"]},
     {"source": {"columns": ["图层", "方向", "长度≈", "根数", "总长"],
                 "rows": [["COL_A", "竖直", 10280, 1100, 11302500], ["COL_B", "竖直", 11250, 1100, 12375000]], "declared": 2},
      "where": [{"col": "图层", "op": "eq", "value": "COL_A"}, {"col": "方向", "op": "eq", "value": "竖直"}],
@@ -173,9 +215,12 @@ COVERAGE = unit(
                               "label_col": {"type": "string", "minLength": 1},
                           }},
             "expected_total": {"type": "integer", "minimum": 0, "description": "原文写明的清单条数；给了就核对，不符得到失败回执。"},
-            "marks": {"type": "array", "maxItems": MAX_INLINE_ROWS * 2,
-                      "items": {"type": "object", "additionalProperties": False, "required": ["id", "status"],
-                                "properties": {"id": {"type": "string", "minLength": 1}, "status": {"enum": ["done", "empty"]}, "note": {"type": "string", "maxLength": 400}}},
+            "marks": {"anyOf": [
+                          {"type": "array", "maxItems": MAX_INLINE_ROWS * 2,
+                           "items": {"type": "object", "additionalProperties": False, "required": ["id", "status"],
+                                     "properties": {"id": {"type": "string", "minLength": 1}, "status": {"enum": ["done", "empty"]}, "note": {"type": "string", "maxLength": 400}}}},
+                          {"type": "object", "additionalProperties": False, "required": ["content", "field"],
+                           "properties": {"content": {}, "field": {"type": "string", "minLength": 1}}}],
                       "description": "已处理的记录，每条 {id, status, note}；id 照清单原样写；status 为 done（已处理）或 empty（看过、没有相关内容）。"},
         },
     },
@@ -229,9 +274,9 @@ AGREE = unit(
 
 REG = {
     "family": "count",
-    "family_version": "0.1.1",
+    "family_version": "0.2.0",
     "lock_hash": "",
-    "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。第一阶段（零引擎改动）来源只能由调用方给出（source_modes = inline），行数上限 max_inline_rows；回执带假设声明（TL-22a）。input_schema 各层 description、examples、input_example 为草案，待立法者定稿。",
+    "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。来源两类：调用方给出（inline，行数上限 max_inline_rows，回执带假设声明 TL-22a）；按文件读（file，17 TL-9d，source.file 声明 x-mengos-attachment-file，引擎交原件与解析结构）。读文件的件登记 parsers（所带解析库的名字、规格版本、库版本、内容哈希，安装与认证时与存储服务现行版本核对）与 attachment_file（接受的媒体类型闭集、个数与大小上限）。",
     "units": [ROWS, SERIES, COVERAGE, AGREE],
 }
 
