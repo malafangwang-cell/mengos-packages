@@ -2,7 +2,8 @@
 
 本文件里进模型上下文的文字（input_schema 各层 description、capability.examples、input_example）属提示词禁触区：
 0.1.1 的各句沿用（立法者 11-18：按草案先用）；0.2.0 新增与改写的只有 source.file、source.section、source.unit、
-offset、limit 五处说明，原文照 立法者 2026-11-19 批准的 M-1（设计-附件按引用由工具读取-2026-11-19 附二），一字不改。
+offset、limit 五处说明（原文照 立法者 2026-11-19 批准的 M-1，设计-附件按引用由工具读取-2026-11-19 附二）与 source 节点自身的说明
+（立法者 2026-11-19 批准的改写原文），一字不改。
 改任何一句须经立法者定稿；改后重算 lock、重新认证。
 """
 import json
@@ -43,8 +44,9 @@ SOURCE = {
     "type": "object",
     "additionalProperties": False,
     "anyOf": [{"required": ["columns", "rows"]}, {"required": ["text", "reader"]}, {"required": ["file", "section"]}],
-    "description": "要数的行。两种给法二选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）。"
-                   f"行数上限 {MAX_INLINE_ROWS}，超过时得到失败回执。",
+    # 立法者 2026-11-19 批准的改写原文（逐字）
+    "description": "要数的行。三种给法选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）；或 file 加 section（附件里的一节）。"
+                   f"前两种行数上限 {MAX_INLINE_ROWS}，超过时得到失败回执。",
     "properties": {
         "columns": {"type": "array", "minItems": 1, "maxItems": 40, "items": {"type": "string", "minLength": 1},
                     "description": "列名，照原文表头写，例如 [\"图层\", \"方向\", \"长度≈\", \"根数\", \"总长\"]。"},

@@ -1,12 +1,12 @@
 {
   "family": "count",
   "family_version": "0.2.0",
-  "lock_hash": "331e231b39371ff4",
+  "lock_hash": "1fb36467a9917402",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。来源两类：调用方给出（inline，行数上限 max_inline_rows，回执带假设声明 TL-22a）；按文件读（file，17 TL-9d，source.file 声明 x-mengos-attachment-file，引擎交原件与解析结构）。读文件的件登记 parsers（所带解析库的名字、规格版本、库版本、内容哈希，安装与认证时与存储服务现行版本核对）与 attachment_file（接受的媒体类型闭集、个数与大小上限）。",
   "units": [
     {
       "tool_id": "count.rows",
-      "version": "331e231b39371ff4",
+      "version": "1fb36467a9917402",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -97,7 +97,7 @@
                   ]
                 }
               ],
-              "description": "要数的行。两种给法二选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）。行数上限 50，超过时得到失败回执。",
+              "description": "要数的行。三种给法选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）；或 file 加 section（附件里的一节）。前两种行数上限 50，超过时得到失败回执。",
               "properties": {
                 "columns": {
                   "type": "array",
@@ -525,7 +525,7 @@
     },
     {
       "tool_id": "count.series",
-      "version": "331e231b39371ff4",
+      "version": "1fb36467a9917402",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -632,7 +632,7 @@
                   ]
                 }
               ],
-              "description": "要数的行。两种给法二选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）。行数上限 50，超过时得到失败回执。",
+              "description": "要数的行。三种给法选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）；或 file 加 section（附件里的一节）。前两种行数上限 50，超过时得到失败回执。",
               "properties": {
                 "columns": {
                   "type": "array",
@@ -1014,7 +1014,7 @@
     },
     {
       "tool_id": "count.coverage",
-      "version": "331e231b39371ff4",
+      "version": "1fb36467a9917402",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -1132,7 +1132,7 @@
                       ]
                     }
                   ],
-                  "description": "要数的行。两种给法二选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）。行数上限 50，超过时得到失败回执。",
+                  "description": "要数的行。三种给法选一：columns 加 rows（列名与逐行单元格）；或 text 加 reader（解析单元或表格的原文，照抄不改）；或 file 加 section（附件里的一节）。前两种行数上限 50，超过时得到失败回执。",
                   "properties": {
                     "columns": {
                       "type": "array",
@@ -1440,7 +1440,7 @@
     },
     {
       "tool_id": "count.agree",
-      "version": "331e231b39371ff4",
+      "version": "1fb36467a9917402",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {

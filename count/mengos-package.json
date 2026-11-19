@@ -11,7 +11,7 @@
     "count.coverage": "查清单里未处理的项",
     "count.agree": "核两个数是否一致"
   },
-  "content_hash": "a0c7a2740253263c5d938274d0fd6190db3fdb1650aafcc58fa80e9790340e47",
+  "content_hash": "c51dd55f28c33e93b54c716be3835ced68ff82dbde5b8fd566dca0183a6b7e3b",
   "types": [
     {
       "name": "count_receipt",
