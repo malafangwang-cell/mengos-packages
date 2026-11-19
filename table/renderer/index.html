@@ -441,40 +441,42 @@ document.addEventListener("input", (e) => {
 });
 
 // ---------------------------------------------------------------- 选区（2.3.1；mengosv2 局部追问 r9.2 §4.1、§4.2；立法者 11-18）
-// 拖选格 = cells；点行号（可拖多行）= rows；点列头 = column_def；点合计行的格 = totals_def。公式列的格吸附成该列的公式（column_def），
+// 拖选格 = cells；点行号（可拖多行）= rows；点列头 = column_def（这一列的定义）；公式列的格吸附成该列的公式（formula）；合计不可选（2.3.1 r10 改，§十二 待定 3 推荐）。
 // 带式的输入格不吸附；输入格与公式列的格一起选 ⟹ 两个收窄按钮。编号列的格、组头、小计、合并行、派生表的行不可选，只发 mengos.select_denied。
 // 按住 Ctrl（Mac 上 ⌘）再选 = 加选（同一张表、同一种；格合计至多 200 个），消息带 additive。宿主回 mengos.open（聚光）/ close / busy（呼吸）。
-// 句柄：cell:表id/行id/列key、row:表id/行id、col:表id/列key、totals:表id/列key；表 id、行 id 取视图的 id / ids（2.3.0 起），旧视图按行序 #序号。
+// 句柄：cell:表id/行id/列key、row:表id/行id、col:表id/列key、fx:表id/列key；表 id、行 id 取视图的 id / ids（2.3.0 起）；没写 id 的表按 sheets 里的 #序号，
+// 没写 id 的行按入参 rows 里的 #序号（分组挪过行时取视图的 src 对回入参）。
 const MAX_CELLS = 200;
 const DENY = {
   numbering: "编号由工具按层级生成，不能单独选；要改编号，改层级那一列",
   group: "这是工具生成的组头，不能单独选；要改，改组里的行或分组的规则",
   subtotal: "小计由表格工具算出，不能单独选；要改，改上面的格子或公式",
   merged: "这一行由几行明细合并而成，不能单独选；要改，改明细或合并的规则",
+  totals: "合计由表格工具算出，不能单独选；要改合计，改上面的格子或公式",
   derived: "这张表的行由各分部合并而成，不能单独选；要改，改分部里的那一行",
   too_many: `一次最多改 ${MAX_CELLS} 格；少选几格，或者分几次改`,
-  kind: "一次只改一种：都是格，或都是整行；列的定义、合计的定义一次改一处",
+  kind: "一次只改一种：都是格，或都是整行；列的定义、列的公式一次改一处",
   formula_multi: "公式列只能一列一列改：一次选一列的格，就是改这一列的公式",
 };
 st.sel = null; st.pins = new Set(); st.busyH = new Set(); st.drag = null;
-const sheetId = (s, si) => s.id || (st.view.sheets.length === 1 ? "_sa" : "#" + si);
-const rowId = (s, r) => (s.ids && s.ids[r]) || "#" + r;
+const sheetId = (s, si) => s.id || "#" + si;
+const rowId = (s, r) => (s.ids && s.ids[r]) || "#" + (s.src ? s.src[r] : r);
 function handlesOf(sel) {
   const s = st.view.sheets[sel.sheet], sid = sheetId(s, sel.sheet);
   if (sel.kind === "cells") return [...sel.cells].map((k) => { const [r, j] = k.split(",").map(Number); return `cell:${sid}/${rowId(s, r)}/${s.columns[j].key}`; });
   if (sel.kind === "rows") return [...sel.rows].map((r) => `row:${sid}/${rowId(s, r)}`);
   if (sel.kind === "column_def") return [`col:${sid}/${s.columns[sel.col].key}`];
-  return [`totals:${sid}/${s.columns[sel.col].key}`];
+  return [`fx:${sid}/${s.columns[sel.col].key}`];
 }
 function selCls(type, a, b) {
   const v = st.view, s = v && v.sheets[st.sheet];
-  if (!s) return "";
+  if (!s || type === "tot") return "";              // 合计不可选 (2.3.1 r10 改)
   const sid = sheetId(s, st.sheet);
   const h = type === "cell" ? `cell:${sid}/${rowId(s, a)}/${s.columns[b].key}` : type === "row" ? `row:${sid}/${rowId(s, a)}`
-    : type === "col" ? `col:${sid}/${s.columns[a].key}` : `totals:${sid}/${s.columns[a].key}`;
+    : `col:${sid}/${s.columns[a].key}`;
   const mine = st.sel && st.sel.sheet === st.sheet && handlesOf(st.sel).includes(h);
   const rowSel = type === "cell" && (st.pins.has(`row:${sid}/${rowId(s, a)}`) || (st.sel && st.sel.sheet === st.sheet && st.sel.kind === "rows" && st.sel.rows.has(a)));
-  const colSel = type === "cell" && st.sel && st.sel.sheet === st.sheet && st.sel.kind === "column_def" && st.sel.col === b && (s.col_kinds || [])[b] === "formula";
+  const colSel = type === "cell" && st.sel && st.sel.sheet === st.sheet && st.sel.kind === "formula" && st.sel.col === b;
   return [mine || st.pins.has(h) || rowSel || colSel ? "sel" : "", st.busyH.has(h) ? "busy" : ""].filter(Boolean).join(" ");
 }
 function anchorOf(el) { if (!el) return undefined; const r = el.getBoundingClientRect(); return { x: Math.round(r.right), y: Math.round(r.top + r.height / 2) }; }
@@ -484,7 +486,7 @@ function labelOf(sel) {
   if (sel.kind === "cells") { const cols = [...new Set([...sel.cells].map((k) => s.columns[Number(k.split(",")[1])].title))]; return `${cols.join("、")}（${sel.cells.size} 格）`; }
   if (sel.kind === "rows") return `第 ${[...sel.rows].map((r) => r + 1).join("、")} 行`;
   if (sel.kind === "column_def") return `“${s.columns[sel.col].title}”列的定义`;
-  return `“${s.columns[sel.col].title}”的合计`;
+  return `改“${s.columns[sel.col].title}”这一列的公式`;
 }
 function emit(sel, el, additive) {
   st.sel = sel; hidePick(); renderSheet();
@@ -493,14 +495,14 @@ function emit(sel, el, additive) {
   const extra = !sel ? {} : { kind: sel.kind, sheet_id: sheetId(s, sel.sheet), label: labelOf(sel),
     ...(sel.kind === "cells" ? { cells: [...sel.cells].map((k) => { const [r, j] = k.split(",").map(Number); return [rowId(s, r), s.columns[j].key]; }) } : {}),
     ...(sel.kind === "rows" ? { rows: [...sel.rows].map((r) => rowId(s, r)) } : {}),
-    ...(sel.kind === "column_def" || sel.kind === "totals_def" ? { col: s.columns[sel.col].key } : {}) };
+    ...(sel.kind === "column_def" || sel.kind === "formula" ? { col: s.columns[sel.col].key } : {}) };
   post({ type: "mengos.select", handle_id: hs[0] || null, handles: hs, ...extra, anchor: anchorOf(el), ...(additive ? { additive: true } : {}) });
 }
 // 加选：同一张表、同一种才并；列定义、合计定义一次一处
 function choose(next, el, additive) {
   if (!additive || !st.sel) return cap(next, el, false);
   const cur = st.sel;
-  if (cur.sheet !== next.sheet || cur.kind !== next.kind || cur.kind === "column_def" || cur.kind === "totals_def") return deny("kind", el);
+  if (cur.sheet !== next.sheet || cur.kind !== next.kind || cur.kind === "column_def" || cur.kind === "formula") return deny("kind", el);
   if (next.kind === "cells") return cap({ ...next, cells: new Set([...cur.cells, ...next.cells]) }, el, true);
   return cap({ ...next, rows: new Set([...cur.rows, ...next.rows]) }, el, true);
 }
@@ -520,7 +522,7 @@ function finishCells(d, el, additive) {
     if (kinds[j] === "formula") fcols.add(j); else if (kinds[j] === "input") inp.add(r + "," + j);
   }
   if (!inp.size && !fcols.size) return deny("numbering", el);
-  if (!inp.size) return fcols.size > 1 ? deny("formula_multi", el) : choose({ sheet: st.sheet, kind: "column_def", col: [...fcols][0] }, el, additive);
+  if (!inp.size) return fcols.size > 1 ? deny("formula_multi", el) : choose({ sheet: st.sheet, kind: "formula", col: [...fcols][0] }, el, additive);
   if (fcols.size) return showPick(inp, [...fcols][0], el, additive);
   choose({ sheet: st.sheet, kind: "cells", cells: inp }, el, additive);
 }
@@ -539,13 +541,13 @@ const isMod = (e) => e.ctrlKey || e.metaKey;
 $("#grid").addEventListener("mousedown", (e) => {
   if (e.button !== 0 || !st.view) return;
   const pk = e.target.closest("[data-pick]");
-  if (pk) { e.preventDefault(); const k = st.pick; if (!k) return; hidePick(); if (pk.dataset.pick === "in") choose({ sheet: st.sheet, kind: "cells", cells: k.inp }, k.el, k.additive); else choose({ sheet: st.sheet, kind: "column_def", col: k.fj }, k.el, k.additive); return; }
+  if (pk) { e.preventDefault(); const k = st.pick; if (!k) return; hidePick(); if (pk.dataset.pick === "in") choose({ sheet: st.sheet, kind: "cells", cells: k.inp }, k.el, k.additive); else choose({ sheet: st.sheet, kind: "formula", col: k.fj }, k.el, k.additive); return; }
   if (e.target.closest("[data-fold], [data-open], [data-sort], #more, #pick")) return;
   const s = st.view.sheets[st.sheet];
   const th = e.target.closest("th[data-th]"), tot = e.target.closest("td[data-total]"), gen = e.target.closest("tr[data-gen]");
   const idx = e.target.closest("td.idx[data-row]"), td = e.target.closest("td[data-r]");
   if (th) { e.preventDefault(); return choose({ sheet: st.sheet, kind: "column_def", col: Number(th.dataset.th) }, th, isMod(e)); }
-  if (tot) { e.preventDefault(); return choose({ sheet: st.sheet, kind: "totals_def", col: Number(tot.dataset.total) }, tot, isMod(e)); }
+  if (tot) { e.preventDefault(); return deny("totals", tot); }
   if (gen) { e.preventDefault(); return deny({ g: "group", s: "subtotal", m: "merged" }[gen.dataset.gen] || "group", gen); }
   if ((idx || td) && s.row_kind === "derived") { e.preventDefault(); return deny("derived", idx || td); }
   if (idx) { e.preventDefault(); const r = Number(idx.dataset.row); st.drag = { kind: "rows", r, r2: r, mod: isMod(e) }; return; }
