@@ -1,7 +1,7 @@
 {
   "family": "table",
   "family_version": "2.2.0",
-  "lock_hash": "7055a72c7b0db91d",
+  "lock_hash": "21248d86fa25fb1d",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。类型由本包的 mengos-package.json 声明、经安装器入册（TL-25）；verdict 为平台类型。文件产出按 TL-9a：结果对象顶层的 files。本包按安装包交付，仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
@@ -2629,7 +2629,7 @@
           "不直接交 PDF"
         ]
       },
-      "version": "7055a72c7b0db91d"
+      "version": "21248d86fa25fb1d"
     },
     {
       "tool_id": "table.check",
@@ -5023,7 +5023,7 @@
           "table_meets_spec"
         ]
       },
-      "version": "7055a72c7b0db91d"
+      "version": "21248d86fa25fb1d"
     },
     {
       "tool_id": "table.export",
@@ -7390,7 +7390,7 @@
           "不读入已有的 Excel 文件"
         ]
       },
-      "version": "7055a72c7b0db91d"
+      "version": "21248d86fa25fb1d"
     }
   ]
 }

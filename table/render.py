@@ -244,7 +244,7 @@ LAYOUT_KIND = {"data": "d", "group": "g", "subtotal": "s", "merged": "m"}
 def _view_local(t, sh, s, lang):
     """2.3.0（mengosv2 局部追问 r10 §3.2、§四、§十一 §4.5）：只加产出台数据的输出字段，入参不动。
     宿主与渲染器只读这些，不解析公式；包不补 id——没写 id 的表、行，宿主按“#序号”定位（表在 sheets 里的序号、行在入参 rows 里的序号）。
-      · id：表 id（入参写了才有）；ids：各行的 $id（没写的是 null；派生表不给）；src：各行对应的入参行序号（分组挪过行时才给）；
+      · id：表 id（入参写了才有）；ids：各行的 $id（没写的是 null；派生表不给）；src：各行对应的入参行序号（有分组或合并就给，原序也给；没有就不给）；
       · col_kinds：列一级的单元种类（input / formula / numbering）；deps：公式列引用的列、带式的格引用的格；
       · row_kind = derived 与 derived_keys：派生表的行不可选，键 = 来源行（表/行）的集合；
       · layout_keys：生成行（组头、小计、合并行）的键，与 layout 逐项对齐，数据行为 null。"""
@@ -265,7 +265,8 @@ def _view_local(t, sh, s, lang):
     else:
         if any(x is not None for x in sh.row_ids):
             s["ids"] = list(sh.row_ids)
-        if sh.src is not None and sh.src != list(range(len(sh.src))):
+        # 有分组或合并 (layout) 一律给 src, 原序也给: 缺 src 的分组表只可能是 2.3.0 之前做的 (立法者 2026-11-19 第十一件判据按缺什么写)
+        if sh.src is not None and (sh.layout or sh.src != list(range(len(sh.src)))):
             s["src"] = list(sh.src)
     s["col_kinds"] = ["formula" if c.formula is not None else "numbering" if c.numbering is not None else "input" for c in sh.columns]
     deps = {}
