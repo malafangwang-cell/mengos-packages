@@ -96,17 +96,14 @@ def _parse_original(dxf_path: str, workdir: str, fid: str) -> dict:
     from mengos_cad import core
     out = os.path.join(os.path.realpath(workdir), ORIGINAL_OUT)
     shutil.rmtree(out, ignore_errors=True)
-    cap = dict(core.DETAIL_CAP)
-    core.DETAIL_CAP.update({k: sys.maxsize for k in cap})
     try:
-        core.run(dxf_path, out, fid=fid, parsed=True)
+        # 解析库 1.0.1 起 run() 收 detail_cap：值为 None 的节不设上限（只影响解析结构里明细存不存，单元文本不变）
+        core.run(dxf_path, out, fid=fid, parsed=True, detail_cap={k: None for k in DETAIL_SECTIONS})
         with open(os.path.join(out, "parsed.json"), "rb") as f:
             return json.loads(f.read())
     except core.CadFail as e:
         raise BadInput(f"原件读不了（{e.code}：{e.message}），不出数") from None
     finally:
-        core.DETAIL_CAP.clear()
-        core.DETAIL_CAP.update(cap)
         shutil.rmtree(out, ignore_errors=True)
         shutil.rmtree(out + ".partial", ignore_errors=True)
 

@@ -661,7 +661,7 @@ def main():
                 SEGD["cnt"][int(a_)] += int(c_)
             SEGD["n"] += len(u)
             if not SEGD["over"]:
-                if SEGD["n"] > DETAIL_CAP["线段明细"]:
+                if SEGD["n"] > args.detail_cap["线段明细"]:
                     SEGD["over"] = True; SEGD["keep"].clear()
                 else:
                     SEGD["keep"].append((P, L, u, ln, o))
@@ -2104,7 +2104,7 @@ def _parsed_doc(U, units, SEGD, NEST, UTX, UNP, ENT, lost, uninserted_texts, bud
         u = u if 0 <= u < nU else -1
         r3 = round(rot, 3) % 360
         nest_items[u].append(((n, round(x, 3), round(y, 3), r3, depth, ow), f"{n}|{_n3(x)}|{_n3(y)}|{_n3(r3)}|{depth}|{ow}"))
-    nest_stored = len(NEST) <= DETAIL_CAP["嵌套插入"]
+    nest_stored = len(NEST) <= args.detail_cap["嵌套插入"]
     nest_rows = {u: [t for _, t in sorted(v, key=lambda kv: kv[0])] for u, v in nest_items.items()}
     details = []
     for u in list(range(nU)) + [-1]:
@@ -2114,7 +2114,7 @@ def _parsed_doc(U, units, SEGD, NEST, UTX, UNP, ENT, lost, uninserted_texts, bud
         details.append(_detail(uname(u), "线段明细", sr if seg_stored else seg_cnt.get(u, 0), seg_stored))
         details.append(_detail(uname(u), "嵌套插入", nr if nest_stored else len(nr), nest_stored))
     ut_rows = [f"{bn}|{c}" for bn, c in sorted(UTX, key=lambda t: t[0])]
-    ut_stored = len(ut_rows) <= DETAIL_CAP["未插入图块文字"]
+    ut_stored = len(ut_rows) <= args.detail_cap["未插入图块文字"]
     details.append(_detail(None, "未插入图块文字", ut_rows if ut_stored else len(ut_rows), ut_stored))
     unparsed = [{"kind": k, "unit": u, "count": c, "note": note} for (k, u, note), c in
                 sorted(UNP.items(), key=lambda kv: (kv[0][0], kv[0][1] or "", kv[0][2]))]
@@ -2135,10 +2135,18 @@ def _parsed_doc(U, units, SEGD, NEST, UTX, UNP, ENT, lost, uninserted_texts, bud
             "units": units, "details": details, "unparsed": unparsed, "conservation": cons}
 
 
-def run(dxf, outdir, fid="X", emax=25_000_000, imax=500_000, max_out_bytes=64 * 1024 * 1024, parsed=False):
-    """解析一份 DXF, 写 outdir/units.json (parsed=True 另写 outdir/parsed.json); 返回摘要 {"ok", "units", "budget"}。失败抛 CadFail。"""
+def run(dxf, outdir, fid="X", emax=25_000_000, imax=500_000, max_out_bytes=64 * 1024 * 1024, parsed=False, detail_cap=None):
+    """解析一份 DXF, 写 outdir/units.json (parsed=True 另写 outdir/parsed.json); 返回摘要 {"ok", "units", "budget"}。失败抛 CadFail。
+    detail_cap: 完整解析结构里三类明细的体量上限 {节名: 条数}, 缺省 DETAIL_CAP (存储服务入库照缺省);
+    值为 None 的节不设上限 (工具回原件读“未存”的明细时用)。只影响 parsed.json 里明细存不存, 单元文本不变。"""
     args.dxf = dxf; args.outdir = outdir; args.fid = fid
     args.emax = emax; args.imax = imax; args.max_out_bytes = max_out_bytes; args.parsed = bool(parsed)
+    cap = dict(DETAIL_CAP)
+    for k, v in (detail_cap or {}).items():
+        if k not in cap:
+            raise ValueError(f"detail_cap 只认 {sorted(cap)}")
+        cap[k] = float("inf") if v is None else int(v)
+    args.detail_cap = cap
     LAYERS.clear(); lid_of("0")   # 图层编号表每次从 "0" 起 (LAYER0 恒为 0)
     try:
         return main()

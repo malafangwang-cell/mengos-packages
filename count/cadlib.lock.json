@@ -1,13 +1,13 @@
 {
   "name": "mengos-cad",
   "spec": "1",
-  "version": "1.0.0",
-  "sha256": "33fefb18293338369ad9a6b5d3ca2cbe62ba16ba985456640fe606d2900c7c45",
+  "version": "1.0.1",
+  "sha256": "e39f79ba7fa638bb00109dec02ee6efd5d14d2002141943794abbc94a437e131",
   "files": {
-    "cadlib/VERSION": "59854984853104df5c353e2f681a15fc7924742f9a2e468c29af248dce45ce03",
+    "cadlib/VERSION": "44e161e4495cac2cf7858043e9e6418e9579f0ddcfae826f9a372622968ce066",
     "cadlib/cadx.py": "eafd8781911614717e92a8e6f8b3f6753c2249a687800ed314282b0a9a8007c4",
     "cadlib/mengos_cad/__init__.py": "7e97eaf3407b2a2445aefe69caca61d8ab23d61c12548ae052de5a2c342ef60c",
-    "cadlib/mengos_cad/core.py": "99c3ea613928482b2b12549467131c24f4769f1c0c8badba7d8292b0ade2ae3c",
+    "cadlib/mengos_cad/core.py": "0e62f5659e6e5adfadbf8ec368060d0afd2327a4f289fb224af42b427ba06a49",
     "requirements-cad.txt": "6d4ab5e9b0eaaf65158d8b5ee212af344f1af494c744887230fc295c6e58830a"
   }
 }
