@@ -1,4 +1,14 @@
-# table 2.3.0 — 表格交付物包
+# table 2.3.1 — 表格交付物包
+
+> 2.3.1（渲染器选区；只改 `renderer/`，工具代码、登记与 lock 都不变，lock 仍为 2.3.0 的值，认证继承 TL-25）：mengosv2 局部追问 r10 §3.2、§十二 待定 3（推荐做法，工单 P-2），立法者 11-18（多处选区：同一张表、同一种，至多 200 格；修饰键 Ctrl / ⌘）。读 2.3.0 产出台数据的 `id`、`ids`、`src`、`col_kinds`。
+> - **选法**：拖选格 = `cells`；点行号（可拖多行）= `rows`；点列头 = `column_def`（这一列的定义）。公式列的格吸附成该列的公式（`formula`），带式的输入格不吸附；输入格与公式列的格一起选，出两个收窄按钮“只改其余的格子”“改‘某列’这一列的公式”。
+> - **不可选**：合计（`totals`：“合计由表格工具算出，不能单独选；要改合计，改上面的格子或公式”）、编号列的格、生成的组头、小计、合并行、派生表的行，发 `mengos.select_denied {why_not, message}`（totals、numbering、group、subtotal、merged、derived），带一句原因；超过 200 格（`too_many`）、加选的种类不同（`kind`）同样。
+> - **判据按缺什么写**（立法者 2026-11-19，不认版本）：行上没有 `src` 而这张表有分组或合并（`layout`）⟹ 这些行不能选，`why_not: "no_row_source"`，原文“这张表分了组，行对不回原表，不能单独选”；表数据里有 `derive` ⟹ 按派生表拒（行上没有 `row_kind` 也照拒），用“派生表”那句。2.2.0 做的普通表照常能选。
+> - **加选**：按住 Ctrl（Mac 上 ⌘）再选，同一张表、同一种才并，消息带 `additive: true`，`handles` 是当前全部选中；列的定义、列的公式一次一处。
+> - **消息**：`mengos.select {handle_id, handles, kind, sheet_id, cells? [[行id, 列key]], rows? [行id], col?, label, anchor, additive?}`；句柄 `cell:表id/行id/列key`、`row:表id/行id`、`col:表id/列key`、`fx:表id/列key`。**行键用 `$id`，没写的用入参 `rows` 里的 `#序号`（分组挪过行时取视图的 `src` 对回）；表键用表 id，没写的用 `sheets` 里的 `#序号`**（包不补 id，单表写法为 `#0`）。宿主回 `mengos.open {handles}`（描边）、`mengos.close`、`mengos.busy {handles}`（呼吸）；只画线，不碰表格自己的底色、字色。
+> - **排序挪到列头里的小箭头**（点列头本身改为选列定义）；有分组、合并的表照旧不排序。
+> - 悬停小标：公式列的格写“公式（整列）：…”，编号列的格写“编号由工具生成”，带式的格照旧写格公式。
+> - `tests/test_renderer.py` 9 条（静态）；浏览器走查 `tools/check_renderer_select.cjs` 22 项（含 2.2.0 做的普通表、分组表、派生表各一份，夹具 `tests/fixtures/views_220` 由 `tools/make_views_220.py` 在 2.2.0 代码上做）。
 
 > 2.3.0（mengosv2 局部追问设计 r10 §3.2、§四、工单 P-1；本版取代 r9.2 B1 的做法）：**只加产出台数据的输出字段，入参不动**。三件工具的 `input_schema` 与 2.2.0 逐键相同，`table.build` 的输出不加字段；不收 `row_patch`，不出“规范化入参”，包不补表 id、行 id，不保留 `_r`、`_s` 前缀，不加报错；登记顶层没有 `local_patch`。局部修改的契约由引擎从 `table.build` 入参契约里的节点原样取来（选区即契约）。
 > - **产出台数据新字段**（每张表）：`id` 表 id（入参写了才有）；`ids` 各行的 `$id`（没写的为 null，全没写不给）；`src` 各行对应的入参行序号（有分组或合并就给，原序也给；立法者 2026-11-19 第十一件）；`col_kinds` 列一级的单元种类（input / formula / numbering）；`deps` 公式列引用的列（`columns`）与带式的格引用的格（`cells: [行, 列, [[表id, 行id, 列key]…], [同行引用的列…]]`）；派生表 `row_kind: "derived"` 与 `derived_keys`（来源行“表/行”的集合，派生表的行不可选）；`layout_keys` 生成行（组头、小计、合并行）的键，与 `layout` 逐项对齐，数据行为 null。
