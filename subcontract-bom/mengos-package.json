@@ -1,11 +1,11 @@
 {
   "package": "subcontract-bom",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "mengos",
   "scope": "public",
   "title": "分包分解单规范",
   "summary": "规范分包分解单的产出：工作簿的表序与列、编号、拆表与合并、损耗与取整、选件与配套、交付前核对与问题表，以及开任务时须备的规格库与工程图。适用于按标准构件目录、阵列排布、以焊接结构件加紧固件为主的产品（如货架、立库）；不覆盖输送线类装配产品，不覆盖三级以上层级。",
-  "content_hash": "7504a1bca2acabdf2a8dc5fff5cdaec70e37aa6c9161a43cc1c9717f62e1e9e2",
+  "content_hash": "5c7b6df3bed686b77abbf941cbde671534d2c0b3ea6101fa7f3570eb2c1080e8",
   "types": [],
   "tools": [],
   "tools_lock": {
