@@ -3,3 +3,5 @@
 **/prompts/
 # 归档含提示词原文，不得放进本仓库工作区
 *.zip
+# Python 运行缓存不入库（安装器与 content_hash 本就跳过 __pycache__）
+__pycache__/
