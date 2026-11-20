@@ -1,12 +1,12 @@
 {
   "family": "calc",
-  "family_version": "2.2.1",
-  "lock_hash": "ecbbbd50de6a4d29",
+  "family_version": "2.2.3",
+  "lock_hash": "9d44a4cafdfa8176",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。入参写法写在 signature.input_schema 的 description 里；选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。本包按安装包交付（mengos-package.json，TL-25），仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
       "tool_id": "calc.evaluate",
-      "version": "ecbbbd50de6a4d29",
+      "version": "9d44a4cafdfa8176",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -53,7 +53,7 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 1000,
-              "description": "digits：近似值的有效位数，缺省 30。"
+              "description": "近似值写几位有效数字（从第一个非零数字数起，不是小数位数），1–1000，缺省 30。只影响近似值的写法，精确值不变。"
             }
           },
           "description": "需要一个精确的计算结果、不想自己心算时用：一个算式等于多少。用平常的数学写法写（2^n、sqrt、°、%、10! 都认），算式里的每个变量在 bindings 里给出取值；拿回精确值（分数、根式、π 保持精确）和十进制近似。"
@@ -145,7 +145,7 @@
     },
     {
       "tool_id": "calc.algebra",
-      "version": "ecbbbd50de6a4d29",
+      "version": "9d44a4cafdfa8176",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -252,7 +252,8 @@
             "digits": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 1000
+              "maximum": 1000,
+              "description": "近似值写几位有效数字（从第一个非零数字数起，不是小数位数），1–1000，缺省 30。只影响近似值的写法，精确值不变。"
             }
           },
           "description": "需要做代数或微积分运算时用：化简、展开、因式分解、代入、求导、积分、求极限、解方程或方程组。用平常的数学写法写，op 选运算；拿回结果式子或解集，解集可能不完备时附假设。入参写法：op ∈ simplify、expand、factor、subs、diff、integrate、limit、solve。expr 用普通数学记法；solve 的 expr 可写成等式 x^2 - 4 = 0，方程组用 exprs 数组；var/vars 指明变量；integrate 可给 lower/upper 求定积分；limit 需要 at，可选 dir（+、-、+-）；solve 可选 domain（complex 或 real）。"
@@ -361,7 +362,7 @@
     },
     {
       "tool_id": "calc.check_equal",
-      "version": "ecbbbd50de6a4d29",
+      "version": "9d44a4cafdfa8176",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {

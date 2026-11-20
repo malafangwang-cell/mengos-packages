@@ -1,5 +1,7 @@
 # calc v2（计算工具族的替换包）
 
+> 2.2.3（DXF 端到端归因 F5，立法者 2026-11-20 批定文字）：只改 digits 参数给模型看的说明。calc.evaluate 的 digits 原文“digits：近似值的有效位数，缺省 30。”整句换成批定文字；calc.algebra 的 digits 原先没有说明，补上同一句。批定文字：“近似值写几位有效数字（从第一个非零数字数起，不是小数位数），1–1000，缺省 30。只影响近似值的写法，精确值不变。”文中 1–1000 与两件工具 input_schema 的 minimum/maximum 一致（已核）。其余给模型看的文字一字未改；工具代码未改。registration 改了（`family_version` 随之写 2.2.3），lock 变（ecbbbd50de6a4d29 → 9d44a4cafdfa8176），须重新认证。
+
 > 2.2.2（mengosv2 执行令-2026-11-05-PLAN声明书与F环清单交互 支 T）：包清单加显示名 `title`「精确计算」与 `tool_titles`（`calc.evaluate`「算式精确求值」、`calc.algebra`「代数与微积分运算」、`calc.check_equal`「判断两式是否相等」）。两字段只供界面显示（声明书、商店），不进工具选择，也不进给模型看的任何文字；不在 `tools_lock.covers` 内，lock 不变（工具版本与认证继承），只有 content_hash 变。工具代码与 registration.json 未改（其中 `family_version` 仍写 2.2.1）。
 
 > 2.2.1（W-11，17 TL-16c v0.2.32）：calc.algebra 的输入类型改为“或”：`in_types: []`、`in_any: [math_expression, equation]`——它收一个式子（expr）或一组方程（exprs），二者有一即可（input_schema 只 required op）。calc.check_equal 的 `[math_expression, number]` 两边都要，不变。工具代码未改；registration 改了，lock 变（ecbbbd50de6a4d29），须重新认证。本容器无 sympy，执行类测试未跑；登记与包自检 15 项过。
