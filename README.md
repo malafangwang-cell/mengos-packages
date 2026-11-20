@@ -1,13 +1,13 @@
 # mengos-packages
 
-mengos 工具包源码仓库。每个子目录是一个包：`cad`、`document`、`calc`、`mathdisc`、`table`、`count`、两个纯规范包与三个局部追问 pro 包。
+mengos 工具包源码仓库。每个子目录是一个包：`cad`、`document`、`calc`、`mathdisc`、`table`、两个纯规范包与三个局部追问 pro 包。
 
 - **出处**：2026-11-04 由 mengosv2 仓库 `dev-tools/ci-packages/` 里的现役发布压缩包解出作初始提交（原包仓库已找不到；立法者 11-04 定新建本仓库）。去掉了 `__MACOSX/`，其余逐字节保留。
   - `cad` 2.4.4 ← `91a1c06ba8c26e0c21eb0e8591f09999dea853ed71e3df3c93f75e1fa59964df.zip`
   - `document` 1.2.5 ← `927cebff9d6fa0e4b9598892c8f52e05b3ae7ac3fe724316eb61c4d761f86a3c.zip`
   - `calc` 2.2.1 ← `341977c5a687c4e99de7e9c86fed5180ef6441e1adca19f81fb37f020d26a215.zip`
   - `mathdisc` 1.1.0 ← `17b2438287af4b98a67ff3e46d2542e129ca8d5aa9a9473f94d3ac430a9cfdb6.zip`
-- **count**（确定性计数）0.1.0 于 2026-11-18 新增：四件 T1 工具 `count.rows`、`count.series`、`count.coverage`、`count.agree`，只用标准库；依据 mengosv2 设计-确定性计数工具-2026-11-18 第一阶段。工具卡文字为草案待立法者定稿，见该包 README。
+- **count**：count 0.2.3 起迁至主仓（私有）；0.2.2 及以前的源码见本仓历史。
 - **纯规范包**：`subcontract-bom`（分包分解单规范）只带包内规范 `norms`，不带类型和工具，不走工具认证。0.1.0 于 2026-11-13 新增；0.2.0（同日，按通用性评审改 11 条、增 R6.6，写明适用范围）条文逐字取自 mengosv2 `docs/alignment/work交付/分解单规范-0.2.0/分解单规范/`；0.3.0（2026-11-17）按天门立库 DXF 实验改 14 条、增 D13 与 N4、R5.3 并入 R5.1，共 62 条；0.4.0（2026-11-18，以 0.2.0 为底加立库货架读图、推算、配套规则共 93 条，0.3.0 的改动退回）；现为 0.4.1（2026-11-20，为选包改用包描述重新登记，内容不变）。核对方法见该包 README。
   - `subcontract-bom-generic`（分包分解单规范（通用版））0.1.0 于 2026-11-14 新增：同为纯规范包，64 条，不带企业的列名、编号格式与损耗系数，适用于货架、立库、钢平台、带构件表与节点详图的钢结构厂房；条文逐字取自 mengosv2 `docs/alignment/work交付/分解单规范-通用版-0.1.0/`。与企业版 `subcontract-bom` 不要同时启用（同时启用时每次任务只会选中一个包）。
 - **局部追问 pro 包**：`table-pro`（表格追问Pro）、`document-pro`（文档追问Pro）、`cad-pro`（CAD追问Pro）0.1.0 于 2026-11-19 新增。三个都是空包，不带类型、工具和规范，只用来开通局部修改。引擎只看本工作区装没装、能不能用，不看启用（空包按 TL-31 E7 不能启用）。各自要配 `table`、`document`、`cad` 包才有用，单独安装没有作用（商店说明写明，立法者 2026-11-19 定稿）。见各包 README。
