@@ -248,6 +248,65 @@ cases += [
                  "new": table(FLANGE_NAMED)},
      "expect": {"ok": False, "code": "BAD_INPUT", "hint_contains": "重建一次", "source": "K5：2.5.2 的特征表没有面摘要"}},
 ]
+# ---- 2.7.0 零件计划补缺（PDF 转三维实验查实的缺口；参考值手算，与工具无关）----
+s60, c60 = math.sqrt(3) / 2, 0.5
+v_pent = 5 / 2 * 30 ** 2 * math.sin(2 * pi / 5) * 10                 # 外接圆半径 30 的正五边形 × 10
+v_hex_s24 = math.sqrt(3) / 2 * 24 ** 2 * 8                           # 对边距 24 的正六边形 × 8
+v_two_round = (40 * 40 - 2 * a_fillet(5)) * 10                       # 两个顶点倒 r5、两个尖角
+v_oblique = 100 * 100 * 20 - pi * 5 ** 2 * 20 / math.cos(pi / 4)       # 45° 斜孔穿 20 厚板：斜截圆柱体积 πr²h/cosθ
+v_pick = (120 * 60 - 2 * a_fillet(5)) * 10                            # 只倒两条竖棱
+COAX = "b: box 100 40 40\nl: hole d=10 at=(20,20) from=left depth=30\nr: hole d=10 at=(20,20) from=right depth=30"
+cases += [
+    B("g27-trig", "let r = 30\nb: box 100 100 10\nh: hole d=6 at=(50+r*cos(60), 50+r*sin(60)) from=top through",
+      equals=[{"path": "measure.holes.0.at", "value": [65.0, round(50 + 30 * s60, 6)]}],
+      src="2.7.0 表达式里的三角函数（按度）：r=30、60° 处的孔位 (50+30·cos60°, 50+30·sin60°)"),
+    {"id": "g27-polygon-d", "tool": "cad.build", "payload": {"plan": "p: polygon n=5 d=60 h=10", "name": "p", "formats": []},
+     "expect": {"ok": True, "values": [{"path": "measure.volume_mm3", "value": round(v_pent, 6), "rtol": 1e-7,
+                                        "source": "手算：正五边形面积 (5/2)·R²·sin72°，R=30，× 10"}],
+                "equals": [{"path": "measure.bbox.max.0", "value": 30.0}, {"path": "measure.solids", "value": 1}],
+                "source": "2.7.0 正多边形：d 为外接圆直径，第一个顶点在 +u"}},
+    {"id": "g27-polygon-s", "tool": "cad.build",
+     "payload": {"plan": "b: box 60 60 10\np: add polygon n=6 s=24 h=8 off=10 at=(30,30) angle=30", "name": "p", "formats": []},
+     "expect": {"ok": True, "values": [{"path": "measure.volume_mm3", "value": round(60 * 60 * 10 + v_hex_s24, 6), "rtol": 1e-7,
+                                        "source": "手算：底板 + 对边距 24 的正六边形凸台 (√3/2)·s²·8"}],
+                "equals": [{"path": "measure.bbox.size.2", "value": 18.0}], "source": "2.7.0 正多边形：s 为对边距，angle 转第一个顶点"}},
+    {"id": "g27-prism-some-corners", "tool": "cad.build",
+     "payload": {"plan": "p: prism (0,0,5) (40,0) (40,40,5) (0,40) h=10", "name": "p", "formats": []},
+     "expect": {"ok": True, "values": [{"path": "measure.volume_mm3", "value": round(v_two_round, 6), "rtol": 1e-7,
+                                        "source": "手算：40×40 方 − 2 个 r5 圆角缺角 r²(1−π/4)，× 10"}],
+                "source": "2.7.0 prism 只给部分顶点倒圆（2.6 报“圆角半径大于相邻边能容纳的长度”）"}},
+    {"id": "g27-hole-dir", "tool": "cad.build",
+     "payload": {"plan": "b: box 100 100 20\nh: hole d=10 at=(50,50,10) dir=(1,0,-1) through", "name": "p", "formats": []},
+     "expect": {"ok": True, "values": [{"path": "measure.volume_mm3", "value": round(v_oblique, 6), "rtol": 1e-7,
+                                        "source": "手算：100·100·20 − π·5²·20/cos45°（平行平面斜截的圆柱）"}],
+                "equals": [{"path": "measure.holes.0.through", "value": True},
+                           {"path": "measure.holes.0.dir", "value": [round(1 / math.sqrt(2), 6), 0.0, round(-1 / math.sqrt(2), 6)]}],
+                "source": "2.7.0 hole 的 dir=：任意方向的孔"}},
+    B("g27-hole-dir-pattern", "p: polygon n=6 s=40 h=20 angle=30\nh: hole d=6 at=(20,0,10) dir=(-1,0,0) depth=8\nph: pattern h circular n=6 center=(0,0)",
+      count=[{"path": "measure.holes", "where": {"d": 6.0, "through": False, "depth": 8.0}, "value": 6}],
+      src="2.7.0 六角凸台六个侧面上各一个盲孔：按 dir= 打的孔，环形阵列缺省绕 z"),
+    {"id": "g27-edge-pick", "tool": "cad.build",
+     "payload": {"plan": "b: box 120 60 10\nf: fillet r=5 edges=vertical (0,0,5) (120,60,5)", "name": "p", "formats": []},
+     "expect": {"ok": True, "values": [{"path": "measure.volume_mm3", "value": round(v_pick, 6), "rtol": 1e-7,
+                                        "source": "手算：120×60 − 2 个 r5 缺角，× 10"}],
+                "equals": [{"path": "features.1.scope", "value": "local"}],
+                "source": "2.7.0 按点选边：只倒对角两条竖棱"}},
+    {"id": "g27-check-coaxial-blind", "tool": "cad.check", "payload": {"plan": COAX, "expect": "holes 2 d=10\nhole d=10 axis=x at=(20,20) blind depth=30"},
+     "expect": {"ok": True, "equals": [{"path": "verdict", "value": "pass"}, {"path": "checks.0.actual", "value": 2}],
+                "source": "2.7.0 左右两侧同轴同径的盲孔是两个孔（2.6 认成一个通孔，holes 少计）"}},
+    B("g27-coaxial-through-void", "b: box 100 40 40\ns: shell t=5 open=none\nh: hole d=10 at=(20,20) from=left through",
+      count=[{"path": "measure.holes", "where": {"d": 10.0, "through": True}, "value": 1}],
+      src="2.7.0 对照：两壁之间是空腔时照旧算一个通孔"),
+    B("g27-chamfer-skip", "b: box 100 60 20\np: pocket rect w=40 l=0.5 at=(50,30) from=top depth=5\nc: chamfer c=0.3 edges=all",
+      equals=[{"path": "warnings.0.line", "value": 3}, {"path": "measure.valid", "value": True}],
+      src="2.7.0 整件倒角里有容不下的窄面：跳过那几条边并告警（回归值，非手算）"),
+    {"id": "err-g27-tan90", "tool": "cad.build", "payload": {"plan": "b: box 10 10 10\nc: box 1 1 tan(90)", "formats": []},
+     "expect": {"ok": False, "code": "BAD_INPUT", "line": 2}},
+    {"id": "err-g27-pick-corner", "tool": "cad.build", "payload": {"plan": "b: box 10 10 10\nf: fillet r=1 (0,0,0)", "formats": []},
+     "expect": {"ok": False, "code": "BAD_INPUT", "line": 2, "hint_contains": "中点"}},
+    {"id": "err-g27-chamfer-too-big", "tool": "cad.build", "payload": {"plan": "b: box 10 10 10\nc: chamfer c=6 edges=all", "formats": []},
+     "expect": {"ok": False, "code": "BAD_INPUT", "line": 2}},
+]
 for c in cases[35:]:
     for k in ("equals", "count"):
         if not c["expect"].get(k, True):

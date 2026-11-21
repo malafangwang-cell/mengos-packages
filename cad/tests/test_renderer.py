@@ -1,4 +1,4 @@
-"""渲染器页面自检（2.6.2：按需绘制、上下文丢失可恢复、不取外网资源）。只读页面文本，不起浏览器。"""
+"""渲染器页面自检（2.6.2：按需绘制、上下文丢失可恢复、不取外网资源；2.6.3：Ctrl / ⌘ 加选）。只读页面文本，不起浏览器。"""
 import hashlib
 import re
 from pathlib import Path
@@ -55,3 +55,30 @@ def test_vendor_block_matches_its_recorded_hashes():
     assert f"jszip {hashlib.sha256(jszip.encode()).hexdigest()}" in block
     assert f"three {hashlib.sha256(three.encode()).hexdigest()}" in block
     assert "three@0.170.0" in three and "JSZip v3.10.1" in jszip
+
+
+# ---- 2.6.3：Ctrl / ⌘ 加选（mengosv2 立法者 11-18：多处选区修饰键为 Ctrl / ⌘，计划面板 Shift 照旧；三维也能加选） ----
+
+def test_view_click_passes_ctrl_or_meta():
+    own = _own_code()
+    assert "{ x: Math.round(e.clientX), y: Math.round(e.clientY) }, e.ctrlKey || e.metaKey);" in own
+
+
+def test_view_pick_adds_up_to_max_with_modifier():
+    own = _own_code()
+    body = own[own.index("async function pickFromView(fid, face, anchor, add = false)"):own.index("async function pickFromPlan(")]
+    assert "if (add && fid)" in body
+    assert "state.sels.length < MAX_SELS" in body
+    assert "additive: true" in body
+
+
+def test_plan_click_treats_ctrl_meta_like_shift():
+    own = _own_code()
+    assert "pickFromPlan(pl, e.shiftKey, e.ctrlKey || e.metaKey)" in own
+    body = own[own.index("async function pickFromPlan(row, shift, mod = false)"):own.index("async function select(")]
+    assert "const multi = shift || mod;" in body
+    assert "sendSelect({ anchor, ...(multi ? { additive: true } : {}) });" in body
+
+
+def test_hint_names_ctrl_and_cmd():
+    assert "按住 Ctrl（Mac 上 ⌘）点模型或点行可以加选" in _own_code()

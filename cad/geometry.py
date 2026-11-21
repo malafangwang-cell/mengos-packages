@@ -84,18 +84,36 @@ def _covers_circle(intervals):
     return reach >= 2 * math.pi - 1e-6
 
 
+def _solid_between(part, g, t_next):
+    """轴上 g 的末端与下一段起点之间的中点在材料里吗。"""
+    d, q = g["d"], g["q"]
+    t = (g["t"][1] + t_next) / 2
+    return part.is_inside(Vector(q[0] + t * d[0], q[1] + t * d[1], q[2] + t * d[2]))
+
+
 def detect_holes(part):
     """孔 = 一整圈的凹圆柱面（可带同轴的沉头、锥口）。圆角、长圆槽端头只有半圈或四分之一圈，不算孔。"""
     faces = _revolved_faces(part)
     # 同一曲面（同轴同径同种类）上的面合并，判断是否满一圈
-    surf = {}
+    # 同一曲面上轴向不相接、中间隔着材料的两段是两个孔（2.7.0：左右两侧同轴同径的盲孔不再并成一个通孔）；
+    # 中间是空腔（孔穿过型腔、抽壳件两壁上的孔）照旧算一段。
+    bykey = {}
     for f in faces:
         k = (tuple(round(x, 5) for x in f["d"]), tuple(round(x, 3) for x in f["q"]), round(f["r"], 4) if f["kind"] == "CYLINDER" else round(f["semi"], 3), f["kind"])
-        g = surf.setdefault(k, {"d": f["d"], "q": f["q"], "r": f["r"], "kind": f["kind"], "semi": f["semi"], "t": list(f["t"]), "u": []})
-        g["t"][0], g["t"][1] = min(g["t"][0], f["t"][0]), max(g["t"][1], f["t"][1])
-        g["r"] = max(g["r"], f["r"])
-        g["u"].append(f["u"])
-    full = [g for g in surf.values() if _covers_circle(g["u"])]
+        bykey.setdefault(k, []).append(f)
+    surf = []
+    for fs in bykey.values():
+        g = None
+        for f in sorted(fs, key=lambda f: f["t"][0]):
+            if g is not None and f["t"][0] > g["t"][1] + 1e-6 and _solid_between(part, g, f["t"][0]):
+                g = None
+            if g is None:
+                g = {"d": f["d"], "q": f["q"], "r": f["r"], "kind": f["kind"], "semi": f["semi"], "t": list(f["t"]), "u": []}
+                surf.append(g)
+            g["t"][0], g["t"][1] = min(g["t"][0], f["t"][0]), max(g["t"][1], f["t"][1])
+            g["r"] = max(g["r"], f["r"])
+            g["u"].append(f["u"])
+    full = [g for g in surf if _covers_circle(g["u"])]
     # 同轴的整圈面按轴向相接成串，一串就是一个孔
     axes = {}
     for g in full:

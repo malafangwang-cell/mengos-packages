@@ -150,10 +150,11 @@ def _code_tokens(raw, ln=0):
 
 
 def _scope(f):
-    """作用范围（K12）：抽壳、按 all / vertical / 面名选边的圆角与倒角作用到整件，为 global；其余为 local。"""
+    """作用范围（K12）：抽壳、按 all / vertical / 面名选边的圆角与倒角作用到整件，为 global；其余为 local。
+    按点选边（2.7.0）的圆角、倒角只作用到点中的边，为 local。"""
     if f.op == "shell":
         return "global"
-    if f.op in ("fillet", "chamfer") and f.params.get("edges") in GLOBAL_EDGES:
+    if f.op in ("fillet", "chamfer") and f.params.get("edges") in GLOBAL_EDGES and not f.params.get("points"):
         return "global"
     return "local"
 
@@ -364,6 +365,7 @@ def _table(payload, key):
 
 def _params(src):
     """计划行 → (操作, [(参数名, 原样的值)])。键=值 的参数名为键，位置参数为 arg1、arg2…；值取计划行里的写法，去掉空白。"""
+    from cad_dsl import FUNCS
     ct = _code_tokens(src)
     if ct is None:
         return None, []
@@ -371,6 +373,8 @@ def _params(src):
     out, i, npos = [], 0, 0
 
     def atom(j):
+        if toks[j][0] == "word" and toks[j][1] in FUNCS and j + 1 < len(toks) and toks[j + 1][1] == "(":
+            j += 1                                     # 函数调用（2.7.0）：名字连同括号算一个值
         if toks[j][1] == "(":
             depth = 0
             while j < len(toks):

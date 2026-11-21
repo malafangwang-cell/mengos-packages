@@ -7,27 +7,29 @@ ROOT = Path(__file__).resolve().parents[1]
 ENTRY = "cad_tool.py"   # 相对包目录（TL-25）；命令为 ⟨包环境的 python⟩ ⟨包目录⟩/cad_tool.py
 PLAN_DOMAIN = (
     "plan：零件计划，一行一个操作，# 之后不读。单位 mm；x 向右、y 向后、z 向上。至多 300 行，每行至多 400 字符，至多 400 个特征，单个尺寸 0.01–10000 mm。\n"
-    "行：[名字:] 操作 参数…。参数为位置参数或 键=值。值为数、表达式（+ - * / %、括号、pi、let 变量）、括号元组 (a,b,…) 或单词。"
+    "行：[名字:] 操作 参数…。参数为位置参数或 键=值。值为数、表达式（+ - * / %、括号、pi、let 变量，以及函数 sin cos tan（参数按度）、asin acos atan atan2（结果按度）、sqrt abs min max）、括号元组 (a,b,…) 或单词。"
     "名字由字母、数字、下划线组成，是特征的句柄，倒角、阵列、镜像、核对都按名字引用。\n"
     "声明：units mm；material 牌号（6061-T6、7075、Q235、45、304、316、TC4、ABS、PLA、PETG 等，用于算质量）；let 变量 = 表达式。\n"
     "实体。单独一行为加料；写在 add 后面为并上，写在 cut 后面为减去：\n"
     "· box L W H [at=(x,y,z)]，at 为最小角点；\n"
     "· cylinder d= h= [axis=x|y|z] [at=(x,y,z)]，at 为底面圆心；cone d1= [d2=0] h= [axis=] [at=]；sphere d= [at=]，at 为球心；\n"
     "· prism (u,v) (u,v) (u,v) … h= [plane=xy|xz|yz] [off=] [twist=度] [smooth]：平面轮廓拉伸。xy 的点为 (x,y)，沿 +z；"
-    "xz 的点为 (x,z)，沿 +y；yz 的点为 (y,z)，沿 +x；off 为起始平面的坐标。点写成 (u,v,r) 时该顶点倒圆，半径 r。"
+    "xz 的点为 (x,z)，沿 +y；yz 的点为 (y,z)，沿 +x；off 为起始平面的坐标。点写成 (u,v,r) 时该顶点倒圆，半径 r；只写 (u,v) 的顶点保持尖角。"
     "smooth 为过各点的光滑闭合曲线。twist 为拉伸过程中绕平面原点转过的角度；\n"
+    "· polygon n= d=|s= h= [plane=xy|xz|yz] [off=] [at=(u,v)] [angle=] [r=]：正 n 边形拉伸。d 为外接圆直径（过各顶点），s 为对边距，二者给一个；at 为中心；plane、off 与拉伸方向同 prism；angle 为第一个顶点从 u 轴转过的角度，缺省时第一个顶点在 +u 上；r 给各顶点倒圆；\n"
     "· revolve (r,z) (r,z) … [angle=360] [axis=z] [at=]：r ≥ 0 的轮廓绕轴回转，点可写 (r,z,圆角半径)，at 为轴上的原点；\n"
     "· sweep d= (x,y,z) (x,y,z) … [r=] [id=]：圆截面沿折线路径扫掠，r 为各拐角的弯曲半径，给 id（内径）为管；\n"
     "· helix d= pitch= h= wire= [axis=] [at=] [hand=right|left]：螺旋弹簧，d 为中径，wire 为线径，at 为底面中心；\n"
     "· gear m= z= width= [alpha=20] [bore=] [at=]：直齿渐开线齿轮，以 at 为中心、从 at 向 +z。\n"
     "加工，从零件的外表面向里：\n"
     "· hole d= [at=center|(u,v)] [from=top|bottom|front|back|left|right] through|depth= [cbore=(直径,深)] [csk=(直径,角度)]；\n"
+    "· hole d= at=(x,y,z) dir=(dx,dy,dz) through|depth= [cbore=] [csk=]：任意方向的孔。dir 为钻入方向，at 为孔轴上的一点，不写 from；入口落在沿 dir 碰到的第一个材料表面，depth 从入口处的轴上量起；\n"
     "· pocket rect w= l= [r=] [angle=] 或 pocket circle d=，加 at= from= through|depth=，矩形的 w 沿 u、l 沿 v；\n"
     "· slot w= l= [angle=] at= from= through|depth=：长圆槽，l 为总长，沿 u；\n"
     "· at 为孔、型腔、槽的中心；(u,v) 的取法：top/bottom 为 (x,y)，front/back 为 (x,z)，left/right 为 (y,z)；angle 为从 u 向 v 转的角度；"
     "入口落在沿 from 方向在 at 处碰到的第一个材料表面，depth 从入口量起。\n"
-    "修饰：fillet r= [edges=]、chamfer c= [edges=]，edges 取 all、vertical、面名（top 等）或特征名；shell t= [open=top|…|none]，向内抽壳。\n"
-    "复制已命名的加料或去料特征：pattern 名字 linear n= dx= [dy=] [dz=]；pattern 名字 circular n= center=(u,v) [angle=360]，绕过 center 的轴转：去料特征的轴为它的加工方向，center 的取法同 at；加料特征的轴为 z，center 为 (x,y)；"
+    "修饰：fillet r= [edges=] [(x,y,z) …]、chamfer c= [edges=] [(x,y,z) …]，edges 取 all、vertical、面名（top 等）或特征名；后面写一个或几个点时，只倒 edges 选出的边里离各点最近的那一条，点要落在边上，取棱的中点最稳妥；按 all、vertical 或面名倒角时，个别边旁的面太窄容不下，跳过这几条边并给告警；shell t= [open=top|…|none]，向内抽壳。\n"
+    "复制已命名的加料或去料特征：pattern 名字 linear n= dx= [dy=] [dz=]；pattern 名字 circular n= center=(u,v) [angle=360] [axis=x|y|z]，绕过 center 的轴转：去料特征的轴为它的加工方向，center 的取法同 at；加料特征与按 dir= 打的孔，轴为 z，center 为 (x,y)；写 axis= 时绕该坐标轴，center 为另两个坐标（axis=x 为 (y,z)，axis=y 为 (x,z)）；"
     "pattern 名字 grid n= m= 加两个方向的间距（如 dx= dy=），共 n×m 个；mirror 名字 plane=yz|xz|xy [off=]。\n"
     "数只写数：直径写 d=25（写成 d=Φ25 也认），角度写 angle=38（写成 38° 也认），长度一律毫米（12mm 也认）；乘号 × 按 * 读，所以三个尺寸要用空格分开（box 80 50 20，不写 80×50×20）；公差不写进计划。\n"
     "不执行代码，只认上述语法；出错时按行号报错并给提示。"
@@ -427,7 +429,7 @@ for u in units:
 
 reg = {
     "family": "cad",
-    "family_version": "2.6.0",
+    "family_version": "2.7.0",
     "lock_hash": "",
     "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。"
             "入参写法写在 signature.input_schema 的 description 里；选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。"
