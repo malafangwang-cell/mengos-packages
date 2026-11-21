@@ -45,3 +45,33 @@ def test_golden_payloads_follow_input_schema_and_outputs_follow_output_schema():
 def test_capability_examples_3_to_5():
     for unit in REG["units"]:
         assert 3 <= len(unit["capability"]["examples"]) <= 5, unit["tool_id"]
+
+
+def _paths_with(node, key, path=""):
+    out = []
+    if isinstance(node, dict):
+        if node.get(key) is True:
+            out.append(path)
+        for k, v in node.items():
+            out += _paths_with(v, key, f"{path}/{k}")
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            out += _paths_with(v, key, f"{path}/{i}")
+    return out
+
+
+C2 = "拿回的精确值与近似值可以在产物里引用。"   # mengosv2 P5 C2 批定原文（立法者 2026-11-21）
+
+
+def test_ref_marks_match_c2():
+    """2.2.4（mengosv2 工单 P4；kernel-spec 17 TL-30d）：calc.evaluate 根说明末尾是 C2 原文；
+    x-mengos-ref 只标 C2 说的精确值（value）与近似值（approx），只在输出上；algebra、check_equal 不标、不带这句。"""
+    units = {u["tool_id"]: u for u in REG["units"]}
+    ev = units["calc.evaluate"]["signature"]
+    assert ev["input_schema"]["description"].endswith("和十进制近似。" + C2)
+    assert _paths_with(ev["output_schema"], "x-mengos-ref") == ["/properties/value", "/properties/approx"]
+    for u in REG["units"]:
+        assert _paths_with(u["signature"]["input_schema"], "x-mengos-ref") == []
+        if u["tool_id"] != "calc.evaluate":
+            assert _paths_with(u["signature"]["output_schema"], "x-mengos-ref") == []
+            assert C2 not in json.dumps(u, ensure_ascii=False)

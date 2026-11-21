@@ -1,5 +1,7 @@
 # calc v2（计算工具族的替换包）
 
+> 2.2.4（mengosv2 工单 P4，kernel-spec 17 TL-30d、08 PD-1e v0.2.121）：calc.evaluate 回执的精确值 `value` 与近似值 `approx` 在 output_schema 上标 `"x-mengos-ref": true`（可引用位置声明；两处都是本工具算出的值，不是入参回显）；calc.evaluate 根说明末尾加一句，照立法者 2026-11-21 批定原文（P5 C2）：“拿回的精确值与近似值可以在产物里引用。”algebra、check_equal 不标、说明不动；其余给模型看的文字一字未改；工具代码未改，回执不变。registration 改了（`family_version` 写 2.2.4），lock 变（9d44a4cafdfa8176 → 1d3867dbcbe48459），须重新认证。无指针简写 `{"$ref": 回执节点id}` 照旧由引擎认，说明里不另提。
+
 > 2.2.3（DXF 端到端归因 F5，立法者 2026-11-20 批定文字）：只改 digits 参数给模型看的说明。calc.evaluate 的 digits 原文“digits：近似值的有效位数，缺省 30。”整句换成批定文字；calc.algebra 的 digits 原先没有说明，补上同一句。批定文字：“近似值写几位有效数字（从第一个非零数字数起，不是小数位数），1–1000，缺省 30。只影响近似值的写法，精确值不变。”文中 1–1000 与两件工具 input_schema 的 minimum/maximum 一致（已核）。其余给模型看的文字一字未改；工具代码未改。registration 改了（`family_version` 随之写 2.2.3），lock 变（ecbbbd50de6a4d29 → 9d44a4cafdfa8176），须重新认证。
 
 > 2.2.2（mengosv2 执行令-2026-11-05-PLAN声明书与F环清单交互 支 T）：包清单加显示名 `title`「精确计算」与 `tool_titles`（`calc.evaluate`「算式精确求值」、`calc.algebra`「代数与微积分运算」、`calc.check_equal`「判断两式是否相等」）。两字段只供界面显示（声明书、商店），不进工具选择，也不进给模型看的任何文字；不在 `tools_lock.covers` 内，lock 不变（工具版本与认证继承），只有 content_hash 变。工具代码与 registration.json 未改（其中 `family_version` 仍写 2.2.1）。
