@@ -25,12 +25,17 @@ BOM = {"title": "物料", "columns": [{"key": "name", "title": "名称"}, {"key"
 
 
 # ───────────────────────── 入参契约与 2.2.0 逐键相同 ─────────────────────────
+REF_ADD_233 = ["格里的值取自某张回执时，写 {\"$ref\": \"回执id#路径\"} 代替它：回执id 照输入材料里那张回执的 id 原样写；路径从回执顶层起照键名逐层写，每层前面写一个 /，所以路径以 / 开头；数组写序号（从 0 起）。"]
+
+
 def _strip_232(schema):
-    """2.3.2（mengosv2 工单 P4）只改 table 字段说明一处：编号列那句前加“序号、”（P5 B2）。去掉这两字后与 2.2.0 逐键相同。"""
+    """2.3.2、2.3.3（mengosv2 工单 P4）只改 table 字段说明两处：编号列那句前加“序号、”（P5 B2）；加引用写法一句（P5 B1，2.3.3）。去掉这两处后与 2.2.0 逐键相同。"""
     s = json.loads(json.dumps(schema, ensure_ascii=False))
     t = s.get("properties", {}).get("table")
     if t and "description" in t:
         d = t["description"]
+        for a in REF_ADD_233:
+            d = d.replace(a, "")
         t["description"] = d.replace("；序号、编号列写 numbering", "；编号列写 numbering")
     return s
 
