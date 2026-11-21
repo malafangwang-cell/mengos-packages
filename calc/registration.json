@@ -1,12 +1,12 @@
 {
   "family": "calc",
-  "family_version": "2.2.3",
-  "lock_hash": "9d44a4cafdfa8176",
+  "family_version": "2.2.4",
+  "lock_hash": "1d3867dbcbe48459",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。入参写法写在 signature.input_schema 的 description 里；选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。本包按安装包交付（mengos-package.json，TL-25），仓库现行结构如需额外字段，报工具侧补入，施工方不改包内文件。",
   "units": [
     {
       "tool_id": "calc.evaluate",
-      "version": "9d44a4cafdfa8176",
+      "version": "1d3867dbcbe48459",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -56,7 +56,7 @@
               "description": "近似值写几位有效数字（从第一个非零数字数起，不是小数位数），1–1000，缺省 30。只影响近似值的写法，精确值不变。"
             }
           },
-          "description": "需要一个精确的计算结果、不想自己心算时用：一个算式等于多少。用平常的数学写法写（2^n、sqrt、°、%、10! 都认），算式里的每个变量在 bindings 里给出取值；拿回精确值（分数、根式、π 保持精确）和十进制近似。"
+          "description": "需要一个精确的计算结果、不想自己心算时用：一个算式等于多少。用平常的数学写法写（2^n、sqrt、°、%、10! 都认），算式里的每个变量在 bindings 里给出取值；拿回精确值（分数、根式、π 保持精确）和十进制近似。拿回的精确值与近似值可以在产物里引用。"
         },
         "output_schema": {
           "type": "object",
@@ -70,7 +70,8 @@
           "properties": {
             "value": {
               "type": "string",
-              "description": "精确值，例如 177、1/3、3*sqrt(2)"
+              "description": "精确值，例如 177、1/3、3*sqrt(2)",
+              "x-mengos-ref": true
             },
             "exact": {
               "type": "boolean"
@@ -80,7 +81,8 @@
                 "string",
                 "null"
               ],
-              "description": "十进制近似，默认 30 位有效数字"
+              "description": "十进制近似，默认 30 位有效数字",
+              "x-mengos-ref": true
             },
             "kind": {
               "enum": [
@@ -145,7 +147,7 @@
     },
     {
       "tool_id": "calc.algebra",
-      "version": "9d44a4cafdfa8176",
+      "version": "1d3867dbcbe48459",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
@@ -362,7 +364,7 @@
     },
     {
       "tool_id": "calc.check_equal",
-      "version": "9d44a4cafdfa8176",
+      "version": "1d3867dbcbe48459",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {

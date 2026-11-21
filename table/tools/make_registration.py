@@ -142,7 +142,7 @@ TABLE_DESC = (
         "2.2.0 起：只有个别格算法不同时，把这一列当输入列（不写 formula），在格里写式 {\"$expr\": \"6*28\"}；式里可用数、函数（取整的步长、位数可省，如 ceiling(x)）、"
         "本行的列，引用别的行写 @行id.列、别的表写 @表id/行id.列，被引用的行写 \"$id\"（如 \"r1\"）；式里每个数都要有出处。整列算法相同的一律用列公式。"
         "跨表汇总写 sumif(表id.条件列, 本行的列, 表id.求和列)、countif(表id.条件列, 本行的列)、total(表id.列)；sheet_order [表id…] 定表的次序。"
-        "层级：outline_from {column: 一列文字, levels: {主件: 1, 焊接子件: 2}}（不收整数层级列）；编号列写 numbering: outline（1、1.1…，层级为空不编）或 seq（1…n），值由工具编。"
+        "层级：outline_from {column: 一列文字, levels: {主件: 1, 焊接子件: 2}}（不收整数层级列）；序号、编号列写 numbering: outline（1、1.1…，层级为空不编）或 seq（1…n），值由工具编。"
         "分组 group {by: 列}（组头由工具生成）或 {by: \"outline\", rest_label: \"五金件\"}（层级 1 的行自己就是组头）；subtotals [{column, fn}] 每组出小计；"
         "合并 merge_rows {by: [名称, 规格], agg: {列: \"sum\" | \"formula\"}, join: [备注]}：sum 是各行相加，formula 是合并后按本列公式重算，含取整的公式列必须写明；"
         "派生表 derive {from: [表id…], where: 条件式, by: [键列], agg: {列: \"sum\"}} 由工具从各表生成行。row_styles 的 kind 另有 subtotal、group。"
@@ -180,7 +180,7 @@ TABLE_DESC_BUILD = (
     "2.2.0 起：只有个别格算法不同时，把这一列当输入列（不写 formula），在格里写式 {\"$expr\": \"6*28\"}；式里可用数、函数（取整的步长、位数可省，如 ceiling(x)）、"
     "本行的列，引用别的行写 @行id.列、别的表写 @表id/行id.列，被引用的行写 \"$id\"（如 \"r1\"）；式里每个数都要有出处。整列算法相同的一律用列公式。"
     "跨表汇总写 sumif(表id.条件列, 本行的列, 表id.求和列)、countif(表id.条件列, 本行的列)、total(表id.列)；sheet_order [表id…] 定表的次序。"
-    "层级：outline_from {column: 一列文字, levels: {主件: 1, 焊接子件: 2}}（不收整数层级列）；编号列写 numbering: outline（1、1.1…，层级为空不编）或 seq（1…n），值由工具编。"
+    "层级：outline_from {column: 一列文字, levels: {主件: 1, 焊接子件: 2}}（不收整数层级列）；序号、编号列写 numbering: outline（1、1.1…，层级为空不编）或 seq（1…n），值由工具编。"
     "分组 group {by: 列}（组头由工具生成）或 {by: \"outline\", rest_label: \"五金件\"}（层级 1 的行自己就是组头）；subtotals [{column, fn}] 每组出小计；"
     "合并 merge_rows {by: [名称, 规格], agg: {列: \"sum\" | \"formula\"}, join: [备注]}：sum 是各行相加，formula 是合并后按本列公式重算，含取整的公式列必须写明；"
     "派生表 derive {from: [表id…], where: 条件式, by: [键列], agg: {列: \"sum\"}} 由工具从各表生成行。row_styles 的 kind 另有 subtotal、group。"
@@ -211,7 +211,7 @@ FORMULA_ADD = [
 ]
 TOT_ADD = ["fn 写 formula 时合计行按本列公式重算（比率列：实际合计 ÷ 预算合计），写 none 留空。"]
 NUMBER_ADD = ["表格里能读成数的值一律存为数字，可以计算；不提供把数字列改成文本。用户要文本，如实说明：下载后在 Excel 里改。"]   # 立法者 2026-11-12：表格数字默认就是数字（执行令 2.1.0 §一 补 第 1 条）
-STRUCT_DESC = ['2.2.0 起：只有个别格算法不同时，把这一列当输入列（不写 formula），在格里写式 {\"$expr\": \"6*28\"}；式里可用数、函数（取整的步长、位数可省，如 ceiling(x)）、', '本行的列，引用别的行写 @行id.列、别的表写 @表id/行id.列，被引用的行写 \"$id\"（如 \"r1\"）；式里每个数都要有出处。整列算法相同的一律用列公式。', '跨表汇总写 sumif(表id.条件列, 本行的列, 表id.求和列)、countif(表id.条件列, 本行的列)、total(表id.列)；sheet_order [表id…] 定表的次序。', '层级：outline_from {column: 一列文字, levels: {主件: 1, 焊接子件: 2}}（不收整数层级列）；编号列写 numbering: outline（1、1.1…，层级为空不编）或 seq（1…n），值由工具编。', '分组 group {by: 列}（组头由工具生成）或 {by: \"outline\", rest_label: \"五金件\"}（层级 1 的行自己就是组头）；subtotals [{column, fn}] 每组出小计；', '合并 merge_rows {by: [名称, 规格], agg: {列: \"sum\" | \"formula\"}, join: [备注]}：sum 是各行相加，formula 是合并后按本列公式重算，含取整的公式列必须写明；', '派生表 derive {from: [表id…], where: 条件式, by: [键列], agg: {列: \"sum\"}} 由工具从各表生成行。row_styles 的 kind 另有 subtotal、group。']   # 2.2.0 新增的说明句
+STRUCT_DESC = ['2.2.0 起：只有个别格算法不同时，把这一列当输入列（不写 formula），在格里写式 {\"$expr\": \"6*28\"}；式里可用数、函数（取整的步长、位数可省，如 ceiling(x)）、', '本行的列，引用别的行写 @行id.列、别的表写 @表id/行id.列，被引用的行写 \"$id\"（如 \"r1\"）；式里每个数都要有出处。整列算法相同的一律用列公式。', '跨表汇总写 sumif(表id.条件列, 本行的列, 表id.求和列)、countif(表id.条件列, 本行的列)、total(表id.列)；sheet_order [表id…] 定表的次序。', '层级：outline_from {column: 一列文字, levels: {主件: 1, 焊接子件: 2}}（不收整数层级列）；序号、编号列写 numbering: outline（1、1.1…，层级为空不编）或 seq（1…n），值由工具编。', '分组 group {by: 列}（组头由工具生成）或 {by: \"outline\", rest_label: \"五金件\"}（层级 1 的行自己就是组头）；subtotals [{column, fn}] 每组出小计；', '合并 merge_rows {by: [名称, 规格], agg: {列: \"sum\" | \"formula\"}, join: [备注]}：sum 是各行相加，formula 是合并后按本列公式重算，含取整的公式列必须写明；', '派生表 derive {from: [表id…], where: 条件式, by: [键列], agg: {列: \"sum\"}} 由工具从各表生成行。row_styles 的 kind 另有 subtotal、group。']   # 2.2.0 新增的说明句
 NUM22_DESC = ['公式与着色规则里写的数是算法的一部分，不用标出处；但公式的条件分支不直接给数字常数（要数就引用一列，或把数写在输入格里，输入格的数照常标出处）。', '编号、代码一类的列是标识符，不是数：编号列用 numbering，其余写 type text 并加 \"identifier\": true。']   # 2.2.0 §二 补（立法者 11-12，17 TL-30 v0.2.99）
 BUILD_ONLY_ADD = ["改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。"]
 assert all(x in TABLE_DESC for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + NUMBER_ADD)
