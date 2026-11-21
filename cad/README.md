@@ -1,5 +1,7 @@
 # cad v2（W3 的 CAD 工具包）
 
+> 2.7.1（mengosv2《逐字稿-零件建模四条约束与cad.check核验接入-2026-11-21》§三，立法者批定；17 TL-21a 随 mengosv2 #1046 进 main）：cad.check 一件加核验接入声明 `verify`（件的顶层，与 `review_coverage`、`signature` 并列；位置经调度 2026-11-21 按 mengosv2 `engine/tools/certify.ts` 核定）：`for` ["cad_part"]，`input` 的 plan 为 `{"$best": "/plan"}`、expect 为 `"solids 1\nvalid"`，`predicate` 为 /verdict equals "pass"。给模型看的文字一字未改；工具代码未改，回执不变。registration 改了（`family_version` 写 2.7.1），lock 变（9c59409468000534 → 5a0749adb33ea73f），须重新认证。`tests/test_verify.py` 照 TL-21a 认证程序的几项先核一遍并实跑声明的入参；`tests/test_package.py` 的 TL6 字段白名单加 `verify`。
+
 > 2.7.0（依据 PDF 转三维实验查实的缺口，立法者 2026-11-21“工具的问题，安排修复”；进模型文字与“整件倒角跳过个别边”“三角函数按度”“版本号 2.7.0”三点经立法者 2026-11-21 确认）：零件计划补六处缺口并改善整件倒角。**只放宽**：2.7.0-alpha.1 的 51 条金样逐字节不变、全过；以前报错的写法现在能建，以前能建的计划输出不变（cad.check 认孔一处例外，见 ⑥，是修错）。
 > - ① 表达式加函数：`sin cos tan`（参数按度）、`asin acos atan atan2`（结果按度）、`sqrt abs min max`。整度数处的舍入噪声归零（`cos(90)` 得 0、`sin(30)` 得 0.5）。名字被 `let` 定义成变量时按变量读，与 2.6 同。cad.compare 的逐参数差把函数调用整体算一个值。
 > - ② 新实体 `polygon n= d=|s= h= [plane=] [off=] [at=(u,v)] [angle=] [r=]`：正 n 边形拉伸，d 外接圆直径、s 对边距。

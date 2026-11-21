@@ -254,6 +254,14 @@ units = [
             "non_goals": ["不核对壁厚、拔模角、可加工性", "不核对公差配合", "不改计划，只报告"],
         },
         "review_coverage": {"by_predicate": ["cad_model_meets_spec"]},
+        "verify": {   # 2.7.1：核验接入声明（17 TL-21a），照 mengosv2《逐字稿-零件建模四条约束与cad.check核验接入-2026-11-21》§三原文
+            "for": ["cad_part"],
+            "input": {
+                "plan": {"$best": "/plan"},
+                "expect": "solids 1\nvalid"
+            },
+            "predicate": {"pointer": "/verdict", "op": "equals", "value": "pass"}
+        },
         "selection_cases": [
             {"ops": ["check"], "required_type": "verdict", "expect_selected": True},
         ] + NOT_TYPES,
@@ -429,7 +437,7 @@ for u in units:
 
 reg = {
     "family": "cad",
-    "family_version": "2.7.0",
+    "family_version": "2.7.1",
     "lock_hash": "",
     "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family，由引擎下发到各件。cost 的 latency 与 timeout 单位为毫秒，price 为每次调用的平台计价单位。"
             "入参写法写在 signature.input_schema 的 description 里；选择金样（TL-12 ⑥）是认证材料，在 selection_cases.json。"

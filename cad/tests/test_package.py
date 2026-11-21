@@ -70,7 +70,7 @@ def test_content_hash_is_current():
 
 
 TL6 = {"tool_id", "version", "signature", "input_example", "executor", "effect", "cost", "capability",
-       "review_coverage", "trust_claim"}
+       "review_coverage", "trust_claim", "verify"}   # verify：17 TL-21a 核验接入声明（2.7.1）
 
 
 def _ancestors(name):
