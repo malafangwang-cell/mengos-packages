@@ -4,11 +4,11 @@
 
 ## 前提与适用范围
 
-要与 `cad` 包一起启用。适用于照图纸或尺寸说明产出单个零件三维模型的任务，不覆盖多个零件的装配。范围写在包说明（`summary`）里，不是条目。
+要与 `cad` 包一起启用。适用于产出单个零件三维模型的任务，不覆盖多个零件的装配。范围写在包说明（`summary`）里，不是条目。
 
 ## 说明
 
-- **条目**：`mengos-package.json` 的 `norms`，共 4 条（约束 4：L1–L4），体例“[约束] （编号）正文”。title、summary 与条文逐字取自 mengosv2 `docs/alignment/arch/逐字稿-零件建模四条约束与cad.check核验接入-2026-11-21.md`（立法者批定；§1.3 清单、§二 条文），打包时不改。
+- **条目**：`mengos-package.json` 的 `norms`，共 4 条（约束 4：L1–L4），体例“[约束] （编号）正文”。title、条文与 0.1.0 的 summary 逐字取自 mengosv2 `docs/alignment/arch/逐字稿-零件建模四条约束与cad.check核验接入-2026-11-21.md`（立法者批定；§1.3 清单、§二 条文），打包时不改；summary 自 0.1.1 起按立法者 2026-11-21 批的改句（见 `变更说明.md`）。
 - **核对条文**：`norms` 按序用换行连接、末尾加一个换行：
   ```
   python3 -c "import json,sys,hashlib; m=json.load(open('cad-part/mengos-package.json',encoding='utf-8')); print(hashlib.sha256(('\n'.join(m['norms'])+'\n').encode()).hexdigest())"
