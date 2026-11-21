@@ -448,9 +448,10 @@ def test_circular_pattern_and_given_pose():
 
 
 def test_old_tools_and_lock_untouched():
-    """第 1 阶段不进登记：lock 覆盖的文件与登记都没动，四件旧工具的版本不变（旧工具输出逐字节不变由原有测试覆盖）。"""
+    """第 1 阶段不进登记：assembly.py 不在 lock 覆盖范围内，登记仍是四件旧工具（旧工具输出逐字节不变由原有测试覆盖）。
+    2.7.0 起四件工具因零件计划补缺而改，lock 不再钉死 2.6 的 3625f3c31608de88，只核登记值是最新的。"""
     from lock import SOURCES, lock_hash
     reg = json.loads((ROOT / "registration.json").read_text(encoding="utf-8"))
-    assert reg["lock_hash"] == lock_hash() == "3625f3c31608de88"
+    assert reg["lock_hash"] == lock_hash()
     assert "assembly.py" not in SOURCES
     assert sorted(u["tool_id"] for u in reg["units"]) == ["cad.build", "cad.check", "cad.compare", "cad.export"]

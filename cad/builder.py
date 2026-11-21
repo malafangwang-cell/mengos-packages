@@ -31,7 +31,7 @@ MATERIALS = {   # 密度 g/cm³（常用工程值）
     "TC4": 4.43, "Ti-6Al-4V": 4.43, "ABS": 1.04, "PLA": 1.24, "PETG": 1.27, "PA6": 1.14, "POM": 1.41, "PC": 1.20,
 }
 
-SUPPORTED = ["units", "material", "let", "box", "cylinder", "sphere", "cone", "prism", "gear",
+SUPPORTED = ["units", "material", "let", "box", "cylinder", "sphere", "cone", "prism", "polygon", "gear",
              "revolve", "sweep", "helix",
              "hole", "pocket", "slot", "cut", "add", "fillet", "chamfer", "shell", "pattern", "mirror"]
 
@@ -331,16 +331,74 @@ def _profile_face(pts, smooth, a, plane):
             f = make_face(w)
         except Exception:
             a.err("样条轮廓做不出来：点可能重复或自相交", "点按轮廓顺序给出，不要重复首点")
-    elif any(p[2] > 0 for p in pts):
-        rad = [p[2] if p[2] > 0 else 1e-6 for p in pts]
+    elif all(p[2] > 0 for p in pts):
+        rad = [p[2] for p in pts]
         try:
             w = FilletPolyline(*uv, radius=rad, close=True)
             f = make_face(w)
         except Exception:
             a.err("轮廓的顶点圆角做不出来：圆角半径大于相邻边能容纳的长度", "减小 r，或加长相邻的边")
+    elif any(p[2] > 0 for p in pts):
+        f = make_face(_partly_rounded_wire(pts, a))
     else:
         f = Polygon(*uv, align=None)
     return plane * f, pts
+
+
+def _partly_rounded_wire(pts, a):
+    """只有部分顶点倒圆的闭合轮廓（2.7.0）：r = 0 的顶点保持尖角，其余顶点以半径 r 的圆弧与两邻边相切。
+    （2.6 把尖角当作 1e-6 的圆角交给 FilletPolyline，一律做不出来。）"""
+    from build123d import Line, ThreePointArc, Wire
+    n = len(pts)
+    P = [(p[0], p[1]) for p in pts]
+    sub = lambda u, v: (u[0] - v[0], u[1] - v[1])
+    norm = lambda u: math.hypot(u[0], u[1])
+    cut = [0.0] * n            # 顶点 i 处圆弧切点到顶点的距离
+    arcs = [None] * n
+    for i in range(n):
+        r = pts[i][2]
+        if r <= 0:
+            continue
+        A, B, C = P[i - 1], P[i], P[(i + 1) % n]
+        u1, u2 = sub(A, B), sub(C, B)
+        l1, l2 = norm(u1), norm(u2)
+        if l1 < 1e-9 or l2 < 1e-9:
+            a.err(f"顶点 {P[i]} 与相邻的点重合")
+        u1, u2 = (u1[0] / l1, u1[1] / l1), (u2[0] / l2, u2[1] / l2)
+        cosphi = max(-1.0, min(1.0, u1[0] * u2[0] + u1[1] * u2[1]))
+        phi = math.acos(cosphi)                      # 两邻边的夹角
+        if phi > math.pi - 1e-9:
+            continue                                 # 共线，不需要圆角
+        if phi < 1e-6:
+            a.err(f"顶点 {P[i]} 处两条边重叠，不能倒圆")
+        t = r / math.tan(phi / 2)
+        bis = (u1[0] + u2[0], u1[1] + u2[1])
+        bl = norm(bis)
+        bis = (bis[0] / bl, bis[1] / bl)
+        dc = r / math.sin(phi / 2)                   # 顶点到圆心
+        mid = (B[0] + bis[0] * (dc - r), B[1] + bis[1] * (dc - r))
+        cut[i] = t
+        arcs[i] = ((B[0] + u1[0] * t, B[1] + u1[1] * t), mid, (B[0] + u2[0] * t, B[1] + u2[1] * t))
+    for i in range(n):
+        j = (i + 1) % n
+        L = norm(sub(P[j], P[i]))
+        if cut[i] + cut[j] > L + 1e-9:
+            a.err(f"轮廓的顶点圆角做不出来：边 {P[i]}–{P[j]} 长 {L:g}，装不下两端圆角所需的 {cut[i] + cut[j]:g}",
+                  "减小 r，或加长相邻的边")
+    start = lambda i: arcs[i][2] if arcs[i] else P[i]
+    end = lambda i: arcs[i][0] if arcs[i] else P[i]
+    edges = []
+    for i in range(n):
+        if arcs[i]:
+            edges.append(ThreePointArc(*arcs[i]))
+        j = (i + 1) % n
+        s0, s1 = start(i), end(j)
+        if norm(sub(s1, s0)) > 1e-9:
+            edges.append(Line(s0, s1))
+    try:
+        return Wire(edges)
+    except Exception:
+        a.err("轮廓的顶点圆角做不出来：轮廓可能自相交", "检查点的顺序，或减小 r")
 
 
 _PLANES = {"xy": ((1, 0, 0), (0, 0, 1)), "xz": ((1, 0, 0), (0, -1, 0)), "yz": ((0, 1, 0), (1, 0, 0))}
@@ -379,6 +437,41 @@ def make_prism(st, a):
         if solid.volume < 0:
             solid = extrude(face, amount=-h, dir=d)
     return solid, {"points": [p[:2] for p in pts], "h": h, "plane": pl, "off": off, "smooth": smooth, "twist": twist}
+
+
+def make_polygon(st, a):
+    """正多边形拉伸（2.7.0）：n 条边，d= 外接圆直径（过各顶点）或 s= 对边距，二者给一个。
+    平面与拉伸方向同 prism；at=(u,v) 为中心；angle= 为第一个顶点从 u 轴转过的角度（缺省 0，即第一个顶点在 +u 上）；
+    r= 给各顶点倒圆。"""
+    nf = a.num("n")
+    if abs(nf - round(nf)) > 1e-9 or not (3 <= nf <= 200):
+        a.err("边数 n 应当是 3–200 的整数")
+    n = int(round(nf))
+    d, s_ = a.num("d", required=False), a.num("s", required=False)
+    if (d is None) == (s_ is None):
+        a.err("d=（外接圆直径，过各顶点）与 s=（对边距）给且只给一个")
+    R = d / 2 if d is not None else s_ / 2 / math.cos(math.pi / n)
+    h = a.num("h")
+    pl = a.word("plane", ["xy", "xz", "yz"], "xy")
+    off = a.num("off", default=0.0, positive=False)
+    ctr = a.tup("at", 2, (0.0, 0.0))
+    ang = a.num("angle", default=0.0, positive=False)
+    r = a.num("r", required=False)
+    a.done()
+    if r is not None and r >= R * math.cos(math.pi / n) * math.tan(math.pi / n) - 1e-9:
+        a.err(f"顶点圆角 r={r:g} 太大：边长 {2 * R * math.sin(math.pi / n):g}，r 应当小于 {R * math.sin(math.pi / n) * math.tan(math.pi / n):.3g}")
+    pts = []
+    for i in range(n):
+        t = math.radians(ang) + 2 * math.pi * i / n
+        pts.append((ctr[0] + R * math.cos(t), ctr[1] + R * math.sin(t), r or 0.0))
+    xd, zd = _PLANES[pl]
+    origin = tuple(off * c for c in {"xy": (0, 0, 1), "xz": (0, 1, 0), "yz": (1, 0, 0)}[pl])
+    face, _ = _profile_face(pts, False, a, Plane(origin=origin, x_dir=xd, z_dir=zd))
+    dvec = {"xy": (0, 0, 1), "xz": (0, 1, 0), "yz": (1, 0, 0)}[pl]
+    solid = extrude(face, amount=h, dir=dvec)
+    if solid.volume < 0:
+        solid = extrude(face, amount=-h, dir=dvec)
+    return solid, {"n": n, "d": 2 * R, "h": h, "plane": pl, "off": off, "at": ctr, "angle": ang, "r": r}
 
 
 def make_revolve(st, a):
@@ -519,7 +612,7 @@ def make_gear(st, a):
     return g.moved(Location(at)), dict(m=m, z=z, width=b, alpha=alpha, bore=bore, at=at, **dims)
 
 
-POSITIVE = {"box": make_box, "cylinder": make_cylinder, "sphere": make_sphere, "cone": make_cone, "prism": make_prism, "gear": make_gear,
+POSITIVE = {"box": make_box, "cylinder": make_cylinder, "sphere": make_sphere, "cone": make_cone, "prism": make_prism, "polygon": make_polygon, "gear": make_gear,
             "revolve": make_revolve, "sweep": make_sweep, "helix": make_helix}
 
 
@@ -538,8 +631,87 @@ def _depth(a, extent, found):
     return d, False
 
 
+def _dir_frame(part, a):
+    """任意方向的加工（2.7.0）：dir=(dx,dy,dz) 为钻入方向，at=(x,y,z) 为孔轴上的一点。
+    入口 = 沿 dir 从零件外面射来、在这条轴上碰到的第一个材料表面；返回值同 _face_frame。"""
+    if part is None:
+        a.err("还没有零件可以加工；先用 box、cylinder 等建一个基体")
+    dv = a.tup("dir", 3)
+    if "from" in a.st.kw:
+        a.err("写了 dir= 就不再写 from=：孔的方向由 dir 给出")
+    at = a.st.kw.get("at")
+    a.used.add("at")
+    if not (isinstance(at, tuple) and len(at) == 3):
+        a.err("写了 dir= 时，at 写孔轴上的一点 (x,y,z)", "例如 at=(30,0,20) dir=(0,1,-1)")
+    ln = math.sqrt(sum(c * c for c in dv))
+    if ln < 1e-9:
+        a.err("dir 不能是零向量")
+    inward = tuple(c / ln + 0.0 for c in dv)
+    bb = part.bounding_box()
+    diag = math.dist((bb.min.X, bb.min.Y, bb.min.Z), (bb.max.X, bb.max.Y, bb.max.Z))
+    ctr = ((bb.min.X + bb.max.X) / 2, (bb.min.Y + bb.max.Y) / 2, (bb.min.Z + bb.max.Z) / 2)
+    at = tuple(float(c) for c in at)
+    # 起点：轴上、在零件外面（沿 -dir 退到包围球之外）
+    t_c = sum((ctr[i] - at[i]) * inward[i] for i in range(3))
+    back = t_c - diag
+    start = tuple(at[i] + back * inward[i] for i in range(3))
+    hits = _ray_hits_faces(part, start, inward)
+    # 任取与 dir 垂直的 U、V（U 取与 dir 最不平行的坐标轴叉乘而得，结果确定）
+    k = min(range(3), key=lambda i: (abs(inward[i]), i))
+    e = [0.0, 0.0, 0.0]
+    e[k] = 1.0
+    U = (inward[1] * e[2] - inward[2] * e[1], inward[2] * e[0] - inward[0] * e[2], inward[0] * e[1] - inward[1] * e[0])
+    lu = math.sqrt(sum(c * c for c in U))
+    U = tuple(c / lu for c in U)
+    V = (inward[1] * U[2] - inward[2] * U[1], inward[2] * U[0] - inward[0] * U[2], inward[0] * U[1] - inward[1] * U[0])
+    if not hits:
+        a.err("沿 dir 穿过 at 的这条轴碰不到零件", "检查 at 与 dir：at 是孔轴上的一点，dir 是钻入方向")
+    (w0, n0), (w1, n1) = hits[0], hits[-1]
+    entry = tuple(start[i] + w0 * inward[i] for i in range(3))
+    return entry, inward, U, V, w1 - w0, True, (_slope(n0, inward), _slope(n1, inward))
+
+
+def _slope(normal, inward):
+    """孔轴与表面法线夹角的正切（上限 tan 80°）：斜面上孔口的一边比轴心处高出 半径 × 它。"""
+    c = abs(_dot(normal, inward))
+    if c < math.cos(math.radians(80)):
+        return math.tan(math.radians(80))
+    return math.sqrt(max(0.0, 1 - c * c)) / c
+
+
+def _ray_hits_faces(part, origin, inward):
+    """同 _ray_hits，另给交点处的面法线：[(参数, 法线)]，按参数升序。"""
+    from OCP.BRepIntCurveSurface import BRepIntCurveSurface_Inter
+    from OCP.gp import gp_Dir, gp_Lin, gp_Pnt
+    from build123d import Face, Vector
+    it = BRepIntCurveSurface_Inter()
+    it.Init(part.wrapped, gp_Lin(gp_Pnt(*origin), gp_Dir(*inward)), 1e-7)
+    out = []
+    while it.More():
+        if it.W() > -1e-7:
+            p = it.Pnt()
+            n = Face(it.Face()).normal_at(Vector(p.X(), p.Y(), p.Z()))
+            out.append((max(0.0, it.W()), (n.X, n.Y, n.Z)))
+        it.Next()
+    return sorted(out, key=lambda x: x[0])
+
+
 def make_hole(part, st, a):
     d = a.num("d")
+    if "dir" in st.kw:
+        origin, inward, U, V, extent, found, (s0, s1) = _dir_frame(part, a)
+        depth, through = _depth(a, extent, found)
+        cb = a.tup("cbore", 2)
+        cs = a.tup("csk", 2)
+        a.done()
+        if through:
+            depth += d / 2 * s1                      # 斜的出口：孔壁最远的一边还要再走这么多才穿透
+        lead = (cb[0] if cb else d) / 2 * s0         # 斜的入口：孔口高的一边比轴心处高出这么多
+        world, params, inward, _ = _hole_tool(a, d, depth, through, cb, cs, origin, inward, U, None, lead)
+        params.update(dir=tuple(r6v(c) for c in inward))
+        if not through:
+            params["depth"] = depth
+        return world, params, inward, None
     face = a.word("from", list(_FACE), "top")
     a.used.add("at")
     origin, inward, U, V, extent, found = _face_frame(part, face, st.kw.get("at", "center"), a)
@@ -547,13 +719,21 @@ def make_hole(part, st, a):
     cb = a.tup("cbore", 2)
     cs = a.tup("csk", 2)
     a.done()
-    L = depth + EPS
-    tool = Cylinder(d / 2, L, align=(Align.CENTER, Align.CENTER, Align.MIN)).moved(Location((0, 0, -EPS)))
+    return _hole_tool(a, d, depth, through, cb, cs, origin, inward, U, face)
+
+
+def r6v(x):
+    return round(float(x), 6) + 0.0
+
+
+def _hole_tool(a, d, depth, through, cb, cs, origin, inward, U, face, lead=0.0):
+    L = depth + EPS + lead
+    tool = Cylinder(d / 2, L, align=(Align.CENTER, Align.CENTER, Align.MIN)).moved(Location((0, 0, -EPS - lead)))
     if cb:
         D, dd = cb
         if D <= d:
             a.err("沉头直径应当大于孔径")
-        tool = tool + Cylinder(D / 2, dd + EPS, align=(Align.CENTER, Align.CENTER, Align.MIN)).moved(Location((0, 0, -EPS)))
+        tool = tool + Cylinder(D / 2, dd + EPS + lead, align=(Align.CENTER, Align.CENTER, Align.MIN)).moved(Location((0, 0, -EPS - lead)))
     if cs:
         D, ang = cs
         if D <= d or not (30 <= ang <= 150):
@@ -676,6 +856,108 @@ def select_edges(part, sel, features, a):
     return out
 
 
+GLOBAL_SELECTIONS = {"all", "vertical", *_FACE}
+SKIP_BUDGET = 48   # 找做不出来的边时最多试倒几次（按次数而不是按时间，结果确定）
+SKIP_MAX_SHARE = 0.25   # 至多跳过选中边的四分之一；再多按原样报错
+
+
+def _try_chamfer(part, size, edges):
+    try:
+        out = part.chamfer(size, None, edges)
+    except Exception:
+        return None
+    return out if out.is_valid else None
+
+
+def chamfer_skipping(part, size, edges):
+    """整件倒角（all、vertical、面名）一次做不出来时（2.7.0）：二分找出倒不了的边，跳过它们再倒一次。
+    两条边各自倒得了、一起倒不了（如窄槽的两条口边）时，保留在前的那条、跳过后面的。
+    返回 (零件, 跳过的边)。试的次数超过 SKIP_BUDGET、要跳过的超过 SKIP_MAX_SHARE、跳过后仍倒不了，抛异常，按原样报错。"""
+    budget = [SKIP_BUDGET]
+
+    def ok(es):
+        if not es:
+            return True
+        if budget[0] <= 0:
+            raise RuntimeError("budget")
+        budget[0] -= 1
+        return _try_chamfer(part, size, es) is not None
+
+    def minus(es, drop):
+        return [e for e in es if not any(e.is_same(x) for x in drop)]
+
+    def conflicts(keep, cand):
+        """cand 里与 keep 一起倒不了的边（keep 本身倒得了）。"""
+        if ok(keep + cand):
+            return []
+        if len(cand) == 1:
+            return cand
+        h = len(cand) // 2
+        d1 = conflicts(keep, cand[:h])
+        d2 = conflicts(keep + minus(cand[:h], d1), cand[h:])
+        return d1 + d2
+
+    def bad(es):
+        """es 里要跳过的边：跳过后其余的边一起倒得了。"""
+        if ok(es):
+            return []
+        if len(es) == 1:
+            return es
+        h = len(es) // 2
+        dl, dr = bad(es[:h]), bad(es[h:])
+        kl, kr = minus(es[:h], dl), minus(es[h:], dr)
+        return dl + dr + conflicts(kl, kr)
+    skip = bad(list(edges))
+    keep = minus(list(edges), skip)
+    if not keep or len(skip) > len(edges) * SKIP_MAX_SHARE:
+        raise RuntimeError("too many")             # 大面积倒不了是尺寸本身不对，不是个别窄面
+    out = _try_chamfer(part, size, keep)
+    if out is None:
+        raise RuntimeError("still")
+    return out, skip
+
+
+def _skipped_message(size, skipped, total):
+    pts = []
+    for e in skipped[:5]:
+        c = e.center()
+        pts.append(f"({c.X:.1f},{c.Y:.1f},{c.Z:.1f})")
+    more = "等" if len(skipped) > 5 else ""
+    return (f"倒角 {size:g}：选中的 {total} 条边里有 {len(skipped)} 条容不下这个尺寸（相邻的面太窄），没有倒，"
+            f"其余 {total - len(skipped)} 条已倒；没倒的边中点在 {'、'.join(pts)}{more}")
+
+
+PICK_TOL = 1.0   # 点到所选边的最大距离（mm）
+
+
+def pick_edges(cands, picks, sel, a):
+    """按点选边（2.7.0）：每个点 (x,y,z) 取候选边（edges= 选出的那组）里离它最近的一条。
+    点应当落在边上；离最近的边超过 PICK_TOL，或有两条边一样近（如三条棱交汇的角点），报错。"""
+    from build123d import Vector
+    if len(picks) > 100:
+        a.err("按点选边最多 100 个点")
+    out = []
+    for p in picks:
+        if len(p) != 3:
+            a.err(f"选边的点写成 (x,y,z)，{p} 不是三个数")
+        v = Vector(*(float(c) for c in p))
+        ds = sorted(((e.distance_to(v), i) for i, e in enumerate(cands)), key=lambda x: (x[0], x[1]))
+        d0, i0 = ds[0]
+        if d0 > PICK_TOL:
+            a.err(f"点 {_fmt_pt(p)} 离最近的边还有 {d0:.3g} mm（edges={sel} 的边里）",
+                  "点要落在想选的那条边上；棱的中点最稳妥")
+        if len(ds) > 1 and ds[1][0] - d0 < 1e-6:
+            a.err(f"点 {_fmt_pt(p)} 到两条以上的边一样近（多半是棱的交点），分不出选哪一条",
+                  "改给棱的中点，或用 edges=vertical、edges=top 等先缩小范围")
+        if not any(cands[i0].is_same(e) for e in out):
+            out.append(cands[i0])
+    return out
+
+
+def _fmt_pt(p):
+    return "(" + ",".join(f"{float(c):g}" for c in p) + ")"
+
+
 def edge_owners(part, features):
     """边的归属：两侧面的归属特征里较晚的那个。
     这样凸台的顶边、根部边归凸台；后打的孔口边归那个孔。"""
@@ -780,10 +1062,21 @@ def build(stmts: list[Stmt]) -> BuildResult:
                 a.used.add("edges")
                 a.done()
                 edges = select_edges(part, sel, features, a)
+                picks = [p for p in st.pos if isinstance(p, tuple)]
+                if picks:
+                    edges = pick_edges(edges, picks, sel, a)
                 before = part
+                skipped = []
                 try:
-                    part = part.fillet(size, edges) if st.op == "fillet" else part.chamfer(size, None, edges)
+                    try:
+                        part = part.fillet(size, edges) if st.op == "fillet" else part.chamfer(size, None, edges)
+                    except Exception:
+                        if st.op != "chamfer" or picks or sel not in GLOBAL_SELECTIONS:
+                            raise
+                        part, skipped = chamfer_skipping(part, size, edges)
+                        warnings.append({"line": st.line, "message": _skipped_message(size, skipped, len(edges))})
                 except Exception:
+                    part = before
                     hint = ""
                     if st.op == "fillet":
                         try:
@@ -792,7 +1085,10 @@ def build(stmts: list[Stmt]) -> BuildResult:
                             hint = "可能是相邻两条边相距小于 2r，或边所在的面太窄"
                     a.err(f"{'圆角' if st.op == 'fillet' else '倒角'} {size:g} 做不出来：尺寸大于相邻面能容纳的范围（选中 {len(edges)} 条边）", hint)
                 part = check_part(st, part)
-                record(st, 0, before, part, params={"size": size, "edges": sel})
+                params = {"size": size, "edges": sel}
+                if picks:
+                    params["points"] = [tuple(float(c) for c in p) for p in picks]
+                record(st, 0, before, part, params=params)
                 continue
             if st.op == "shell":
                 if part is None:
@@ -842,8 +1138,12 @@ def build(stmts: list[Stmt]) -> BuildResult:
                     if ctr is None:
                         a.err("环形阵列要写 center=(u, v)，坐标规则与 at 相同")
                     total = a.num("angle", default=360.0)
-                    a.done()
                     ax_dir = src.axis or (0, 0, -1)
+                    if "axis" in st.kw:                # 2.7.0：显式给转轴
+                        ax_dir = {"x": (1, 0, 0), "y": (0, 1, 0), "z": (0, 0, 1)}[a.word("axis", ["x", "y", "z"])]
+                    elif "dir" in src.params:
+                        ax_dir = (0, 0, 1)             # 按 dir= 打的孔缺省绕 z（多边形各侧面、轮毂上的孔）
+                    a.done()
                     k = next(i for i in range(3) if ax_dir[i] != 0)
                     p = [0.0, 0.0, 0.0]
                     others = [i for i in range(3) if i != k]

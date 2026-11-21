@@ -1,5 +1,15 @@
 # cad v2（W3 的 CAD 工具包）
 
+> 2.7.0（草案，进模型文字待立法者确认；依据 PDF 转三维实验查实的缺口，立法者 2026-11-21“工具的问题，安排修复”）：零件计划补六处缺口并改善整件倒角。**只放宽**：2.7.0-alpha.1 的 51 条金样逐字节不变、全过；以前报错的写法现在能建，以前能建的计划输出不变（cad.check 认孔一处例外，见 ⑥，是修错）。
+> - ① 表达式加函数：`sin cos tan`（参数按度）、`asin acos atan atan2`（结果按度）、`sqrt abs min max`。整度数处的舍入噪声归零（`cos(90)` 得 0、`sin(30)` 得 0.5）。名字被 `let` 定义成变量时按变量读，与 2.6 同。cad.compare 的逐参数差把函数调用整体算一个值。
+> - ② 新实体 `polygon n= d=|s= h= [plane=] [off=] [at=(u,v)] [angle=] [r=]`：正 n 边形拉伸，d 外接圆直径、s 对边距。
+> - ③ `hole … at=(x,y,z) dir=(dx,dy,dz)`：任意方向的孔。入口为沿 dir 从零件外面来、在这条轴上碰到的第一个材料表面；斜的入口与出口按表面法线把刀具多伸出 半径×tan(夹角)（上限 tan 80°），孔口与出口不留月牙。环形阵列加 `axis=x|y|z`；按 dir= 打的孔缺省绕 z。
+> - ④ `prism`/`revolve` 只给部分顶点倒圆：2.6 把尖角当 1e-6 圆角交给 FilletPolyline，一律报错；现在尖角保持尖角，圆角顶点用与两邻边相切的圆弧（`builder._partly_rounded_wire`）。全部顶点倒圆仍走原写法。
+> - ⑤ 圆角、倒角按点选边：`fillet r=3 edges=vertical (0,0,5) (120,60,5)`，每个点取 edges= 选出的边里离它最近的一条；离最近的边超过 1 mm、或两条边一样近（棱的交点）报错。给了点的行 scope 为 local。
+> - ⑥ cad.check 认孔：同一圆柱面上轴向不相接、中间隔着材料的两段算两个孔（2.6 把左右两侧同轴同径的盲孔并成一个通孔，holes 少计）；中间是空腔的（孔穿过型腔、抽壳件两壁）照旧算一个。
+> - ⑦ 整件倒角（chamfer 按 all、vertical、面名选边且没给点）一次倒不了时，二分找出容不下的边（含“各自倒得了、一起倒不了”的一对里靠后的那条），跳过它们并告警，告警列出没倒的边的中点。至多跳过选中边的四分之一，试倒至多 48 次（按次数封顶，结果确定）；超过或跳过后仍倒不了，照旧报错。圆角不跳过。
+> - 测试：`tests/test_plan_gaps.py` 65 条（在 2.7.0-alpha.1 上 51 红；14 条绿的是对照：照旧报错、照旧不变的写法）；金样加 13 条（64 条；新加的 10 条在 2.7.0-alpha.1 上红，3 条为对照）。`test_assembly.py` 的 lock 守卫不再钉死 2.6 的值。
+
 > 2.7.0-alpha.1（装配工具第 1 阶段原型；mengosv2《立项-CAD装配工具-2026-11-16》§九 第 1 阶段，立法者 2026-11-19 裁）：加 `assembly.py`（`cad.assemble` 原型）、两道题的人手写装配计划 `samples/assembly/`、`tests/test_assembly.py`（46 条）与读数脚本 `tools/assembly_readings.py`，用法与读数见 §11。**只做包内离线验证：不进登记、不接引擎**。`assembly.py` 不在 `tools_lock.covers` 内，lock 仍为 `3625f3c31608de88`，四件旧工具的版本与输出都不变，不需重跑认证；registration.json、cad_tool.py、builder.py、geometry.py 一字未改。content_hash 随新文件变化。
 
 > 2.6.2（渲染器修卡死；只改 `renderer/`，工具代码、登记与 lock 都不变，lock 仍为 `3625f3c31608de88`，不需重跑工具认证）：
@@ -111,7 +121,7 @@ fillet r=3 edges=vertical
 **语法。**
 - `[名字:] 操作 参数…`。参数可以是位置参数，也可以是 `键=值`。
 - 值可以是：
-  - 数或表达式：`+ - * / %`、括号、`pi`、`let` 定义的变量；
+  - 数或表达式：`+ - * / %`、括号、`pi`、`let` 定义的变量，以及函数 `sin cos tan`（参数按度）、`asin acos atan atan2`（结果按度）、`sqrt abs min max`（2.7.0）；
   - 括号元组，如 `(20,25)`；
   - 单词，如 `top`、`through`。
 - 全角括号、逗号、冒号、等号和 `×` 会自动规范化（`×` 按 `*` 读）。
@@ -132,16 +142,17 @@ fillet r=3 edges=vertical
 | `cone` | `cone d1= [d2=0] h= [axis=] [at=]` | 圆台或圆锥 |
 | `sphere` | `sphere d= [at=]` | `at` 是球心 |
 | `prism` | `prism (u,v) (u,v) … h= [plane=xy\|xz\|yz] [off=]` | 多边形拉伸。xy 面上的点是 (x,y)，沿 +z 拉伸；xz 面上的点是 (x,z)，沿 +y 拉伸；yz 面上的点是 (y,z)，沿 +x 拉伸。`off` 是起始平面的坐标。点的绕向不限 |
+| `polygon` | `polygon n= d=\|s= h= [plane=] [off=] [at=(u,v)] [angle=] [r=]` | 正 n 边形拉伸（2.7.0）。d 外接圆直径，s 对边距，给一个；at 为中心；平面与拉伸方向同 prism；angle 为第一个顶点从 u 轴转过的角度，缺省第一个顶点在 +u；r 给各顶点倒圆 |
 | `gear` | `gear m= z= width= [alpha=20] [bore=] [at=]` | 标准直齿渐开线齿轮：齿顶高 m，齿根高 1.25m。不建根切与齿根圆角（z < 17 时与实际加工件有差别） |
 | `add` / `cut` | `add box …`、`cut cylinder …` | 把一个基本体并上去，或减掉 |
-| `hole` | `hole d= [at=center\|(u,v)] [from=top] through\|depth= [cbore=(D,深)] [csk=(D,角度)]` | 从某个外表面向里打孔。`(u,v)` 的取法：top/bottom 是 (x,y)，front/back 是 (x,z)，left/right 是 (y,z) |
+| `hole` | `hole d= [at=center\|(u,v)] [from=top] through\|depth= [cbore=(D,深)] [csk=(D,角度)]` | 从某个外表面向里打孔。`(u,v)` 的取法：top/bottom 是 (x,y)，front/back 是 (x,z)，left/right 是 (y,z)。任意方向（2.7.0）：`hole d= at=(x,y,z) dir=(dx,dy,dz) through\|depth=`，at 为孔轴上一点，不写 from |
 | `pocket` | `pocket rect w= l= [r=] [angle=]` 或 `pocket circle d=`，加 `at= from= through\|depth=` | 型腔 |
 | `slot` | `slot w= l= [angle=] at= from= through\|depth=` | 长圆槽，l 为总长 |
 | `fillet` / `chamfer` | `fillet r= edges=…`、`chamfer c= edges=…` | 选边方式见 3.2 |
 | `shell` | `shell t= [open=top\|…\|none]` | 抽壳，向内偏置 |
-| `pattern` | `pattern 名字 linear n= dx= [dy=] [dz=]` 或 `pattern 名字 circular n= center=(u,v) [angle=360]` | 阵列一个已命名的加料或去料特征。环形阵列绕过 center 的轴：去料特征为其加工方向，加料特征为 z。`pattern 名字 grid n= m= dx= dy=` 为 n×m 网格（2.3.0） |
+| `pattern` | `pattern 名字 linear n= dx= [dy=] [dz=]` 或 `pattern 名字 circular n= center=(u,v) [angle=360] [axis=x\|y\|z]` | 阵列一个已命名的加料或去料特征。环形阵列绕过 center 的轴：去料特征为其加工方向，加料特征与按 dir= 打的孔为 z；写 axis= 时绕该坐标轴（2.7.0）。`pattern 名字 grid n= m= dx= dy=` 为 n×m 网格（2.3.0） |
 | `mirror` | `mirror 名字 plane=yz\|xz\|xy [off=]` | 镜像一个已命名的加料或去料特征（2.3.0） |
-| `prism` 扩展 | 点写 `(u,v,r)` 给该顶点倒圆；加 `smooth` 为过各点的光滑闭合曲线；`twist=度` 为拉伸中绕平面原点的扭转 | 2.3.0 |
+| `prism` 扩展 | 点写 `(u,v,r)` 给该顶点倒圆（2.7.0 起可以只给部分顶点）；加 `smooth` 为过各点的光滑闭合曲线；`twist=度` 为拉伸中绕平面原点的扭转 | 2.3.0 |
 | `revolve` | `revolve (r,z) (r,z) … [angle=360] [axis=z] [at=]` | r ≥ 0 的轮廓绕轴回转；点可写 (r,z,圆角半径)（2.3.0） |
 | `sweep` | `sweep d= (x,y,z) (x,y,z) … [r=] [id=]` | 圆截面沿折线路径扫掠，r 为拐角弯曲半径，给 id 为管（2.3.0） |
 | `helix` | `helix d= pitch= h= wire= [axis=] [at=] [hand=right\|left]` | 螺旋弹簧，d 为中径（2.3.0） |
@@ -155,6 +166,10 @@ fillet r=3 edges=vertical
 - 特征名：归属该特征的边。一条边归它两侧面中**较晚产生**的那个特征。所以凸台的顶边和根部边归凸台，后来打的孔的孔口边归那个孔。
 
 圆柱等曲面的接缝边不参与倒角。
+
+**按点选边**（2.7.0）：`fillet r=3 edges=vertical (0,0,5) (120,60,5)`。每个点 `(x,y,z)` 取 `edges=`（缺省 all）选出的边里离它最近的一条；点要落在边上，取棱的中点最稳妥。离最近的边超过 1 mm，或有两条边一样近（如三条棱交汇的角点），报错。
+
+**整件倒角跳过个别边**（2.7.0）：chamfer 按 all、vertical 或面名选边（没给点）而一次倒不了时，跳过容不下这个尺寸的边并告警；至多跳过四分之一，否则照旧报错。圆角不跳过。
 
 **加工入口。** `from=top` 等面名先按包围盒确定方向，再沿这个方向在 `at` 处找第一个碰到的材料表面，孔口就落在那里。所以在 L 形件上 `from=top` 打孔，孔口在底板的真实上表面，而不是悬在立板顶的高度。
 - `depth=` 从入口量起；
@@ -206,6 +221,7 @@ feature boss                         # 这个特征还在零件上
 
 **孔的识别。**
 - 孔指一整圈的凹圆柱面。同轴相接的圆柱面和圆锥面合成一个孔，较大的圆柱记为沉头，圆锥记为锥口。
+- 同一圆柱面上轴向分开的两段：中间隔着材料算两个孔（如左右两侧的同轴盲孔），中间是空腔算一个（2.7.0）。
 - 圆角和长圆槽的端头只有四分之一圈或半圈，不算孔。
 - 孔的位置 `at` 按孔轴方向投影：z 轴孔为 (x,y)，y 轴孔为 (x,z)，x 轴孔为 (y,z)。
 - 孔口倒角在几何上就是 90° 锥口，所以会报为 csk。
@@ -301,7 +317,7 @@ feature boss                         # 这个特征还在零件上
 ## 8 测试
 
 ```
-uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 276 条（原 230 条 + 装配 46 条），约 5 分钟
+uv sync --frozen && .venv/bin/python -m pytest -q -p no:cacheprovider   # 354 条（原 230 条 + 装配 46 条 + 2.7.0 补缺 65 条 + 金样 13 条），约 6 分钟
 ```
 
 不要用不带 `--frozen` 的 `uv sync` / `uv run`：环境变量里配了别的索引（例如国内镜像）时，uv 会重新解析并改写 `uv.lock`，工具版本（lock hash）与 content_hash 随之失配。安装区里只用环境解释器跑，不运行 uv。

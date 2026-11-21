@@ -17,7 +17,10 @@ r"""CAD 计划语言的解析器（安全：不经 eval，只认白名单）。
     arg   := value | key '=' value
     value := expr | tuple | word
     tuple := '(' expr (',' expr)* ')'
-    expr  := 数字、let 变量、pi、+ - * / ( ) 与一元负号
+    expr  := 数字、let 变量、pi、+ - * / % ( ) 与一元负号、函数调用 f(expr, …)
+
+函数（2.7.0）：sin cos tan 的参数按度；asin acos atan atan2 的结果按度；另有 sqrt abs min max。
+名字被 let 定义成变量时按变量读（与 2.6 相同），不当函数。
 
 解析结果是 Stmt 列表；数值在解析时求出（let 变量按出现顺序生效）。
 """
@@ -103,6 +106,60 @@ def _tokenize(s: str, ln: int):
     return toks
 
 
+def _snap(x: float) -> float:
+    """三角函数在整度数处的舍入噪声（如 cos(90) = 6e-17）归零、归到 ±0.5、±1。"""
+    for t in (0.0, 0.5, -0.5, 1.0, -1.0):
+        if abs(x - t) < 1e-15:
+            return t + 0.0
+    return x
+
+
+def _deg_trig(f):
+    return lambda a: _snap(f(math.radians(a)))
+
+
+def _whole_deg(x: float) -> float:
+    """反三角函数结果离整度数不到 1e-9 时取整（asin(0.5) 得 30，而不是 30.000000000000004）。"""
+    r = round(x)
+    return float(r) + 0.0 if abs(x - r) < 1e-9 else x
+
+
+def _inv_trig(f, lo=-1.0, hi=1.0, what=""):
+    def g(x):
+        if not (lo <= x <= hi):
+            raise ValueError(what)
+        return _whole_deg(math.degrees(f(x)))
+    return g
+
+
+def _sqrt(x):
+    if x < 0:
+        raise ValueError("sqrt 的参数不能为负")
+    return math.sqrt(x)
+
+
+def _tan(a):
+    if abs(math.remainder(a, 180.0)) == 90.0:
+        raise ValueError("tan 在 90° 的奇数倍处没有定义")
+    return _snap(math.tan(math.radians(a)))
+
+
+# 名字 → (最少参数个数, 最多参数个数, 函数)
+FUNCS = {
+    "sin": (1, 1, _deg_trig(math.sin)),
+    "cos": (1, 1, _deg_trig(math.cos)),
+    "tan": (1, 1, _tan),
+    "asin": (1, 1, _inv_trig(math.asin, what="asin 的参数应当在 -1 到 1 之间")),
+    "acos": (1, 1, _inv_trig(math.acos, what="acos 的参数应当在 -1 到 1 之间")),
+    "atan": (1, 1, lambda x: _whole_deg(math.degrees(math.atan(x)))),
+    "atan2": (2, 2, lambda y, x: _whole_deg(math.degrees(math.atan2(y, x)))),
+    "sqrt": (1, 1, _sqrt),
+    "abs": (1, 1, abs),
+    "min": (2, 20, min),
+    "max": (2, 20, max),
+}
+
+
 class _Parser:
     def __init__(self, toks, ln, env):
         self.t, self.i, self.ln, self.env = toks, 0, ln, env
@@ -166,10 +223,31 @@ class _Parser:
         if k == "word":
             if v == "pi":
                 return math.pi
+            if v in FUNCS and v not in self.env and self.peek()[1] == "(":
+                return self.call(v)
             if v in self.env:
                 return self.env[v]
             raise DslError(self.ln, f"第 {self.ln} 行：“{v}”不是数，也不是已定义的变量", "变量先用 let 定义，例如：let w = 80")
         raise DslError(self.ln, f"第 {self.ln} 行：这里应当是一个数，实际是“{v or '行尾'}”")
+
+    def call(self, fn):
+        lo, hi, f = FUNCS[fn]
+        self.expect("(")
+        args = [self.expr()]
+        while self.peek()[1] == ",":
+            self.take()
+            args.append(self.expr())
+        self.expect(")")
+        if not (lo <= len(args) <= hi):
+            want = f"{lo} 个" if lo == hi else f"{lo}–{hi} 个"
+            raise DslError(self.ln, f"第 {self.ln} 行：{fn} 要 {want}参数，实际给了 {len(args)} 个")
+        try:
+            x = float(f(*args))
+        except (ValueError, OverflowError) as e:
+            raise DslError(self.ln, f"第 {self.ln} 行：{fn}({', '.join(f'{a:g}' for a in args)}) 算不出来" + (f"：{e}" if str(e) else ""))
+        if not math.isfinite(x) or abs(x) > 1e7:
+            raise DslError(self.ln, f"第 {self.ln} 行：{fn} 的结果超出范围")
+        return x
 
     def value(self):
         k, v = self.peek()
@@ -181,7 +259,8 @@ class _Parser:
                 items.append(self.expr())
             self.expect(")")
             return tuple(items)
-        if k == "word" and v not in self.env and v != "pi" and self.peek(1)[1] not in ("+", "-", "*", "/", "%"):
+        if (k == "word" and v not in self.env and v != "pi" and self.peek(1)[1] not in ("+", "-", "*", "/", "%")
+                and not (v in FUNCS and self.peek(1)[1] == "(")):
             self.take()
             return v
         return self.expr()
