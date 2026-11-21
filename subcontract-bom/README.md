@@ -14,6 +14,7 @@
   ```
   python3 -c "import json,sys,hashlib; m=json.load(open('subcontract-bom/mengos-package.json',encoding='utf-8')); print(hashlib.sha256(('\n'.join(m['norms'])+'\n').encode()).hexdigest())"
   ```
-  0.4.2 应得 `0c88f5768fba916960127e9cfe96a30bade3ee811f3f2410c1756dc30cd752d0`（0.4.1、0.4.0 为 `34f95dd869dab0eddcc689a7381702aefe751621c0f0019103e474c079c7ac04`，0.3.0 为 `fdb36418436c25bb5abe44b5ce853cad880ebc30c8695aff931e6088e599cb82`，0.2.0 为 `ea5d1747daa40c18f88d9c7fc1202c4ed61629c9c949c2fe4a2f63bf11500ad5`，0.1.0 为 `04633d56a1ecee296217d781e68e747894577f38525eb56abffff2da320bbfce`）。
+  0.4.3 与 0.4.2 同为 `0c88f5768fba916960127e9cfe96a30bade3ee811f3f2410c1756dc30cd752d0`（0.4.3 只加 `for`，条文未改）；0.4.2 应得 `0c88f5768fba916960127e9cfe96a30bade3ee811f3f2410c1756dc30cd752d0`（0.4.1、0.4.0 为 `34f95dd869dab0eddcc689a7381702aefe751621c0f0019103e474c079c7ac04`，0.3.0 为 `fdb36418436c25bb5abe44b5ce853cad880ebc30c8695aff931e6088e599cb82`，0.2.0 为 `ea5d1747daa40c18f88d9c7fc1202c4ed61629c9c949c2fe4a2f63bf11500ad5`，0.1.0 为 `04633d56a1ecee296217d781e68e747894577f38525eb56abffff2da320bbfce`）。
+- **for**：自 0.4.3 起清单写 `"for": ["table"]`，声明本包规范管哪类产物（立法者 2026-11-21 批）。
 - **content_hash**：口径同安装器（WP-W6 §2，mengosv2 `engine/tools/package-hash.ts`）与其他包的 `tools/make_package.py`；清单计入，所以改任何一条都会换 content_hash，须发新版本。
 - **改条文**：任何一字都要发新版本，重新入册、安装核对，各组织重新签字启用。
