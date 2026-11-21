@@ -25,11 +25,21 @@ BOM = {"title": "物料", "columns": [{"key": "name", "title": "名称"}, {"key"
 
 
 # ───────────────────────── 入参契约与 2.2.0 逐键相同 ─────────────────────────
+def _strip_232(schema):
+    """2.3.2（mengosv2 工单 P4）只改 table 字段说明一处：编号列那句前加“序号、”（P5 B2）。去掉这两字后与 2.2.0 逐键相同。"""
+    s = json.loads(json.dumps(schema, ensure_ascii=False))
+    t = s.get("properties", {}).get("table")
+    if t and "description" in t:
+        d = t["description"]
+        t["description"] = d.replace("；序号、编号列写 numbering", "；编号列写 numbering")
+    return s
+
+
 def test_input_schemas_equal_2_2_0_key_by_key():
     old = json.loads(subprocess.run(["git", "show", "main:table/registration.json"], cwd=ROOT, capture_output=True, text=True, check=True).stdout)
     new = json.loads((ROOT / "registration.json").read_text(encoding="utf-8"))
-    o = {u["tool_id"]: u["signature"]["input_schema"] for u in old["units"]}
-    n = {u["tool_id"]: u["signature"]["input_schema"] for u in new["units"]}
+    o = {u["tool_id"]: _strip_232(u["signature"]["input_schema"]) for u in old["units"]}
+    n = {u["tool_id"]: _strip_232(u["signature"]["input_schema"]) for u in new["units"]}
     assert n == o
     assert "local_patch" not in new
 
