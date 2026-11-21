@@ -5,7 +5,7 @@
   "scope": "public",
   "title": "零件建模规范",
   "summary": "规范单个零件三维建模的产出：交付的三维零件是一个连在一起的实体，孔与外形尺寸与给定的一致，分步建模、每步核对回执。适用于产出单个零件三维模型的任务，不覆盖多个零件的装配。要与 cad 包一起启用。",
-  "content_hash": "7a4e3f420b68bf367ce10591fe2f92e3a9cdf37ee97847bcfd557c00580c911a",
+  "content_hash": "e073ec9cd1065f434d8ddc8aed60aee8c9a27243b7132a91f79cfe1c64e18069",
   "types": [],
   "tools": [],
   "tools_lock": {
