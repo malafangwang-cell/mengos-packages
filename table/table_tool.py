@@ -192,8 +192,10 @@ def table_build(payload, workdir=None):
     t = _table(payload, build=True)
     name = _name(payload, t)
     extra = _formats(payload, BUILD_EXTRA, ["xlsx"])
+    from model import unfilled
     out = {"title": t.title, "table_sha256": t.sha, "name": name, "sheets": _sheets(t), "stats": t.stats(),
-           "warnings": _warnings(t), "files": _write(t, BUILD_ALWAYS + extra, name, workdir)}
+           "warnings": _warnings(t), "files": _write(t, BUILD_ALWAYS + extra, name, workdir),
+           "unfilled": unfilled(t)}          # 2.4.0：未填项清单（output_schema 标 x-mengos-unfilled，17 TL-30e）
     if t.assumptions:
         out["assumptions"] = list(t.assumptions)
     return out

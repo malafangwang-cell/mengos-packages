@@ -41,7 +41,7 @@ def view(r, w):
 def test_display_key_is_declared_not_data_and_rows_stay_data():
     t = BUILD["properties"]["table"]["properties"]
     for rows in (t["rows"], t["sheets"]["items"]["properties"]["rows"]):
-        assert rows["x-mengos-data"] is True and rows["x-mengos-merge"] == {"mode": "append"}
+        assert rows["x-mengos-data"] is True and rows["x-mengos-merge"] == {"mode": "by-id", "id": "$id"}   # 2.4.0：append → by-id
         obj = rows["items"]["oneOf"][1]
         assert obj["properties"][model.DISPLAY_KEY]["x-mengos-display"] is True
         assert "x-mengos-data" not in json.dumps(obj["properties"][model.DISPLAY_KEY])
@@ -57,12 +57,12 @@ def test_palette_names_cannot_be_read_as_numbers():
 
 
 def test_styles_follow_rows_through_engine_append_merge(tmp_path):
-    """分两批追加的行各带 $style：引擎按 append 合并后，样式仍在原来那一行上（不按行号，所以追加、排序都不用平移）。"""
+    """分两批写的行各带 $style：引擎合并后，样式仍在原来那一行上（不按行号，所以追加、排序都不用平移）。2.4.0 起按行 $id 并入（by-id）。"""
     first = {"table": {"title": "采购", "sheets": [{"id": "p", "name": "采购", "columns": COLS, "totals": ["金额"],
                                                     "rows": [{"品名": "办公桌", "数量": 12, "单价": 850}]}]}}
-    d1 = {"table": {"sheets": [{"id": "p", "rows": [{"品名": "投影仪", "数量": 1, "单价": 12800,
+    d1 = {"table": {"sheets": [{"id": "p", "rows": [{"$id": "r2", "品名": "投影仪", "数量": 1, "单价": 12800,
                                                        "$style": {"cells": {"单价": {"fill": "黄"}}}}]}]}}
-    assert touched_keys(BUILD, d1) == {"table.sheets#p.rows+"}
+    assert touched_keys(BUILD, d1) == {f"table.sheets#p.rows#r2.{k}" for k in ("品名", "数量", "单价", "$style.cells.单价.fill")}
     jsonschema.validate({"base": "v-1", **d1}, BUILD)
     merged = merge(BUILD, first, d1)
     sk = skeleton(BUILD, merged, True)

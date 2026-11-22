@@ -1,5 +1,5 @@
 {
- "_说明": "table.build 专属合并金样（执行令-2026-11-05-table包2.0.0 T7）。期望值手写：value 是按引擎合并代数（设计 r8 §三.2）合并后的整体写法，touched_keys 是触及键（排序），build 是合并结果交给 table.build 的结果摘要（sheets 同输出的 sheets，warning_codes 是警告码序列）。测试对每例：合并 → 合并结果过 table.build 的 input_schema（不带 base，走整体写法）→ 进程入口跑 table.build。delta 前加 base 后也须过 input_schema。",
+ "_说明": "table.build 专属合并金样（执行令-2026-11-05-table包2.0.0 T7）。期望值手写：value 是按引擎合并代数（设计 r8 §三.2）合并后的整体写法，touched_keys 是触及键（排序），build 是合并结果交给 table.build 的结果摘要（sheets 同输出的 sheets，warning_codes 是警告码序列）。测试对每例：合并 → 合并结果过 table.build 的 input_schema（不带 base，走整体写法）→ 进程入口跑 table.build。delta 前加 base 后也须过 input_schema。 2.4.0：rows 改 by-id（按 $id 并入），原三例“追加 rows”改写为 by-id，新增“增量行缺 $id 合并报错”一例（schema_ok：schema 本身放行，合并时才拒）。",
  "cases": [
   {
    "name": "按 id 加 sheet：新 id 追加在末尾，原表不动",
@@ -126,7 +126,6 @@
     "touched_keys": [
      "table.sheets#s2.columns",
      "table.sheets#s2.name",
-     "table.sheets#s2.rows+",
      "table.sheets#s2.totals"
     ],
     "build": {
@@ -253,7 +252,7 @@
    }
   },
   {
-   "name": "单表写法追加 rows：数组行与对象行都接在原行之后，触及键 table.rows+",
+   "name": "单表写法按行 $id 并入：$id 相同的行只改写到的格，没有的加在后面（2.4.0 by-id）",
    "P": {
     "table": {
      "title": "值班",
@@ -270,21 +269,27 @@
       }
      ],
      "rows": [
-      [
-       "2026-11-02",
-       "张三"
-      ]
+      {
+       "$id": "r1",
+       "日期": "2026-11-02",
+       "p": "张三"
+      },
+      {
+       "$id": "r2",
+       "日期": "2026-11-03"
+      }
      ]
     }
    },
    "delta": {
     "table": {
      "rows": [
-      [
-       "2026-11-03",
-       "李四"
-      ],
       {
+       "$id": "r2",
+       "p": "李四"
+      },
+      {
+       "$id": "r3",
        "日期": "2026-11-04",
        "p": "王五"
       }
@@ -309,15 +314,18 @@
        }
       ],
       "rows": [
-       [
-        "2026-11-02",
-        "张三"
-       ],
-       [
-        "2026-11-03",
-        "李四"
-       ],
        {
+        "$id": "r1",
+        "日期": "2026-11-02",
+        "p": "张三"
+       },
+       {
+        "$id": "r2",
+        "日期": "2026-11-03",
+        "p": "李四"
+       },
+       {
+        "$id": "r3",
         "日期": "2026-11-04",
         "p": "王五"
        }
@@ -325,7 +333,9 @@
      }
     },
     "touched_keys": [
-     "table.rows+"
+     "table.rows#r2.p",
+     "table.rows#r3.p",
+     "table.rows#r3.日期"
     ],
     "build": {
      "ok": true,
@@ -344,7 +354,7 @@
    }
   },
   {
-   "name": "sheet 内追加 rows：触及键 table.sheets#s1.rows+，不去重",
+   "name": "sheet 内按 $id 补格：增量只写缺的格，并入同一行，不追加重复行，未填项清空（2.4.0 by-id）",
    "P": {
     "table": {
      "title": "库存",
@@ -360,14 +370,20 @@
         {
          "key": "qty",
          "title": "数量",
-         "type": "integer"
+         "type": "integer",
+         "required": true
         }
        ],
        "rows": [
-        [
-         "轴承",
-         46
-        ]
+        {
+         "$id": "r1",
+         "name": "轴承"
+        },
+        {
+         "$id": "r2",
+         "name": "齿轮",
+         "qty": 2
+        }
        ]
       }
      ]
@@ -380,13 +396,9 @@
        "id": "s1",
        "rows": [
         {
-         "name": "齿轮",
-         "qty": 2
-        },
-        [
-         "轴承",
-         46
-        ]
+         "$id": "r1",
+         "qty": 46
+        }
        ]
       }
      ]
@@ -409,48 +421,51 @@
          {
           "key": "qty",
           "title": "数量",
-          "type": "integer"
+          "type": "integer",
+          "required": true
          }
         ],
         "rows": [
-         [
-          "轴承",
-          46
-         ],
          {
+          "$id": "r1",
+          "name": "轴承",
+          "qty": 46
+         },
+         {
+          "$id": "r2",
           "name": "齿轮",
           "qty": 2
-         },
-         [
-          "轴承",
-          46
-         ]
+         }
         ]
        }
       ]
      }
     },
     "touched_keys": [
-     "table.sheets#s1.rows+"
+     "table.sheets#s1.rows#r1.qty"
     ],
     "build": {
      "ok": true,
      "sheets": [
       {
        "name": "零件",
-       "rows": 3,
+       "rows": 2,
        "columns": [
         "名称",
         "数量"
        ]
       }
      ],
-     "warning_codes": []
-    }
+     "warning_codes": [],
+     "unfilled": []
+    },
+    "build_P_unfilled": [
+     "表 s1 行 r1 列 qty（数量）未填"
+    ]
    }
   },
   {
-   "name": "columns 整替（中间插一列）配合对象行：对象行按 key 对上新列，新行追加",
+   "name": "columns 整替（中间插一列）配合带 $id 的对象行：对象行按 key 对上新列，新 $id 的行加在后面",
    "P": {
     "table": {
      "title": "库存",
@@ -471,6 +486,7 @@
        ],
        "rows": [
         {
+         "$id": "r1",
          "name": "轴承",
          "qty": 46
         }
@@ -501,6 +517,7 @@
        ],
        "rows": [
         {
+         "$id": "r2",
          "name": "齿轮",
          "spec": "m2 z40",
          "qty": 2
@@ -536,10 +553,12 @@
         ],
         "rows": [
          {
+          "$id": "r1",
           "name": "轴承",
           "qty": 46
          },
          {
+          "$id": "r2",
           "name": "齿轮",
           "spec": "m2 z40",
           "qty": 2
@@ -551,7 +570,9 @@
     },
     "touched_keys": [
      "table.sheets#s1.columns",
-     "table.sheets#s1.rows+"
+     "table.sheets#s1.rows#r2.name",
+     "table.sheets#s1.rows#r2.qty",
+     "table.sheets#s1.rows#r2.spec"
     ],
     "build": {
      "ok": true,
@@ -672,6 +693,49 @@
       "数组行每列一格"
      ]
     }
+   }
+  },
+  {
+   "name": "增量里的行缺 $id（数组行或不带 $id 的对象行）⟹ 合并报错 by-id 元素缺 id（2.4.0：带 base 只能写带 $id 的行）",
+   "P": {
+    "table": {
+     "title": "值班",
+     "columns": [
+      {
+       "key": "d",
+       "title": "日期",
+       "type": "date"
+      },
+      {
+       "key": "p",
+       "title": "值班人",
+       "type": "text"
+      }
+     ],
+     "rows": [
+      [
+       "2026-11-02",
+       "张三"
+      ]
+     ]
+    }
+   },
+   "delta": {
+    "table": {
+     "rows": [
+      [
+       "2026-11-03",
+       "李四"
+      ]
+     ]
+    }
+   },
+   "expect": {
+    "ok": false,
+    "schema_ok": true,
+    "touched_keys": [],
+    "instancePath": "/table/rows",
+    "message": "by-id 元素缺 id"
    }
   },
   {

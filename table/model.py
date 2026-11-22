@@ -57,6 +57,7 @@ BLANKS = {"", "-", "—", "–", "/", "N/A", "n/a", "NA"}
 TRUE = {"true", "yes", "y", "是", "对", "有", "√", "✓"}
 FALSE = {"false", "no", "n", "否", "错", "无", "×", "✗"}
 CURRENCY = re.compile(r"[¥￥$€£元]|RMB|CNY|USD", re.IGNORECASE)
+FRACTION_RE = re.compile(r"^(-?\d{1,15})/(\d{1,15})$")   # 2.4.0：整数/整数（分数，计算器回执的精确值串）
 NUM_RE = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$")
 THOUSANDS_RE = re.compile(r"^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?$")
 DATE_RES = (re.compile(r"^(\d{4})-(\d{1,2})-(\d{1,2})$"), re.compile(r"^(\d{4})/(\d{1,2})/(\d{1,2})$"),
@@ -127,9 +128,21 @@ def _num_from(v, ctype, where, stored=False):
         s = s.replace(" ", "")
         if THOUSANDS_RE.match(s):
             s = s.replace(",", "")
-        if not NUM_RE.match(s):
+        fm = FRACTION_RE.match(s)
+        if fm is not None:
+            # 2.4.0：形如“整数/整数”的字符串按分数读（计算器回执的精确值串，如 "4129/1380"）；根式、π 等不认（照旧“不是数值”）
+            num, den = int(fm.group(1)), int(fm.group(2))
+            if den == 0:
+                raise BadInput(f"“{v[:40]}” 的分母是 0", where)
+            exact = Decimal(num) / Decimal(den)
+            if ctype == "integer" and num % den != 0:
+                raise BadInput(f"整数列不能有小数：{v}（分数 {num}/{den}，约 {dec_str(quantize(exact, None))}）", where,
+                               "要小数就把这一列的 type 改成 number")
+            d = quantize(exact, None) if num % den != 0 else Decimal(num // den)
+        elif not NUM_RE.match(s):
             raise BadInput(f"“{v[:40]}” 不是数值", where, "数值列只写数字；单位写在列的 unit 里，空格子写 null")
-        d = Decimal(s)
+        else:
+            d = Decimal(s)
         if pct and ctype != "percent":
             d = d / 100
     else:
@@ -235,7 +248,7 @@ def infer_type(values):
 # ---------------------------------------------------------------- 结构
 class Column:
     __slots__ = ("key", "title", "type", "unit", "decimals", "formula", "node", "align", "width", "inferred",
-                 "style", "date_format", "thousands", "numbering", "identifier")
+                 "style", "date_format", "thousands", "numbering", "identifier", "required")
 
     def to_json(self):
         o = {"key": self.key, "title": self.title, "type": self.type}
@@ -258,6 +271,8 @@ class Column:
             o["numbering"] = self.numbering
         if self.identifier:
             o["identifier"] = True
+        if getattr(self, "required", False):
+            o["required"] = True          # 2.4.0：必填列（只在为真时写出，旧表的表模型逐字节不变）
         return o
 
     @property
@@ -472,7 +487,8 @@ SHEET_ONLY_KEYS = ("derive",)                                           # 2.2.0 
 TABLE_KEYS = ("schema", "title", "subtitle", "meta", "sheets", "sources", "assumptions",
               "columns", "rows", "totals", "caption", "note", "freeze_cols", "name", "lang") + SHEET_STYLE_KEYS + STRUCT_KEYS + ("sheet_order",)
 SHEET_KEYS = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols") + SHEET_STYLE_KEYS + STRUCT_KEYS + SHEET_ONLY_KEYS
-COL_KEYS = ("key", "title", "type", "unit", "decimals", "formula", "width", "align", "style", "date_format", "thousands", "numbering", "identifier")
+COL_KEYS = ("key", "title", "type", "unit", "decimals", "formula", "width", "align", "style", "date_format", "thousands", "numbering", "identifier",
+            "required")
 ID_TITLE = re.compile(r"(编号|序号|代号|代码|编码|号码|图号|料号|ID)$", re.IGNORECASE)
 ID_LOOK = re.compile(r"^(0\d+(\.\d+)?|\d+\.\d*0|\d+(\.\d+){2,})$")     # 前导零、小数点后有末尾零、两个以上小数点
 
@@ -845,6 +861,10 @@ def _column(c, where, j) -> Column:
     if idf is not None and not isinstance(idf, bool):
         raise BadInput("identifier 是 true 或 false：这一列是标识符（编号、代码），不是数", f"{where}.identifier")
     col.identifier = bool(idf)
+    req = c.get("required")
+    if req is not None and not isinstance(req, bool):
+        raise BadInput("required 是 true 或 false：这一列是不是必填", f"{where}.required")
+    col.required = bool(req)
     return col
 
 
@@ -1025,8 +1045,15 @@ def _exprs(t):
         sh = t.book[loc[1]]
         used = F.row_refs(node)               # 只取式里用到的本行的列（不碰自己这一格）
         row = {c.key: get(("cell", loc[1], loc[2], jj)) for jj, c in enumerate(sh.columns) if c.key in used}
+        seen = []                             # 2.4.0：本格式里取到的别格的值（整数列出小数时随拒因列出）
+
+        class _Rec(Ext):
+            def cell(self, l):
+                got = get(l)
+                seen.append((l, got))
+                return got
         try:
-            v = F.evaluate(node, row, None, loc[2], Ext())
+            v = F.evaluate(node, row, None, loc[2], _Rec())
         except F.DivZero:
             v = None
             t.warnings.append({"where": e.where, "code": "div_zero", "message": f"格公式“{e.src}”除以零，这一格留空"})
@@ -1036,7 +1063,7 @@ def _exprs(t):
         if v is not None:
             v = quantize(v, None)
             if col.type == "integer" and v != v.to_integral_value():
-                raise BadInput(f"格公式“{e.src}”算出 {dec_str(v)}，“{col.title}”是整数列", e.where,
+                raise BadInput(f"格公式“{e.src}”算出 {dec_str(v)}，“{col.title}”是整数列" + _operands_text(sh, row, seen, t), e.where,
                                "要取整就在式里写 roundup、rounddown、ceiling、floor 或 round；要小数就把这一列的 type 改成 number")
             v = Decimal(dec_str(v))
         val[loc] = v
@@ -2169,3 +2196,47 @@ def aggregate_decimals(nums, fn, col):
     if col.type == "integer" and fn != "avg":
         return "exact"
     return col.shown_decimals if fn == "avg" or col.decimals is not None else None
+
+
+def _operands_text(sh, row, seen, t):
+    """2.4.0（立法者 2026-11-22 第 3 项）：整数列格公式算出小数时，列出式里各操作数的值——本行的列按列标题，别格按 @行id.列。"""
+    def show(v):
+        return "空" if v is None else dec_str(v) if isinstance(v, Decimal) else str(v)
+    parts = [f"{c.title} = {show(row[c.key])}" for c in sh.columns if c.key in row]
+    for loc, got in seen:
+        tsh = t.book[loc[1]]
+        rid = tsh.row_ids[loc[2]] if loc[2] < len(tsh.row_ids) else None
+        ref = f"@{(tsh.id + '/') if tsh is not sh and tsh.id else ''}{rid}.{tsh.columns[loc[3]].title}"
+        parts.append(f"{ref} = {show(got)}")
+    return f"；式里的值：{'，'.join(parts)}" if parts else ""
+
+
+# ---------------------------------------------------------------- 未填项（2.4.0；17 TL-30e）
+UNFILLED_MAX = 100
+
+
+def unfilled(t):
+    """未填项清单：每个必填列（required: true，输入列）没有值的格一条（缺席、null、空串）；某张表没有任何数据行也报一条。
+    逐字写法给模型照着在增量里指回去（表 id、行 $id、列 key）；条数超过 UNFILLED_MAX 时末条说明还有多少未列出。
+    次序稳定：按表的次序（写了 sheet_order 按它，否则按 sheets 里的次序）、表内按成表后的行序、行内按列序——引擎只取前 batch_max 条，
+    要先补的表用 sheet_order 排在前面。"""
+    out = []
+    for sh in t.sheets:
+        label = sh.id if sh.id else f"“{sh.name}”"
+        if not sh.rows:
+            out.append(f"表 {label} 没有数据行")
+            continue
+        req = [(j, c) for j, c in enumerate(sh.columns) if getattr(c, "required", False) and c.formula is None and c.numbering is None]
+        if not req:
+            continue
+        for ri, r in enumerate(sh.rows):
+            rid = sh.row_ids[ri] if ri < len(sh.row_ids) else None
+            src = sh.src[ri] if sh.src is not None and ri < len(sh.src) else ri
+            for j, c in req:
+                v = r[j] if j < len(r) else None
+                if v is None or (isinstance(v, str) and v.strip() == ""):
+                    where = f"行 {rid} " if rid else f"第 {src + 1} 行（没有 $id）"
+                    out.append(f"表 {label} {where}列 {c.key}（{c.title}）未填")
+    if len(out) > UNFILLED_MAX:
+        out = out[:UNFILLED_MAX - 1] + [f"还有 {len(out) - (UNFILLED_MAX - 1)} 处未列出"]
+    return out
