@@ -117,3 +117,37 @@ def test_m_zero_formula_omitted_still_reads(tmp_path):
     cols = AMB[1:]   # 无编号列 ⟹ m = 0，不写公式列（宽 3）照旧
     r = build(tmp_path, {"title": "T", "columns": cols, "rows": [["甲", 2, 10]]}, "m0")
     assert r["ok"], r
+
+
+# ───────────────────────── 一次报全（立法者 2026-11-22 定 A） ─────────────────────────
+# 列 type 声明（③）、逐行行宽（②）、逐格（④，只对行宽合格的行）彼此独立：首个错误照旧填 message/where/hint，
+#   不止一处时 error.errors 列出全部，每条 {message, where?, hint?}，用现成拒因。
+def test_independent_errors_are_reported_together(tmp_path):
+    cols = [{"key": "name", "title": "名称", "type": "text"}, {"key": "qty", "title": "数量", "type": "integer"},
+            {"key": "price", "title": "单价"},                                   # 被合计引用却没写 type（③）
+            {"key": "amt", "title": "金额", "type": "money", "formula": "数量 * 2"}]
+    rows = [["甲", 1.5, 3, None],          # 整数列写小数（④）
+            ["乙", 2],                     # 行宽不对（②），这一行不做逐格
+            ["丙", 2.5, 4, None]]          # 又一处整数列写小数（④）
+    r = build(tmp_path, {"title": "T", "columns": cols, "rows": rows, "totals": ["单价"]}, "all")
+    assert not r["ok"] and r["error"]["code"] == "BAD_INPUT", r
+    errs = r["error"]["errors"]
+    wheres = [e["where"] for e in errs]
+    assert wheres == ["table.columns[2].type", "table.rows[1]", "table.rows[0][1]", "table.rows[2][1]"], wheres
+    # 首个错误照旧填在 error 本身
+    assert (r["error"]["message"], r["error"]["where"], r["error"].get("hint")) == (errs[0]["message"], errs[0]["where"], errs[0].get("hint"))
+    assert errs[1]["message"] == "第 2 行有 2 格，这张表有 4 列；数组行每列一格"
+    # 每条与单独出错时的拒因逐字相同（不新造）
+    one = build(tmp_path, {"title": "T", "columns": cols[:2], "rows": [["甲", 1.5]]}, "one")
+    assert one["error"]["message"] == errs[2]["message"] and "errors" not in one["error"]
+
+
+def test_single_error_has_no_errors_list(tmp_path):
+    r = build(tmp_path, _amb([[1, "甲", 2, 10]]), "single")
+    assert not r["ok"] and "errors" not in r["error"], r
+
+
+def test_structure_errors_still_stop_at_the_first(tmp_path):
+    """列定义一类（列 key 重复等）彼此有依赖，照旧遇错即停，不带 errors。"""
+    r = build(tmp_path, {"title": "T", "columns": [{"key": "a", "title": "甲"}, {"key": "a", "title": "乙"}], "rows": [["x"]]}, "dup")
+    assert not r["ok"] and "errors" not in r["error"] and "重复" in r["error"]["message"], r

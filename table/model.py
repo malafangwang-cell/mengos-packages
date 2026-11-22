@@ -68,6 +68,17 @@ class BadInput(Exception):
     def __init__(self, message, where=None, hint=None, line=None):
         super().__init__(message)
         self.where, self.hint, self.line = where, hint, line
+        self.errors = None          # 2.3.5：同一张表彼此独立的几处输入错误一次报全（见 _combined）
+
+
+def _combined(errs):
+    """2.3.5：几处输入错误一起报——首个错误照旧填 message、where、hint；不止一处时另带 errors 列出全部（都是现成拒因，不新造）。"""
+    first = errs[0]
+    e = BadInput(str(first), first.where, first.hint, first.line)
+    if len(errs) > 1:
+        e.errors = [{"message": str(x), **({"where": x.where} if x.where is not None else {}), **({"hint": x.hint} if x.hint else {})}
+                    for x in errs]
+    return e
 
 
 # ---------------------------------------------------------------- 数值
@@ -633,13 +644,48 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     if len(set(titles)) != len(titles):
         dup = next(c.title for c in sh.columns if titles.count(_norm(c.title)) > 1)
         raise BadInput(f"列标题重复：{dup}", f"{where}.columns", "同一张表里列标题不能相同，可以加上区分的字，或用 unit 写单位")
+    # 2.3.5：列 type 声明（③）、逐行行宽（②）、逐格（④，只对行宽合格的行）彼此独立，各处的错误收齐后一次报（_combined）
+    errs = []
     if build:
-        _declared_types(s, sh, where)
+        _declared_types(s, sh, where, errs)
     plain = [j for j, c in enumerate(sh.columns) if c.formula is None]
     sh.displays = []
-    raw_rows = [_row(r, f"{where}.rows[{ri}]", sh, plain, t, from_model, ri) for ri, r in enumerate(rows)]
+    raw_rows = []
+    for ri, r in enumerate(rows):
+        try:
+            raw_rows.append(_row(r, f"{where}.rows[{ri}]", sh, plain, t, from_model, ri))
+        except BadInput as e:
+            errs.append(e)
+            raw_rows.append(None)
+    good_rows = [r for r in raw_rows if r is not None]
     sh.src = list(range(len(raw_rows)))     # 2.3.0：每行对应的入参行序号
     # 没写 type 的列按内容推断（公式列恒为数值；编号列 outline 为文字、seq 为整数；派生表的列取来源表同名列的类型）
+    try:
+        _column_types(s, sh, where, good_rows)
+    except BadInput as e:
+        errs.append(e)
+        raise _combined(errs)
+    sh.rows = []
+    for ri, r in enumerate(raw_rows):
+        if r is None:
+            sh.rows.append(None)
+            continue
+        row = []
+        for j, v in enumerate(r):
+            try:
+                row.append(_cell_or_expr(sh, ri, j, v, f"{where}.rows[{ri}][{j}]", t.lang, from_model))
+            except BadInput as e:
+                errs.append(e)
+                row.append(None)
+        sh.rows.append(row)
+    if errs:
+        raise _combined(errs)
+    _sheet_init_tail(s, sh, where, fc)
+    return sh
+
+
+def _column_types(s, sh, where, raw_rows):
+    """没写 type 的列按内容推断，并核各列的类型属性（2.3.5 从 _sheet_init 拆出，内容不变；raw_rows 只含行宽合格的行）。"""
     for j, c in enumerate(sh.columns):
         if c.type is None and c.numbering is not None:
             c.type = "text" if c.numbering == "outline" else "integer"
@@ -671,8 +717,9 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
             raise BadInput("编号列由工具生成，不能再写 formula", f"{where}.columns[{j}].numbering")
         if c.type is not None:
             c.align = c.align or ("right" if c.type in NUMERIC else "center" if c.type == "bool" else "left")
-    sh.rows = [[_cell_or_expr(sh, ri, j, v, f"{where}.rows[{ri}][{j}]", t.lang, from_model) for j, v in enumerate(r)]
-               for ri, r in enumerate(raw_rows)]
+
+
+def _sheet_init_tail(s, sh, where, fc):
     ids = [x for x in sh.row_ids if x is not None]
     if len(ids) != len(set(ids)):
         dup = next(x for x in ids if ids.count(x) > 1)
@@ -707,7 +754,7 @@ def _sheet_finish(sh, t, build):
                            "message": f"“{sh.name}”还没有行，只交出表头" + ("，合计留空" if sh.totals else "")})
 
 
-def _declared_types(s, sh, where):
+def _declared_types(s, sh, where, errs=None):
     """2.0.0：被公式或合计引用的列必须显式写 type。
 
     不写 type 的列按行内容推断；行数变了（零行、分批追加）推断结果会跟着变，被引用的列因此可能时而能算、时而报错。
@@ -741,8 +788,11 @@ def _declared_types(s, sh, where):
     for j in sorted(need):
         c = sh.columns[j]
         if c.type is None:
-            raise BadInput(f"“{c.title}”被{need[j]}引用，须显式写 type", f"{where}.columns[{j}].type",
-                           "被公式或合计引用的列要写 type：数值列写 integer、number、money 或 percent；只做 count 合计的列也可以写 text 等其他类型")
+            e = BadInput(f"“{c.title}”被{need[j]}引用，须显式写 type", f"{where}.columns[{j}].type",
+                         "被公式或合计引用的列要写 type：数值列写 integer、number、money 或 percent；只做 count 合计的列也可以写 text 等其他类型")
+            if errs is None:
+                raise e
+            errs.append(e)          # 2.3.5：各列独立，收齐后与行宽、逐格的错误一起报
 
 
 def _column(c, where, j) -> Column:
