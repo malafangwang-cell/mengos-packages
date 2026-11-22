@@ -1,6 +1,6 @@
 {
   "package": "cad",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "publisher": "mengos",
   "scope": "public",
   "title": "三维零件建模",
@@ -10,12 +10,13 @@
     "cad.export": "导出零件加工与图纸文件",
     "cad.compare": "比较零件改前改后的特征表"
   },
-  "content_hash": "b2c876df1c24fa84d33076bddca3304f0d67610bb8684b2f58a08913e12b2bfb",
+  "content_hash": "7662ac0c0237b5fa901be112e2d332cb3bc147b31029d322c6026cecc6cc48cc",
   "types": [
     {
       "name": "cad_model",
       "parent": null,
       "kind": "deliverable",
+      "title": "三维模型",
       "realizes": [
         "assembly_model"
       ],
@@ -32,6 +33,7 @@
       "name": "cad_part",
       "parent": "cad_model",
       "kind": "deliverable",
+      "title": "零件三维模型",
       "note": "单个零件。继承 cad_model 的 realizes 与渲染器。cad v2 只产出零件，不产出装配体"
     },
     {
