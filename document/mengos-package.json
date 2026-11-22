@@ -1,6 +1,6 @@
 {
   "package": "document",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "publisher": "mengos",
   "scope": "public",
   "title": "长文档编排",
@@ -9,12 +9,13 @@
     "doc.check": "核对长文档交付要求",
     "doc.export": "导出长文档文件"
   },
-  "content_hash": "5f26f8606e89718be7dcc620a99bedadc037dfb73e785aafdb502c01e23bd383",
+  "content_hash": "bb400416917164a1da4503611d74851ae3d36624cee94a32e2ac7d4f911db188",
   "types": [
     {
       "name": "document",
       "parent": null,
       "kind": "deliverable",
+      "title": "长文档",
       "realizes": [
         "long_doc"
       ],
@@ -29,6 +30,7 @@
       "name": "outline",
       "parent": "document",
       "kind": "deliverable",
+      "title": "提纲",
       "realizes": [
         "toc_outline"
       ],
