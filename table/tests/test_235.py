@@ -233,3 +233,32 @@ def test_unfilled_order_follows_sheet_order_then_row_order(tmp_path):
     b = build(tmp_path, t(["layout", "parts"]), "b")["output"]["unfilled"]
     assert b == ["表 layout 行 l1 列 q（数）未填", "表 parts 行 p1 列 q（数）未填", "表 parts 行 p2 列 q（数）未填"]
     assert build(tmp_path, t(["layout", "parts"]), "c")["output"]["unfilled"] == b      # 同一输入两次，次序相同
+
+
+# ───────────────────────── 2.4.0：数值列里的“整数/整数”按分数读（调度 2026-11-22，r16） ─────────────────────────
+# $ref 引计算器回执 #value 拿到的是精确值串（08 PD-1e），如 "4129/1380"；声明了数值类型的列按分数读，整数列读出非整数照旧拒。
+def test_fraction_string_in_declared_numeric_columns_is_read_as_a_number(tmp_path):
+    cols = [{"key": "a", "title": "单重", "type": "number"}, {"key": "m", "title": "金额", "type": "money"},
+            {"key": "p", "title": "占比", "type": "percent"}, {"key": "n", "title": "根数", "type": "integer"}]
+    r = build(tmp_path, {"title": "T", "columns": cols, "rows": [["4129/1380", "1/4", "25/2", "12/4"]]}, "fr")
+    assert r["ok"], r
+    m = json.loads(next((tmp_path / "fr").glob("*.table.json")).read_text(encoding="utf-8"))
+    assert m["sheets"][0]["rows"][0] == ["2.9920289855", "0.25", "0.125", "3"]
+
+
+def test_fraction_in_integer_column_that_is_not_whole_is_rejected_with_fraction_and_approx(tmp_path):
+    r = build(tmp_path, {"title": "T", "columns": [{"title": "根数", "type": "integer"}], "rows": [["4129/1380"]]}, "fi")
+    assert not r["ok"] and r["error"]["where"] == "table.rows[0][0]", r
+    assert r["error"]["message"] == "整数列不能有小数：4129/1380（分数 4129/1380，约 2.9920289855）"
+    assert r["error"]["hint"] == "要小数就把这一列的 type 改成 number"
+
+
+def test_fraction_stays_text_in_text_and_undeclared_columns_and_radicals_are_not_read(tmp_path):
+    r = build(tmp_path, {"title": "T", "columns": [{"title": "备注", "type": "text"}, {"title": "未声明"}], "rows": [["4129/1380", "3/4"]]}, "ft")
+    assert r["ok"], r
+    m = json.loads(next((tmp_path / "ft").glob("*.table.json")).read_text(encoding="utf-8"))
+    assert m["sheets"][0]["rows"][0] == ["4129/1380", "3/4"] and m["sheets"][0]["columns"][1]["type"] == "text"
+    for bad in ("sqrt(2)", "π/2", "1/0", "1.5/2"):
+        rb = build(tmp_path, {"title": "T", "columns": [{"title": "x", "type": "number"}], "rows": [[bad]]}, f"b{abs(hash(bad))}")
+        assert not rb["ok"], (bad, rb)
+        assert ("分母是 0" if bad == "1/0" else "不是数值") in rb["error"]["message"], (bad, rb["error"])

@@ -57,6 +57,7 @@ BLANKS = {"", "-", "—", "–", "/", "N/A", "n/a", "NA"}
 TRUE = {"true", "yes", "y", "是", "对", "有", "√", "✓"}
 FALSE = {"false", "no", "n", "否", "错", "无", "×", "✗"}
 CURRENCY = re.compile(r"[¥￥$€£元]|RMB|CNY|USD", re.IGNORECASE)
+FRACTION_RE = re.compile(r"^(-?\d{1,15})/(\d{1,15})$")   # 2.4.0：整数/整数（分数，计算器回执的精确值串）
 NUM_RE = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$")
 THOUSANDS_RE = re.compile(r"^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?$")
 DATE_RES = (re.compile(r"^(\d{4})-(\d{1,2})-(\d{1,2})$"), re.compile(r"^(\d{4})/(\d{1,2})/(\d{1,2})$"),
@@ -127,9 +128,21 @@ def _num_from(v, ctype, where, stored=False):
         s = s.replace(" ", "")
         if THOUSANDS_RE.match(s):
             s = s.replace(",", "")
-        if not NUM_RE.match(s):
+        fm = FRACTION_RE.match(s)
+        if fm is not None:
+            # 2.4.0：形如“整数/整数”的字符串按分数读（计算器回执的精确值串，如 "4129/1380"）；根式、π 等不认（照旧“不是数值”）
+            num, den = int(fm.group(1)), int(fm.group(2))
+            if den == 0:
+                raise BadInput(f"“{v[:40]}” 的分母是 0", where)
+            exact = Decimal(num) / Decimal(den)
+            if ctype == "integer" and num % den != 0:
+                raise BadInput(f"整数列不能有小数：{v}（分数 {num}/{den}，约 {dec_str(quantize(exact, None))}）", where,
+                               "要小数就把这一列的 type 改成 number")
+            d = quantize(exact, None) if num % den != 0 else Decimal(num // den)
+        elif not NUM_RE.match(s):
             raise BadInput(f"“{v[:40]}” 不是数值", where, "数值列只写数字；单位写在列的 unit 里，空格子写 null")
-        d = Decimal(s)
+        else:
+            d = Decimal(s)
         if pct and ctype != "percent":
             d = d / 100
     else:
