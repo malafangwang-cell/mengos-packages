@@ -82,6 +82,7 @@ COLUMN = {
             "thousands": {"type": "boolean"},
             "numbering": {"enum": list(NUMBERINGS)},
             "identifier": {"type": "boolean"},
+            "required": {"type": "boolean"},
         }},
     ]
 }
@@ -93,7 +94,7 @@ ROWS = {"type": "array", "maxItems": 100000, "x-mengos-data": True, "x-mengos-ex
     {"type": "array", "maxItems": 200, "items": CELL},
     {"type": "object", "properties": {DISPLAY_KEY: DISPLAY, ID_KEY: ROW_ID}, "additionalProperties": CELL},
 ]}}
-ROWS_BUILD = {**ROWS, "x-mengos-merge": {"mode": "append"}}
+ROWS_BUILD = {**ROWS, "x-mengos-merge": {"mode": "by-id", "id": ID_KEY}}   # 2.4.0：按行 $id 并入（原 append：带 base 的“填格”会变成追加重复行）
 TOTALS = {"type": "array", "maxItems": 200, "items": {"oneOf": [
     {"type": "string", "minLength": 1},
     {"type": "object", "required": ["column"], "additionalProperties": False, "properties": {
@@ -158,6 +159,7 @@ TABLE_DESC_BUILD = (
     "被公式或合计引用的列必须写 type，只做 count 的列也要写 type（text 即可））、"
     "unit 单位（如 MPa、元/吨）、decimals 显示几位小数、formula 公式（同一行里数值列的 + - * / 与括号，可用 round、abs、min、max，"
     "用列的 key 或标题引用，例如 \"单价 * 数量\"；公式列的值由工具算）。列也可以只写标题字符串。"
+    "列可写 required: true 表示必填：必填列有格没有值时照样成表，回执的 unfilled 逐格列出，这些格都填上才算完成。"   # 2.4.0：必填列，草稿
     "公式还可用 roundup、rounddown（向上、向下取整，例如 roundup(总数量 * (1 + 损耗率))）、ceiling(x, 倍数)、floor(x, 倍数)，"
     "比较 > >= < <= = <> 与 and、or、not、if(条件, 甲, 乙)（状态这类文字列写 if，type 写 text，两支写双引号里的文字，不写数字常数），"
     "total(列) 取本列合计、cumsum(列) 从首行累加到本行。百分比列在公式里是小数：12.5% 是 0.125，100% 可直接写成 100%；"
@@ -165,6 +167,8 @@ TABLE_DESC_BUILD = (
     "rows 每行一个数组，按 columns 的顺序每列一格，格数等于列数；每格是字符串、数字、true/false 或 null（空格子）；公式列、编号列的值由工具生成，这两列的格写 null。"   # 2.3.5：F2-1 定稿原文（立法者 2026-11-22 认可）
     "格里的值取自某张回执时，写 {\"$ref\": \"回执id#路径\"} 代替它：回执id 照输入材料里那张回执的 id 原样写；路径从回执顶层起照键名逐层写，每层前面写一个 /，所以路径以 / 开头；数组写序号（从 0 起）。"   # 2.3.3：P5 B1 定稿原文（立法者 2026-11-21 批；mengosv2 工单 P4），逐字
     "行也可以写成对象（列的 key 或标题 → 值），缺的格子为空；分批追加行时请用对象行，改了列要把已有的数组行按新列重写。"
+    "带 base 写增量时，行写成带 $id 的对象行，例如 {\"$id\": \"r2\", \"数量\": 3}：$id 相同的并入原来那一行，只改写到的格；没有这一行就加在后面。不带 base 整表重写时仍可写数组行；以后要按行补格的行请写上 $id。"   # 2.4.0：rows 改 by-id（按 $id 并入），逐字写法为草稿，以回放读数定
+    "回执的 unfilled 列出还没填的格（表 id、行 $id、列 key）和还没有数据行的表，照着补。"   # 2.4.0：回执未填项清单（17 TL-30e），草稿
     "数值写数字，不带单位；百分比写百分数（12.5 表示 12.5%）；日期写 YYYY-MM-DD。"
     "表格里能读成数的值一律存为数字，可以计算；不提供把数字列改成文本。用户要文本，如实说明：下载后在 Excel 里改。"
     "totals 加末行合计：[{column, fn}]，fn 为 sum / avg / min / max / count，只写列名时按 sum；"
@@ -188,7 +192,7 @@ TABLE_DESC_BUILD = (
     "派生表 derive {from: [表id…], where: 条件式, by: [键列], agg: {列: \"sum\"}} 由工具从各表生成行。row_styles 的 kind 另有 subtotal、group。"
     "公式与着色规则里写的数是算法的一部分，不用标出处；但公式的条件分支不直接给数字常数（要数就引用一列，或把数写在输入格里，输入格的数照常标出处）。"
     "编号、代码一类的列是标识符，不是数：编号列用 numbering，其余写 type text 并加 \"identifier\": true。"
-    "改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。"
+    "删行、插行、排序、对调或删表、调表序时，不带 base，整张表重写；只给某些行补格、改格时可以带 base，只写这些行。"   # 2.4.0：改值可带 base（by-id），原句“改既有的行（改值、……）……整张表重写。”随改，草稿
 )
 
 
@@ -217,8 +221,11 @@ STRUCT_DESC = ['2.2.0 起：只有个别格算法不同时，把这一列当输�
 NUM22_DESC = ['公式与着色规则里写的数是算法的一部分，不用标出处；但公式的条件分支不直接给数字常数（要数就引用一列，或把数写在输入格里，输入格的数照常标出处）。', '编号、代码一类的列是标识符，不是数：编号列用 numbering，其余写 type text 并加 \"identifier\": true。']   # 2.2.0 §二 补（立法者 11-12，17 TL-30 v0.2.99）
 REF_ADD = ["格里的值取自某张回执时，写 {\"$ref\": \"回执id#路径\"} 代替它：回执id 照输入材料里那张回执的 id 原样写；路径从回执顶层起照键名逐层写，每层前面写一个 /，所以路径以 / 开头；数组写序号（从 0 起）。"]   # 2.3.3 新增的说明句（P5 B1）
 BUILD_ONLY_ADD = ["改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。"]
+# 2.4.0（mengosv2 规格改句草案-未填项位置声明 §六 A；逐字写法为草稿，以回放读数定）：新增三句与改一句
+ADD_240 = ["列可写 required: true 表示必填：必填列有格没有值时照样成表，回执的 unfilled 逐格列出，这些格都填上才算完成。", "带 base 写增量时，行写成带 $id 的对象行，例如 {\"$id\": \"r2\", \"数量\": 3}：$id 相同的并入原来那一行，只改写到的格；没有这一行就加在后面。不带 base 整表重写时仍可写数组行；以后要按行补格的行请写上 $id。".replace('\\"', '"'), "回执的 unfilled 列出还没填的格（表 id、行 $id、列 key）和还没有数据行的表，照着补。"]
+EDIT_240 = [("删行、插行、排序、对调或删表、调表序时，不带 base，整张表重写；只给某些行补格、改格时可以带 base，只写这些行。", "改既有的行（改值、删行、插行、排序、对调）或删表、调表序时，不带 base，整张表重写。")]
 assert all(x in TABLE_DESC for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + NUMBER_ADD)
-assert all(x in TABLE_DESC_BUILD for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + BUILD_ONLY_ADD + STRUCT_DESC)
+assert all(x in TABLE_DESC_BUILD for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + STRUCT_DESC + [n for n, _ in EDIT_240] + ADD_240)
 assert all(x in TABLE_DESC for x in STRUCT_DESC + NUM22_DESC)
 assert all(x in TABLE_DESC_BUILD for x in NUM22_DESC)
 assert all(x in TABLE_DESC and x in TABLE_DESC_BUILD for x in REF_ADD)
@@ -334,6 +341,9 @@ BUILD = {
                 "warnings": WARN,
                 "files": FILES,
                 "assumptions": {"type": "array", "items": {"type": "string"}},
+                # 2.4.0（17 TL-30e）：未填项清单——必填格没有值、表没有数据行，各一条；引擎只看空不空、原样给模型
+                "unfilled": {"type": "array", "items": {"type": "string"}, "x-mengos-unfilled": True,
+                             "description": "未填项：必填列（required）没有值的格，以及没有数据行的表，每处一条；为空表示没有未填项"},
             },
         },
     },

@@ -151,3 +151,57 @@ def test_structure_errors_still_stop_at_the_first(tmp_path):
     """列定义一类（列 key 重复等）彼此有依赖，照旧遇错即停，不带 errors。"""
     r = build(tmp_path, {"title": "T", "columns": [{"key": "a", "title": "甲"}, {"key": "a", "title": "乙"}], "rows": [["x"]]}, "dup")
     assert not r["ok"] and "errors" not in r["error"] and "重复" in r["error"]["message"], r
+
+
+# ───────────────────────── 2.4.0：必填列、未填项清单、按 $id 并入、整数列格公式带操作数 ─────────────────────────
+# （mengosv2《规格改句草案-未填项位置声明与交付子目标结论-2026-11-22》§六 A；17 TL-30e）
+def test_unfilled_lists_required_empty_cells_and_sheets_without_rows(tmp_path):
+    cols = [{"key": "name", "title": "名称"}, {"key": "qty", "title": "数量", "type": "integer", "required": True},
+            {"key": "spec", "title": "规格", "required": True}]
+    t = {"title": "库存", "sheets": [
+        {"id": "s1", "name": "零件", "columns": cols, "rows": [{"$id": "r1", "name": "轴承", "spec": "6208"}, ["齿轮", 2, ""]]},
+        {"id": "s2", "name": "原料", "columns": cols}]}
+    r = build(tmp_path, t, "u")
+    assert r["ok"], r
+    assert r["output"]["unfilled"] == ["表 s1 行 r1 列 qty（数量）未填", "表 s1 第 2 行（没有 $id）列 spec（规格）未填", "表 s2 没有数据行"]
+
+
+def test_unfilled_empty_when_everything_filled_and_old_tables_unchanged(tmp_path):
+    r = build(tmp_path, {"title": "T", "columns": [{"title": "a", "required": True}], "rows": [["x"]]}, "ok")
+    assert r["ok"] and r["output"]["unfilled"] == []
+    single = build(tmp_path, {"title": "T", "columns": ["a"]}, "empty")          # 单表写法、没有行：表名带引号
+    assert single["output"]["unfilled"] == ["表 “T” 没有数据行"]
+
+
+def test_required_formula_and_numbering_columns_are_not_listed(tmp_path):
+    cols = [{"key": "no", "title": "序号", "numbering": "seq", "required": True}, {"key": "q", "title": "数", "type": "integer"},
+            {"key": "d", "title": "倍", "type": "integer", "formula": "q * 2", "required": True}]
+    r = build(tmp_path, {"title": "T", "columns": cols, "rows": [{"$id": "a", "数": 1}]}, "f")
+    assert r["ok"] and r["output"]["unfilled"] == []
+
+
+def test_required_must_be_boolean(tmp_path):
+    r = build(tmp_path, {"title": "T", "columns": [{"title": "a", "required": "yes"}], "rows": [["x"]]}, "bad")
+    assert not r["ok"] and r["error"]["where"] == "table.columns[0].required", r
+
+
+def test_required_round_trips_in_the_model_only_when_true(tmp_path):
+    import json as _json
+    r, w = run("table.build", {"table": {"title": "T", "columns": [{"title": "a", "required": True}, "b"], "rows": [["x", "y"]]}}, tmp_path, "rt")
+    m = _json.loads(next((tmp_path / "rt").glob("*.table.json")).read_text(encoding="utf-8"))
+    assert m["sheets"][0]["columns"][0]["required"] is True and "required" not in m["sheets"][0]["columns"][1]
+
+
+def test_unfilled_is_declared_on_the_output_schema():
+    out = UNITS["table.build"]["signature"]["output_schema"]["properties"]["unfilled"]
+    assert out["x-mengos-unfilled"] is True and out["type"] == "array" and out["items"] == {"type": "string"}
+    for tid in ("table.check", "table.export"):
+        assert "x-mengos-unfilled" not in json.dumps(UNITS[tid]["signature"])
+
+
+def test_integer_cell_expr_with_fraction_lists_operand_values(tmp_path):
+    cols = [{"key": "len", "title": "长度", "type": "number"}, {"key": "n", "title": "根数", "type": "integer"}]
+    rows = [{"$id": "r1", "长度": 7.5, "根数": 2}, {"$id": "r2", "长度": 3, "根数": {"$expr": "@r1.长度 / 2"}}]
+    r = build(tmp_path, {"title": "T", "columns": cols, "rows": rows}, "ex")
+    assert not r["ok"], r
+    assert r["error"]["message"] == "格公式“@r1.长度 / 2”算出 3.75，“根数”是整数列；式里的值：@r1.长度 = 7.5"

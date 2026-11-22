@@ -126,8 +126,9 @@ def test_rows_with_ids_and_exprs_append_through_the_engine_merge(tmp_path):
     cols = [{"key": "name", "title": "名称", "type": "text"}, {"key": "qty", "title": "数量", "type": "integer"}]
     first = {"table": {"title": "T", "sheets": [{"id": "s01", "name": "01立柱", "columns": cols,
                                                 "rows": [{"$id": "r1", "名称": "立柱", "数量": {"$expr": "6*28"}}]}]}}
-    d1 = {"table": {"sheets": [{"id": "s01", "rows": [{"名称": "立柱型材", "数量": {"$expr": "@r1.数量"}}]}]}}
-    assert touched_keys(BUILD, d1) == {"table.sheets#s01.rows+"}
+    # 2.4.0：rows 按 $id 并入（by-id）——新行带新的 $id，加在后面；触及键按行成键
+    d1 = {"table": {"sheets": [{"id": "s01", "rows": [{"$id": "r2", "名称": "立柱型材", "数量": {"$expr": "@r1.数量"}}]}]}}
+    assert touched_keys(BUILD, d1) == {"table.sheets#s01.rows#r2.名称", "table.sheets#s01.rows#r2.数量.$expr"}
     jsonschema.validate({"base": "v-1", **d1}, BUILD)
     r, w = run("table.build", merge(BUILD, first, d1), tmp_path)
     assert r["ok"], r

@@ -96,9 +96,10 @@ def test_table_build_is_contribution_tool_and_others_stay_whole():
 def test_annotation_declarations_on_table_build():
     t = BUILD["properties"]["table"]["properties"]
     assert t["sheets"]["x-mengos-merge"] == {"mode": "by-id", "id": "id", "label": "name"}   # 不设 fill（补裁三），与 doc.tables 同形
-    assert t["sheets"]["items"]["properties"]["rows"]["x-mengos-merge"] == {"mode": "append"}
-    assert t["rows"]["x-mengos-merge"] == {"mode": "append"}
-    # rows 仍是数据字段（1.0.1 起），与 append 并存
+    # 2.4.0（mengosv2 规格改句草案-未填项位置声明 §六 A1）：rows 由 append 改为按行 $id 并入（by-id）——带 base 的增量“填格”不再变成追加重复行
+    assert t["sheets"]["items"]["properties"]["rows"]["x-mengos-merge"] == {"mode": "by-id", "id": "$id"}
+    assert t["rows"]["x-mengos-merge"] == {"mode": "by-id", "id": "$id"}
+    # rows 仍是数据字段（1.0.1 起），与合并标注并存
     assert t["rows"]["x-mengos-data"] is True and t["sheets"]["items"]["properties"]["rows"]["x-mengos-data"] is True
     # columns 不标：新值整体覆盖
     assert "x-mengos-merge" not in t["columns"] and "x-mengos-merge" not in t["sheets"]["items"]["properties"]["columns"]
@@ -180,22 +181,18 @@ def test_engine_table_rows_data_golden(case):
 
 @pytest.mark.parametrize("case", ROWS_DATA["cases"], ids=[c["name"] for c in ROWS_DATA["cases"]])
 def test_table_rows_data_golden_under_the_real_build_schema(case, tmp_path):
-    """同一 P、Δ 换成本包 table.build 的真实 schema：合并、触及键、骨架与夹具期望相同，合并结果交 build 可用。"""
-    P, D, exp = case["P"], case["delta"], case["expect"]
+    """同一 P、Δ 换成本包 table.build 的真实 schema。2.4.0 起 rows 是 by-id（按 $id 并入）：夹具的增量是数组行与不带 $id 的对象行，
+    在本包 schema 下合并报错“by-id 元素缺 id”（带 base 的增量只能写带 $id 的行）；夹具自带的 append schema 照旧（上一条）。"""
+    P, D = case["P"], case["delta"]
     assert VB.is_valid(P) and VB.is_valid({"base": "v-1", **D})
-    merged = merge(BUILD, P, D)
-    assert merged == exp["value"]
-    assert sorted(touched_keys(BUILD, D)) == exp["keys"]
-    assert skeleton(BUILD, P, True) == exp["skeleton_P"]
-    assert skeleton(BUILD, merged, True) == exp["skeleton_merged"]
-    jsonschema.validate(merged, BUILD)
-    r = run("table.build", merged, tmp_path)
-    assert r["ok"] and r["output"]["sheets"][0]["rows"] == len(exp["value"]["table"]["rows"]), r
+    with pytest.raises(MergeError) as ei:
+        merge(BUILD, P, D)
+    assert (ei.value.instance_path, ei.value.message) == ("/table/rows", "by-id 元素缺 id")
 
 
 def test_engine_merge_does_not_mutate_inputs():
     P = {"table": {"title": "T", "sheets": [{"id": "s1", "columns": ["a"], "rows": [["x"]]}]}}
-    D = {"table": {"sheets": [{"id": "s1", "rows": [["y"]]}]}}
+    D = {"table": {"sheets": [{"id": "s1", "rows": [{"$id": "r9", "a": "y"}]}]}}
     P0, D0 = copy.deepcopy(P), copy.deepcopy(D)
     merge(BUILD, P, D)
     assert P == P0 and D == D0
@@ -213,7 +210,7 @@ TMC = json.loads((FIX / "table-merge-cases.json").read_text(encoding="utf-8"))["
 def test_table_merge_case_merge_then_build(case, tmp_path):
     P, delta, exp = case["P"], case["delta"], case["expect"]
     assert VB.is_valid(P)                                      # P 是合法的整体写法
-    assert VB.is_valid({"base": "v-1", **delta}) == exp["ok"]  # 带 base 的增量：缺 id 的 sheet 被 schema 拒收
+    assert VB.is_valid({"base": "v-1", **delta}) == exp.get("schema_ok", exp["ok"])  # 带 base 的增量：缺 id 的 sheet 被 schema 拒收；行缺 $id 要到合并时才拒
     assert sorted(touched_keys(BUILD, delta)) == exp["touched_keys"]
     if not exp["ok"]:
         with pytest.raises(MergeError) as ei:
@@ -231,6 +228,11 @@ def test_table_merge_case_merge_then_build(case, tmp_path):
         assert [w["code"] for w in r["output"]["warnings"]] == b["warning_codes"]
         if "empty_cells" in b:
             assert r["output"]["stats"]["empty_cells"] == b["empty_cells"]
+        if "unfilled" in b:
+            assert r["output"]["unfilled"] == b["unfilled"]
+        if "build_P_unfilled" in exp:                          # 2.4.0：合并前那一版的未填项（补格前后对照）
+            r0 = run("table.build", P, tmp_path, "p0")
+            assert r0["ok"] and r0["output"]["unfilled"] == exp["build_P_unfilled"], r0
     else:
         assert not r["ok"] and r["error"]["code"] == b["code"] and r["error"]["where"] == b["where"], r
         for s in b["message_contains"]:
@@ -239,8 +241,8 @@ def test_table_merge_case_merge_then_build(case, tmp_path):
 
 def test_table_merge_cases_cover_the_required_kinds():
     keys = {k for c in TMC for k in c["expect"]["touched_keys"]}
-    assert "table.sheets#s1.rows+" in keys and "table.rows+" in keys
-    assert any(not c["expect"]["ok"] and c["expect"]["message"] == "by-id 元素缺 id" for c in TMC)
+    assert "table.sheets#s1.rows#r1.qty" in keys and "table.rows#r2.p" in keys       # 2.4.0：行按 $id 成键
+    assert sum(1 for c in TMC if not c["expect"]["ok"] and c["expect"]["message"] == "by-id 元素缺 id") == 2   # sheet 缺 id、行缺 $id
 
 
 def test_incremental_rows_merge_to_the_table_written_at_once(tmp_path):
@@ -248,8 +250,8 @@ def test_incremental_rows_merge_to_the_table_written_at_once(tmp_path):
     cols = [{"key": "part", "title": "零件"}, {"key": "qty", "title": "数量", "type": "integer"},
             {"key": "price", "title": "单价", "type": "money", "unit": "元"},
             {"key": "amount", "title": "金额", "type": "money", "unit": "元", "formula": "qty * price"}]
-    rows = [{"part": "输入轴", "qty": 1, "price": 860}, {"part": "齿轮", "qty": 2, "price": 1250.5},
-            {"part": "轴承 6208", "qty": 4, "price": 95}]
+    rows = [{"$id": "r1", "part": "输入轴", "qty": 1, "price": 860}, {"$id": "r2", "part": "齿轮", "qty": 2, "price": 1250.5},
+            {"$id": "r3", "part": "轴承 6208", "qty": 4, "price": 95}]   # 2.4.0：分批写的行带 $id（by-id）
     whole = {"table": {"title": "物料", "sheets": [{"id": "bom", "name": "物料", "columns": cols, "rows": rows, "totals": ["金额"]}]}}
     first = {"table": {"title": "物料", "sheets": [{"id": "bom", "name": "物料", "columns": cols, "totals": ["金额"]}]}}
     jsonschema.validate(first, BUILD)
@@ -258,7 +260,9 @@ def test_incremental_rows_merge_to_the_table_written_at_once(tmp_path):
     assert r0["ok"] and [w["code"] for w in r0["output"]["warnings"]] == ["no_rows"], r0
     d1 = {"table": {"sheets": [{"id": "bom", "rows": rows[:2]}]}}
     d2 = {"table": {"sheets": [{"id": "bom", "rows": rows[2:]}]}}
-    assert touched_keys(BUILD, d1) == touched_keys(BUILD, d2) == {"table.sheets#bom.rows+"}   # 同批相交 ⟹ 分轮写
+    # 2.4.0：行按 $id 成键，两批不相交（同批也可合并）
+    assert touched_keys(BUILD, d1) == {f"table.sheets#bom.rows#r{i}.{k}" for i in (1, 2) for k in ("part", "qty", "price")}
+    assert not (touched_keys(BUILD, d1) & touched_keys(BUILD, d2))
     for d in (d1, d2):
         assert VB.is_valid({"base": "v-1", **d})
     merged = merge(BUILD, merge(BUILD, first, d1), d2)
@@ -275,13 +279,14 @@ def test_tb10_skeleton_of_table_build_names_sheets_and_counts_rows():
                                                   {"id": "s2", "name": "原料", "columns": ["名称"]},
                                                   {"id": "s3", "name": "备件", "columns": ["名称"], "rows": []}]}}
     sk = json.loads(skeleton(BUILD, args, True))
-    assert sk["table"]["sheets"] == [{"id": "s1", "label": "零件", "rows": {"$count": 2}},
+    # 2.4.0：rows 是 by-id——骨架逐行列出：带 $id 的对象行出 {$id}，数组行只出字节数（不带内容）
+    assert sk["table"]["sheets"] == [{"id": "s1", "label": "零件", "rows": [{"$size": 10}, {"$size": 10}]},
                                      {"id": "s2", "label": "原料"},
-                                     {"id": "s3", "label": "备件", "rows": {"$count": 0}}]
+                                     {"id": "s3", "label": "备件", "rows": []}]
     assert empty_slots(BUILD, args) == []
     assert "轴承" not in json.dumps(sk, ensure_ascii=False)
-    single = json.loads(skeleton(BUILD, {"table": {"title": "T", "columns": ["a"], "rows": [["x"]]}}, False))
-    assert single["table"]["rows"] == {"$count": 1} and single["$best"] is False
+    single = json.loads(skeleton(BUILD, {"table": {"title": "T", "columns": ["a"], "rows": [{"$id": "r1", "a": "x"}, ["y"]]}}, False))
+    assert single["table"]["rows"] == [{"$id": "r1"}, {"$size": 5}] and single["$best"] is False
 
 
 # ───────────────────────── T2 sheet id 恒必填（只在 build） ─────────────────────────
@@ -341,7 +346,9 @@ def _overlay(base, extra):
 # 2.1.0 只放宽（执行令 table 包 2.1.0 §四）：入参 schema 只加可选字段、枚举值与说明文字。去掉这些，应与 1.0.1 逐键相同。
 ADDED_FIELDS_210 = {"style", "date_format", "thousands", "header_style", "rules", "row_styles",
                     # 2.2.0（G7–G11、G17）
-                    "numbering", "outline_from", "group", "subtotals", "merge_rows", "derive", "sheet_order", "$id", "identifier"}
+                    "numbering", "outline_from", "group", "subtotals", "merge_rows", "derive", "sheet_order", "$id", "identifier",
+                    # 2.4.0（未填项位置声明 §六 A2）：列的 required
+                    "required"}
 ADDED_FN_210 = ["formula", "none"]
 
 
@@ -479,6 +486,8 @@ def test_whole_mode_output_unchanged_since_1_0_1(case, tmp_path):
             assert sha(data) == case["file_sha256"][f["path"]], f["path"]
     norm = lambda o: [{k: v for k, v in f.items() if not (f["format"] in ("xlsx", "view") and k in ("bytes", "sha256"))} for f in o["files"]]
     assert norm(out) == norm(old)
+    # 2.4.0：输出新增 unfilled（未填项清单，17 TL-30e）；这些旧表都有数据行、没有必填列 ⟹ 空表
+    assert out.pop("unfilled") == []
     assert {k: v for k, v in out.items() if k != "files"} == {k: v for k, v in old.items() if k != "files"}
 
 

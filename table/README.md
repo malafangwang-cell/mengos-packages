@@ -1,4 +1,12 @@
-# table 2.3.5 — 表格交付物包
+# table 2.4.0 — 表格交付物包
+
+> 2.4.0（mengosv2《规格改句草案-未填项位置声明与交付子目标结论-2026-11-22》§六 A；立法者 2026-11-22 裁定第 1、2 项；17 TL-30e）：
+> - **按行 $id 并入**：table.build 的 rows（单表、多表两处）合并标注由 append 改为 by-id（id 键 `$id`，即 2.2.0 起已有的行 id）。带 base 的增量只能写带 `$id` 的对象行：`$id` 相同的并入原来那一行、只改写到的格，没有的加在后面；缺 `$id` 的行合并报错（by-id 元素缺 id）。不带 base 整表重写照旧可写数组行。新增的整张 sheet（by-id 加 sheet）整件并入，不逐行合并。
+> - **必填列**：列对象可写 `required: true`。必填输入列的格缺席、null、空串 ⟹ 未填；工具不因此拒收，只在回执里列出。公式列、编号列由工具生成，不列。表模型只在为真时写出 `required`，旧表的表模型逐字节不变。
+> - **未填项清单**：table.build 回执新增 `unfilled`（字符串数组），output_schema 标 `"x-mengos-unfilled": true`。每个必填而未填的格一条（`表 <表 id> 行 <$id> 列 <key>（<标题>）未填`；行没有 `$id` 时写 `第 n 行（没有 $id）`；单表写法没有表 id 时写 `“表名”`），某张表没有任何数据行也报一条（`表 <表 id> 没有数据行`）。最多 100 条，超出时末条写“还有 n 处未列出”。
+> - **整数列格公式算出小数**：拒因后接“；式里的值：<各操作数> = <值>”（本行的列按列标题，别格按 @行id.列）。
+> - 卡上说明新增三句、改一句（逐字写法为草稿，以回放读数定，见 tools/make_registration.py 的 ADD_240、EDIT_240）。
+> - registration 改了，lock 变，须重新认证。`tests/test_230.py` 比对 main 前先剥 2.4.0 的改动（_strip_240）；test_contribution、test_210、test_220 的 append 用例改按 by-id；table-merge-cases 三例改写、新增一例；新增用例在 tests/test_235.py。
 
 > 2.3.5（mengosv2《逐字稿-table行宽歧义拒因与编号列type吸收-证件与签名一并报-2026-11-22》F1、F2；进模型的文字照立法者 2026-11-22 认可的 F2 r2 原文）：
 > - **F1** 编号列写错 type 静默吸收：numbering outline 一律按 text；seq 只认 integer、text，其余按 integer。不报错、不加 warning，对齐随规范后的 type。原两句拒因删去。
