@@ -2204,7 +2204,9 @@ UNFILLED_MAX = 100
 
 def unfilled(t):
     """未填项清单：每个必填列（required: true，输入列）没有值的格一条（缺席、null、空串）；某张表没有任何数据行也报一条。
-    逐字写法给模型照着在增量里指回去（表 id、行 $id、列 key）；条数超过 UNFILLED_MAX 时末条说明还有多少未列出。"""
+    逐字写法给模型照着在增量里指回去（表 id、行 $id、列 key）；条数超过 UNFILLED_MAX 时末条说明还有多少未列出。
+    次序稳定：按表的次序（写了 sheet_order 按它，否则按 sheets 里的次序）、表内按成表后的行序、行内按列序——引擎只取前 batch_max 条，
+    要先补的表用 sheet_order 排在前面。"""
     out = []
     for sh in t.sheets:
         label = sh.id if sh.id else f"“{sh.name}”"

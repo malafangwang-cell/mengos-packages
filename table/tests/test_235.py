@@ -205,3 +205,31 @@ def test_integer_cell_expr_with_fraction_lists_operand_values(tmp_path):
     r = build(tmp_path, {"title": "T", "columns": cols, "rows": rows}, "ex")
     assert not r["ok"], r
     assert r["error"]["message"] == "格公式“@r1.长度 / 2”算出 3.75，“根数”是整数列；式里的值：@r1.长度 = 7.5"
+
+
+def test_delta_rows_without_id_are_merge_errors_not_silent_appends():
+    """架构线核点①（17 TL-30a）：带 base 的增量里出现数组行或不带 $id 的对象行 ⟹ 合并报错“by-id 元素缺 id”（引擎判 TOOL_FAILED），不静默追加。"""
+    from contribution_ref import MergeError, merge
+    schema = UNITS["table.build"]["signature"]["input_schema"]
+    P = {"table": {"title": "T", "sheets": [{"id": "s1", "columns": ["a"], "rows": [{"$id": "r1", "a": "x"}]}]}}
+    for bad in (["y"], {"a": "y"}):
+        with pytest.raises(MergeError) as ei:
+            merge(schema, P, {"table": {"sheets": [{"id": "s1", "rows": [{"$id": "r2", "a": "z"}, bad]}]}})
+        assert (ei.value.instance_path, ei.value.message) == ("/table/sheets/0/rows", "by-id 元素缺 id")
+
+
+def test_unfilled_order_follows_sheet_order_then_row_order(tmp_path):
+    """架构线核点②：清单按表的次序（写了 sheet_order 按它，否则按 sheets 里的次序）、表内按行序（分组挪行后按成表的次序）稳定输出；
+    引擎只取前 batch_max 条，所以要先补的表放在前面即可。"""
+    cols = [{"key": "k", "title": "件"}, {"key": "q", "title": "数", "type": "integer", "required": True}]
+    def t(order=None):
+        tb = {"title": "T", "sheets": [{"id": "parts", "columns": cols, "rows": [{"$id": "p1", "件": "甲"}, {"$id": "p2", "件": "乙"}]},
+                                       {"id": "layout", "columns": cols, "rows": [{"$id": "l1", "件": "排布"}]}]}
+        if order is not None:
+            tb["sheet_order"] = order
+        return tb
+    a = build(tmp_path, t(), "a")["output"]["unfilled"]
+    assert a == ["表 parts 行 p1 列 q（数）未填", "表 parts 行 p2 列 q（数）未填", "表 layout 行 l1 列 q（数）未填"]
+    b = build(tmp_path, t(["layout", "parts"]), "b")["output"]["unfilled"]
+    assert b == ["表 layout 行 l1 列 q（数）未填", "表 parts 行 p1 列 q（数）未填", "表 parts 行 p2 列 q（数）未填"]
+    assert build(tmp_path, t(["layout", "parts"]), "c")["output"]["unfilled"] == b      # 同一输入两次，次序相同
