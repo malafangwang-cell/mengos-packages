@@ -355,6 +355,10 @@ def _strip_210(node):
                                                         "产出台与 Excel 重算一致；个别取整或比较的边界值可能不一致时会告警，点名到格。"]
 
     def text(t):
+        # 2.3.5（F2-1）：rows 句与 formula 说明先换回 2.3.4 原文（tests/test_230.py 的 ROWS_235，同一张对照表）
+        from test_230 import ROWS_235
+        for new, old in ROWS_235:
+            t = t.replace(new, old)
         t = t.replace("、样式与条件格式）", "）").replace("只写列名时按 sum；", "只写列名时按 sum。")
         for a in added:
             t = t.replace(a.replace('\\"', '"'), "")
@@ -401,7 +405,7 @@ def test_whole_mode_schema_equals_1_0_1_schema_plus_sheet_id():
 def test_build_description_states_the_2_0_0_rules():
     d = BUILD["properties"]["table"]["description"]
     for phrase in ("id 必填", "被公式或合计引用的列必须写 type", "只做 count 的列也要写 type（text 即可）", "格数等于列数",
-                   "有公式列时也可以只写非公式列，格数等于非公式列数", "分批追加行时请用对象行", "改了列要把已有的数组行按新列重写"):
+                   "公式列、编号列的值由工具生成，这两列的格写 null", "分批追加行时请用对象行", "改了列要把已有的数组行按新列重写"):
         assert phrase in d, phrase
 
 
@@ -552,9 +556,9 @@ def test_array_row_length_mismatch_reports_row_number_expected_and_actual(tmp_pa
          "rows": [["1", "2", "3"], ["1", "2"]]}
     r = run("table.build", {"table": t}, tmp_path)
     assert not r["ok"] and r["error"]["code"] == "BAD_INPUT" and r["error"]["where"] == "table.rows[1]", r
-    for s in ("第 2 行", "有 2 格", "表有 3 列", "须等于列数 3（实际 2）"):
+    for s in ("第 2 行", "有 2 格", "这张表有 3 列", "数组行每列一格"):   # 2.3.5（F2-2）：拒因只陈述规则
         assert s in r["error"]["message"], (s, r["error"]["message"])
-    assert "对象行" in r["error"]["hint"]
+    assert "写成对象" in r["error"]["hint"]
 
 
 def test_short_array_row_is_not_padded_with_null(tmp_path):
@@ -564,7 +568,7 @@ def test_short_array_row_is_not_padded_with_null(tmp_path):
     for i, row in enumerate(([1], [1, 2], [1, 2, None, "x", "y"])):
         r = run("table.build", {"table": {"title": "T", "columns": cols, "rows": [row]}}, tmp_path, f"r{i}")
         assert not r["ok"] and r["error"]["where"] == "table.rows[0]", (row, r)
-        assert f"须等于列数 4，或等于非公式列数 3（实际 {len(row)}）" in r["error"]["message"], r["error"]["message"]
+        assert f"第 1 行有 {len(row)} 格，这张表有 4 列；数组行每列一格" == r["error"]["message"], r["error"]["message"]   # 2.3.5（F2-2）
     ok = run("table.build", {"table": {"title": "T", "columns": cols, "rows": [[1, 2, "x"], [1, 2, None, "y"]]}}, tmp_path, "ok")
     assert ok["ok"], ok   # 等于列数，或等于非公式列数（1.0.1 起的写法）
 

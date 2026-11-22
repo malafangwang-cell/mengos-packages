@@ -5,7 +5,8 @@
   输入信封：{"tool": "table.build", "payload": {...}, "budget": {"timeout_ms": 60000}, "workdir": "/abs/dir"}
            也接受裸载荷 + 命令行参数：table_tool.py table.build [--workdir DIR]
   输出：{"ok": true, "output": {...}}
-       {"ok": false, "error": {"code": "BAD_INPUT|RESOURCE_LIMIT|TIMEOUT|INTERNAL", "message": "...", "where"?: "...", "line"?: n, "hint"?: "..."}}
+       {"ok": false, "error": {"code": "BAD_INPUT|RESOURCE_LIMIT|TIMEOUT|INTERNAL", "message": "...", "where"?: "...", "line"?: n, "hint"?: "...", "errors"?: [{"message", "where"?, "hint"?}…]}}
+       （2.3.5：同一张表的列 type 声明、逐行行宽、逐格内容彼此独立的输入错误一次报全；首个照旧填 message/where/hint，不止一处时 errors 列出全部）
 
 文件产出（TL-9a）：
   · 引擎每次调用给一个新建的空目录 workdir；执行体只往这里写。
@@ -59,7 +60,7 @@ def _emit(obj) -> None:
     sys.stdout.flush()
 
 
-def _fail(code, message, where=None, line=None, hint=None) -> dict:
+def _fail(code, message, where=None, line=None, hint=None, errors=None) -> dict:
     e = {"code": code, "message": message}
     if where is not None:
         e["where"] = where
@@ -67,6 +68,8 @@ def _fail(code, message, where=None, line=None, hint=None) -> dict:
         e["line"] = line
     if hint:
         e["hint"] = hint
+    if errors:
+        e["errors"] = errors          # 2.3.5：同一张表彼此独立的几处输入错误（首个照旧在上面），每条 {message, where?, hint?}
     return {"ok": False, "error": e}
 
 
@@ -300,7 +303,7 @@ def run(envelope, tool_from_argv=None, workdir_from_argv=None) -> dict:
     except _Timeout:
         return _fail("TIMEOUT", f"超过 {timeout_ms} ms")
     except BadInput as e:
-        return _fail("BAD_INPUT", str(e), e.where, getattr(e, "line", None), e.hint)
+        return _fail("BAD_INPUT", str(e), e.where, getattr(e, "line", None), e.hint, getattr(e, "errors", None))
     except ResourceLimit as e:
         return _fail("RESOURCE_LIMIT", str(e))
     except RecursionError:
