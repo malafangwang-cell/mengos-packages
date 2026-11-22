@@ -661,10 +661,12 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
             raise BadInput("thousands 只用于数值列", f"{where}.columns[{j}].thousands")
         if c.date_format is not None and c.type != "date":
             raise BadInput("date_format 只用于日期列", f"{where}.columns[{j}].date_format")
+        # 2.3.5（F1）：编号列的值一律由工具重编，numbering 的种类已经决定这一列存什么；type 写错不报，按 numbering 规范
+        #   （outline → text；seq 只认 integer、text，其余 → integer）。入参里留着模型写的 type，表模型里是规范后的 type
         if c.numbering == "outline" and c.type != "text":
-            raise BadInput("层级编号（numbering outline）存为文字，type 写 text 或不写", f"{where}.columns[{j}].type")
+            c.type = "text"
         if c.numbering == "seq" and c.type not in ("integer", "text"):
-            raise BadInput("序号（numbering seq）的 type 写 integer 或 text", f"{where}.columns[{j}].type")
+            c.type = "integer"
         if c.numbering is not None and c.formula is not None:
             raise BadInput("编号列由工具生成，不能再写 formula", f"{where}.columns[{j}].numbering")
         if c.type is not None:
@@ -839,7 +841,10 @@ def _row(r, where, sh, plain, t, from_model, ri):
                     _formula_given(t, where, c)
                 out[j] = None
         return out
-    if len(r) == len(plain) and len(plain) < n:
+    # 2.3.5（F2-3）：公式列数 f 与编号列数 m 都 ≥ 1 且相等时，宽度 n − f 既是“不写公式列”也是“不写编号列”，两种对位不同，有歧义 ⟹ 拒
+    f, m = n - len(plain), sum(1 for c in sh.columns if c.numbering is not None)
+    ambiguous = f >= 1 and m >= 1 and f == m
+    if len(r) == len(plain) and len(plain) < n and not ambiguous:
         out = [None] * n
         for j, v in zip(plain, r):
             c = sh.columns[j]
@@ -857,11 +862,8 @@ def _row(r, where, sh, plain, t, from_model, ri):
         for j, v in zip(inputs, r):
             out[j] = v
         return out
-    want = f"列数 {n}" if len(plain) == n else f"列数 {n}，或等于非公式列数 {len(plain)}"
-    if len(inputs) < len(plain):
-        want += f"，或等于输入列数 {len(inputs)}（不含公式列与编号列）"
-    raise BadInput(f"第 {ri + 1} 行有 {len(r)} 格，表有 {n} 列：数组行的格数须等于{want}（实际 {len(r)}）", where,
-                   "空格子写 null；分批追加行请用对象行（列的 key 或标题 → 值）；改了列要把已有的数组行按新列重写")
+    raise BadInput(f"第 {ri + 1} 行有 {len(r)} 格，这张表有 {n} 列；数组行每列一格", where,
+                   "公式列、编号列的格写 null；行也可以写成对象（列的 key 或标题 → 值）；改了列要把已有的数组行按新列重写")
 
 
 def _formula_given(t, where, c):

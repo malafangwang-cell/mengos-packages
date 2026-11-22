@@ -547,7 +547,9 @@ case("t5_02_insert_shifts", "T5-02 在 1.1 与 1.2 之间插一行后，后面�
                 "rows": [["组件", "甲"]] + [["子件", f"子{i}"] for i in range(1, 11)] + [["组件", "乙"]]}},
      {"model": {"sheets[0].rows[2][0]": "1.2", "sheets[0].rows[10][0]": "1.10", "sheets[0].rows[11][0]": "2"}})
 case("t2_02_seq_after_delete", "T2-02 删掉文件柜（整表重写）：序号由工具连续编 1–7，合计 34380（G8 seq）", "table.build",
-     A(rows=[r for r in A_ROWS if r[1] != "文件柜"], columns=[{**A_COLS[0], "numbering": "seq"}, *A_COLS[1:]]),
+     # 2.3.5（F2-3）：公式列 1、编号列 1，宽 8 的数组行有歧义（不写公式列 / 不写编号列）改判为拒；照新卡改写成全宽，公式列的格写 null。
+     #   序号格仍写原值（工具不用，照旧 formula_value_ignored），期望不变
+     A(rows=[r[:6] + [None] + r[6:] for r in A_ROWS if r[1] != "文件柜"], columns=[{**A_COLS[0], "numbering": "seq"}, *A_COLS[1:]]),
      {"model": {"sheets[0].rows[2][0]": "3", "sheets[0].rows[2][1]": "投影仪", "sheets[0].rows[6][0]": "7"},
       "sheets[0].totals[0].value": "34380", "warning_codes": ["formula_value_ignored"]})
 # —— G9 合并

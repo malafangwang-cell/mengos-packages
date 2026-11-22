@@ -28,12 +28,25 @@ BOM = {"title": "物料", "columns": [{"key": "name", "title": "名称"}, {"key"
 REF_ADD_233 = ["格里的值取自某张回执时，写 {\"$ref\": \"回执id#路径\"} 代替它：回执id 照输入材料里那张回执的 id 原样写；路径从回执顶层起照键名逐层写，每层前面写一个 /，所以路径以 / 开头；数组写序号（从 0 起）。"]
 
 
+# 2.3.5（mengosv2 逐字稿 F2-1，立法者 2026-11-22 认可）：rows 句三件统一（check/export 补对象行一句），formula 说明去“行里不用写”。
+#   比对前换回 2.3.4 原文（check/export 的长句先换）
+ROWS_NEW = "rows 每行一个数组，按 columns 的顺序每列一格，格数等于列数；每格是字符串、数字、true/false 或 null（空格子）；公式列、编号列的值由工具生成，这两列的格写 null。"
+ROWS_235 = [
+    (ROWS_NEW + "行也可以写成对象（列的 key 或标题 → 值），缺的格子为空。",
+     "rows 每行一个数组，按列的顺序，每格是字符串、数字、true/false 或 null（空格子）；有公式列时可以只写非公式列。"),
+    (ROWS_NEW, "rows 每行一个数组，按列的顺序，格数等于列数；有公式列时也可以只写非公式列，格数等于非公式列数；每格是字符串、数字、true/false 或 null（空格子）。"),
+    ("公式列的值由工具算）。", "公式列的值由工具算，行里不用写）。"),
+]
+
+
 def _strip_232(schema):
     """2.3.2、2.3.3（mengosv2 工单 P4）只改 table 字段说明两处：编号列那句前加“序号、”（P5 B2）；加引用写法一句（P5 B1，2.3.3）。去掉这两处后与 2.2.0 逐键相同。"""
     s = json.loads(json.dumps(schema, ensure_ascii=False))
     t = s.get("properties", {}).get("table")
     if t and "description" in t:
         d = t["description"]
+        for new, old in ROWS_235:
+            d = d.replace(new, old)
         for a in REF_ADD_233:
             d = d.replace(a, "")
         t["description"] = d.replace("；序号、编号列写 numbering", "；编号列写 numbering")
