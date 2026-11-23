@@ -1,0 +1,272 @@
+{
+  "family": "rack",
+  "family_version": "0.5.0",
+  "lock_hash": "d91d31d674a7fe17",
+  "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。rack.layout 是本规范包 G2、G3、G5、G6 的可执行形态（设计-域包排布计算工具 r1–r3），与条文同包同 lock；入参在数量位置（from_drawing 标 x-mengos-count，17 TL-30c），出参只有 computed 之下的整数可引用（17 TL-30d）。",
+  "units": [
+    {
+      "tool_id": "rack.layout",
+      "version": "d91d31d674a7fe17",
+      "trust_claim": "T1",
+      "effect": "none",
+      "executor": {
+        "kind": "process",
+        "entry": "rack_tool.py",
+        "mode": "sync"
+      },
+      "cost": {
+        "latency": 100,
+        "price": 0,
+        "timeout": 10000
+      },
+      "input_example": {
+        "from_drawing": {
+          "run_length": 27600,
+          "column_pitch": 2760,
+          "level_segments": 4,
+          "beam_clear": 2700,
+          "zones": {
+            "甲": {
+              "pallets": 800,
+              "pallet_plan_a": 1200,
+              "pallet_plan_b": 1000
+            },
+            "乙": {
+              "pallets": 400,
+              "pallet_plan_a": 1000,
+              "pallet_plan_b": 1000
+            }
+          }
+        }
+      },
+      "signature": {
+        "input_schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "from_drawing"
+          ],
+          "properties": {
+            "from_drawing": {
+              "type": "object",
+              "additionalProperties": false,
+              "x-mengos-count": true,
+              "description": "从工程图读出的量。每一项写已有回执里那个值的引用；还没有回执的项不写。长度都以毫米计。",
+              "properties": {
+                "columns_read": {
+                  "description": "主视图总长尺寸写成“列数*列距=总长”时照读的列数。给了它，列数就按它算。"
+                },
+                "run_length": {
+                  "description": "沿巷道方向的总长。没有照读的列数时，列数由总长除以列距得出，与 column_pitch 一起给。"
+                },
+                "column_pitch": {
+                  "description": "列距，与 run_length 一起给。"
+                },
+                "level_segments": {
+                  "description": "层间距的段数：同一条竖向尺寸链上等于层间距的尺寸有几条。写数行回执里的条数，路径写 /count。"
+                },
+                "beam_clear": {
+                  "description": "横梁净长 CE：货格图上显示文字以 CE 开头的那条尺寸的值。"
+                },
+                "zones": {
+                  "type": "object",
+                  "description": "各托盘区，一区一项。键写区名，与事实表里这个区的叫法相同，1–32 字，斜杠、波浪号、井号以外的字都可以用；值写这个区的托盘数和托盘的两个平面尺寸。",
+                  "maxProperties": 20,
+                  "propertyNames": {
+                    "pattern": "^[^/~#]{1,32}$"
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "pallets": {
+                        "description": "这个区的托盘数。"
+                      },
+                      "pallet_plan_a": {
+                        "description": "这个区托盘的一个平面尺寸；另一个写在 pallet_plan_b，先写哪个都可以。"
+                      },
+                      "pallet_plan_b": {
+                        "description": "这个区托盘的另一个平面尺寸。"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "description": "要得到立库货架的列数、每排立柱片数、横梁层数，以及各托盘区的每格每层托盘数、排数、双深位组数、巷道数和合计时用：按本规范的推算规则，由读图得到的量算出。每个入参写一张已有回执里那个值的引用；引用写成 {\"$ref\": \"#/values/<名字>/value\"}：# 后面是这个值在回执里的位置，程序按位置找到给出它的那张回执。有两张回执在同一位置给出不同的值时，在 # 前面写上回执节点 id。还没有回执的入参不写。拿回算出的各项，可以在产物里引用；其余各项逐项列出还缺哪些入参。"
+        },
+        "output_schema": {
+          "type": "object",
+          "required": [
+            "computed",
+            "not_computed",
+            "steps",
+            "assumptions"
+          ],
+          "properties": {
+            "computed": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "columns": {
+                  "type": "integer",
+                  "x-mengos-ref": true
+                },
+                "frames_per_row": {
+                  "type": "integer",
+                  "x-mengos-ref": true
+                },
+                "levels": {
+                  "type": "integer",
+                  "x-mengos-ref": true
+                },
+                "zones": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "pallets_per_cell": {
+                        "type": "integer",
+                        "x-mengos-ref": true
+                      },
+                      "rows": {
+                        "type": "integer",
+                        "x-mengos-ref": true
+                      },
+                      "groups": {
+                        "type": "integer",
+                        "x-mengos-ref": true
+                      },
+                      "aisles": {
+                        "type": "integer",
+                        "x-mengos-ref": true
+                      }
+                    }
+                  }
+                },
+                "total": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "rows": {
+                      "type": "integer",
+                      "x-mengos-ref": true
+                    },
+                    "groups": {
+                      "type": "integer",
+                      "x-mengos-ref": true
+                    },
+                    "aisles": {
+                      "type": "integer",
+                      "x-mengos-ref": true
+                    }
+                  }
+                }
+              }
+            },
+            "not_computed": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "item",
+                  "reason",
+                  "needs"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "item": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "needs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "item",
+                  "clause",
+                  "formula",
+                  "operands",
+                  "result"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "item": {
+                    "type": "string"
+                  },
+                  "clause": {
+                    "type": "string"
+                  },
+                  "formula": {
+                    "type": "string"
+                  },
+                  "operands": {
+                    "type": "object"
+                  },
+                  "result": {},
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "capability": {
+        "ops": [
+          "compute"
+        ],
+        "in_types": [],
+        "out_types": [
+          "rack_layout_receipt"
+        ],
+        "constraints": {
+          "deterministic": true,
+          "network": "none",
+          "model_calls": 0,
+          "max_zones": 20
+        },
+        "examples": [
+          {
+            "input": "按读图回执算立库货架的层数与各托盘区的排数",
+            "output": "给出层数、各区每格每层托盘数与排数，可在产物里引用"
+          },
+          {
+            "input": "读图回执还不全，先算能算的排布事实",
+            "output": "给出算出的各项；其余各项列出还缺哪些入参"
+          },
+          {
+            "input": "两个托盘区，求各区与合计的双深位组数和巷道数",
+            "output": "给出各区与合计的组数、巷道数；算不出的一区逐项说明原因"
+          }
+        ],
+        "non_goals": [
+          "不读图",
+          "不换算单位",
+          "不取整凑数"
+        ]
+      }
+    }
+  ]
+}

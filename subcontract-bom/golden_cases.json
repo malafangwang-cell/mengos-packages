@@ -1,0 +1,1038 @@
+[
+  {
+    "id": "P0-正例",
+    "tool": "rack.layout",
+    "clause": "G2 G3 G5 G6",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2,
+            "rows": 4,
+            "groups": 2,
+            "aisles": 1
+          }
+        },
+        "total": {
+          "rows": 12,
+          "groups": 6,
+          "aisles": 3
+        }
+      },
+      "not_computed": {}
+    }
+  },
+  {
+    "id": "N0-照读列数",
+    "tool": "rack.layout",
+    "clause": "G2",
+    "payload": {
+      "from_drawing": {
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        },
+        "columns_read": 10
+      }
+    },
+    "expect": {
+      "computed": {
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2,
+            "rows": 4,
+            "groups": 2,
+            "aisles": 1
+          }
+        },
+        "total": {
+          "rows": 12,
+          "groups": 6,
+          "aisles": 3
+        }
+      },
+      "not_computed": {}
+    }
+  },
+  {
+    "id": "N0b-照读与总长不自洽",
+    "tool": "rack.layout",
+    "clause": "G2",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27000,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        },
+        "columns_read": 10
+      }
+    },
+    "expect": {
+      "computed": {
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2,
+            "rows": 4,
+            "groups": 2,
+            "aisles": 1
+          }
+        },
+        "total": {
+          "rows": 12,
+          "groups": 6,
+          "aisles": 3
+        }
+      },
+      "not_computed": {}
+    },
+    "expect_step_note": "columns"
+  },
+  {
+    "id": "N0c-两区托盘规格不同",
+    "tool": "rack.layout",
+    "clause": "G5",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1500,
+            "pallet_plan_b": 1400
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          },
+          "乙": {
+            "pallets_per_cell": 1,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          }
+        },
+        "total": {
+          "rows": 16,
+          "groups": 8,
+          "aisles": 4
+        }
+      },
+      "not_computed": {}
+    }
+  },
+  {
+    "id": "N1-平面尺寸次序对调",
+    "tool": "rack.layout",
+    "clause": "G5",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1200
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2,
+            "rows": 4,
+            "groups": 2,
+            "aisles": 1
+          }
+        },
+        "total": {
+          "rows": 12,
+          "groups": 6,
+          "aisles": 3
+        }
+      },
+      "not_computed": {}
+    }
+  },
+  {
+    "id": "N2-横梁净长差一点不够两个",
+    "tool": "rack.layout",
+    "clause": "G5",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 1999,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 1,
+            "rows": 16,
+            "groups": 8,
+            "aisles": 4
+          },
+          "乙": {
+            "pallets_per_cell": 1,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          }
+        },
+        "total": {
+          "rows": 24,
+          "groups": 12,
+          "aisles": 6
+        }
+      },
+      "not_computed": {}
+    }
+  },
+  {
+    "id": "N3-横梁净长放不下一个",
+    "tool": "rack.layout",
+    "clause": "G5",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 900,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5
+      },
+      "not_computed": {
+        "zones/甲/pallets_per_cell": [],
+        "zones/甲/rows": [],
+        "zones/甲/groups": [],
+        "zones/甲/aisles": [],
+        "zones/乙/pallets_per_cell": [],
+        "zones/乙/rows": [],
+        "zones/乙/groups": [],
+        "zones/乙/aisles": [],
+        "total/rows": [],
+        "total/groups": [],
+        "total/aisles": []
+      }
+    }
+  },
+  {
+    "id": "N4-总长除不尽列距",
+    "tool": "rack.layout",
+    "clause": "G2",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27000,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2
+          }
+        }
+      },
+      "not_computed": {
+        "columns": [],
+        "frames_per_row": [],
+        "zones/甲/rows": [],
+        "zones/甲/groups": [],
+        "zones/甲/aisles": [],
+        "zones/乙/rows": [],
+        "zones/乙/groups": [],
+        "zones/乙/aisles": [],
+        "total/rows": [],
+        "total/groups": [],
+        "total/aisles": []
+      }
+    }
+  },
+  {
+    "id": "N5-托盘数除不尽",
+    "tool": "rack.layout",
+    "clause": "G5",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 810,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2,
+            "rows": 4,
+            "groups": 2,
+            "aisles": 1
+          }
+        }
+      },
+      "not_computed": {
+        "zones/甲/rows": [],
+        "zones/甲/groups": [],
+        "zones/甲/aisles": [],
+        "total/rows": [],
+        "total/groups": [],
+        "total/aisles": []
+      }
+    }
+  },
+  {
+    "id": "N6-排数为奇数",
+    "tool": "rack.layout",
+    "clause": "G6",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 300,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2,
+            "rows": 3
+          }
+        },
+        "total": {
+          "rows": 11
+        }
+      },
+      "not_computed": {
+        "zones/乙/groups": [],
+        "zones/乙/aisles": [],
+        "total/groups": [],
+        "total/aisles": []
+      }
+    }
+  },
+  {
+    "id": "N7-组数为奇数",
+    "tool": "rack.layout",
+    "clause": "G6",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 600,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2,
+            "rows": 6,
+            "groups": 3
+          },
+          "乙": {
+            "pallets_per_cell": 2,
+            "rows": 4,
+            "groups": 2,
+            "aisles": 1
+          }
+        },
+        "total": {
+          "rows": 10,
+          "groups": 5
+        }
+      },
+      "not_computed": {
+        "zones/甲/aisles": [],
+        "total/aisles": []
+      }
+    }
+  },
+  {
+    "id": "N8-缺层间距段数",
+    "tool": "rack.layout",
+    "clause": "G3",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2
+          }
+        }
+      },
+      "not_computed": {
+        "levels": [
+          "level_segments"
+        ],
+        "zones/甲/rows": [
+          "level_segments"
+        ],
+        "zones/甲/groups": [
+          "level_segments"
+        ],
+        "zones/甲/aisles": [
+          "level_segments"
+        ],
+        "zones/乙/rows": [
+          "level_segments"
+        ],
+        "zones/乙/groups": [
+          "level_segments"
+        ],
+        "zones/乙/aisles": [
+          "level_segments"
+        ],
+        "total/rows": [
+          "level_segments"
+        ],
+        "total/groups": [
+          "level_segments"
+        ],
+        "total/aisles": [
+          "level_segments"
+        ]
+      }
+    }
+  },
+  {
+    "id": "N9-只给一个区",
+    "tool": "rack.layout",
+    "clause": "G6",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          }
+        },
+        "total": {
+          "rows": 8,
+          "groups": 4,
+          "aisles": 2
+        }
+      },
+      "not_computed": {}
+    }
+  },
+  {
+    "id": "N10-一个入参都不给",
+    "tool": "rack.layout",
+    "clause": "—",
+    "payload": {
+      "from_drawing": {}
+    },
+    "expect_error": "BAD_INPUT"
+  },
+  {
+    "id": "N11-列距为零",
+    "tool": "rack.layout",
+    "clause": "G2",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 0,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2
+          }
+        }
+      },
+      "not_computed": {
+        "columns": [],
+        "frames_per_row": [],
+        "zones/甲/rows": [],
+        "zones/甲/groups": [],
+        "zones/甲/aisles": [],
+        "zones/乙/rows": [],
+        "zones/乙/groups": [],
+        "zones/乙/aisles": [],
+        "total/rows": [],
+        "total/groups": [],
+        "total/aisles": []
+      }
+    }
+  },
+  {
+    "id": "N12-确定性",
+    "tool": "rack.layout",
+    "clause": "—",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2,
+            "rows": 4,
+            "groups": 2,
+            "aisles": 1
+          }
+        },
+        "total": {
+          "rows": 12,
+          "groups": 6,
+          "aisles": 3
+        }
+      },
+      "not_computed": {}
+    },
+    "repeat": 2
+  },
+  {
+    "id": "R3a-只给一部分入参",
+    "tool": "rack.layout",
+    "clause": "r3 (c)2",
+    "payload": {
+      "from_drawing": {
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "levels": 5
+      },
+      "not_computed": {
+        "columns": [
+          "run_length"
+        ],
+        "frames_per_row": [
+          "run_length"
+        ],
+        "zones/甲/pallets_per_cell": [
+          "beam_clear"
+        ],
+        "zones/乙/pallets_per_cell": [
+          "beam_clear"
+        ],
+        "zones/甲/rows": [
+          "run_length",
+          "beam_clear"
+        ],
+        "zones/甲/groups": [
+          "run_length",
+          "beam_clear"
+        ],
+        "zones/甲/aisles": [
+          "run_length",
+          "beam_clear"
+        ],
+        "zones/乙/rows": [
+          "run_length",
+          "beam_clear"
+        ],
+        "zones/乙/groups": [
+          "run_length",
+          "beam_clear"
+        ],
+        "zones/乙/aisles": [
+          "run_length",
+          "beam_clear"
+        ],
+        "total/rows": [
+          "run_length",
+          "beam_clear"
+        ],
+        "total/groups": [
+          "run_length",
+          "beam_clear"
+        ],
+        "total/aisles": [
+          "run_length",
+          "beam_clear"
+        ]
+      }
+    }
+  },
+  {
+    "id": "R3b-缺一区托盘数",
+    "tool": "rack.layout",
+    "clause": "r3 (c)2",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2,
+            "rows": 4,
+            "groups": 2,
+            "aisles": 1
+          }
+        }
+      },
+      "not_computed": {
+        "zones/甲/rows": [
+          "zones/甲/pallets"
+        ],
+        "zones/甲/groups": [
+          "zones/甲/pallets"
+        ],
+        "zones/甲/aisles": [
+          "zones/甲/pallets"
+        ],
+        "total/rows": [
+          "zones/甲/pallets"
+        ],
+        "total/groups": [
+          "zones/甲/pallets"
+        ],
+        "total/aisles": [
+          "zones/甲/pallets"
+        ]
+      }
+    }
+  },
+  {
+    "id": "R3c-数以字符串送达",
+    "tool": "rack.layout",
+    "clause": "TL-30c",
+    "payload": {
+      "from_drawing": {
+        "run_length": "27600.0",
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": "2700",
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        }
+      }
+    },
+    "expect": {
+      "computed": {
+        "columns": 10,
+        "frames_per_row": 11,
+        "levels": 5,
+        "zones": {
+          "甲": {
+            "pallets_per_cell": 2,
+            "rows": 8,
+            "groups": 4,
+            "aisles": 2
+          },
+          "乙": {
+            "pallets_per_cell": 2,
+            "rows": 4,
+            "groups": 2,
+            "aisles": 1
+          }
+        },
+        "total": {
+          "rows": 12,
+          "groups": 6,
+          "aisles": 3
+        }
+      },
+      "not_computed": {}
+    }
+  },
+  {
+    "id": "S1-入参外的键",
+    "tool": "rack.layout",
+    "clause": "签名",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          }
+        },
+        "aisle_width": 3000
+      }
+    },
+    "expect_error": "BAD_INPUT"
+  },
+  {
+    "id": "S2-区名带斜杠",
+    "tool": "rack.layout",
+    "clause": "签名",
+    "payload": {
+      "from_drawing": {
+        "run_length": 27600,
+        "column_pitch": 2760,
+        "level_segments": 4,
+        "beam_clear": 2700,
+        "zones": {
+          "甲": {
+            "pallets": 800,
+            "pallet_plan_a": 1200,
+            "pallet_plan_b": 1000
+          },
+          "乙": {
+            "pallets": 400,
+            "pallet_plan_a": 1000,
+            "pallet_plan_b": 1000
+          },
+          "丙/丁": {
+            "pallets": 1
+          }
+        }
+      }
+    },
+    "expect_error": "BAD_INPUT"
+  }
+]
