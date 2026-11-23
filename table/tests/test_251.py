@@ -52,8 +52,9 @@ def test_without_count_attribute_unchanged(tmp_path):
     cols = [COLS[0], {"key": "val", "title": "值", "type": "number"}]
     r = call(tmp_path, [{"$id": "x", "项名": "列数", "值": 10}], cols)
     assert r["ok"] and r["output"]["unfilled"] == []
-    bad = call(tmp_path, [{"$id": "x", "项名": "列数", "值": 10, "$count": {"值": 10}}], cols, "b")
-    assert bad["ok"] is False and "各写了一处" in json.dumps(bad["error"], ensure_ascii=False)
+    # 2.5.3：写进过 $count 的列按 count 列对待，两处都写时以 $count 为准（原先报“各写了一处”）
+    both = call(tmp_path, [{"$id": "x", "项名": "列数", "值": 999, "$count": {"值": 10}}], cols, "b")
+    assert both["ok"] and both["output"]["unfilled"] == [], both
 
 
 def test_count_column_both_places_count_wins(tmp_path):

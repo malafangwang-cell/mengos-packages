@@ -30,6 +30,15 @@ def test_csv_injection_neutralized(tmp_path):
     ({"title": "x", "columns": ["a", {"title": "b", "formula": "a+"}], "rows": [[1]]}, "公式"),
     ({"title": "x", "columns": [{"title": "a", "type": "text"}, {"title": "b", "formula": "a*2"}], "rows": [["q"]]}, "数值"),
     ({"title": "x", "columns": [{"title": "a", "type": "integer"}, {"title": "b", "formula": "zz*2"}], "rows": [[1]]}, "zz"),
+])
+def test_bad_formula_column_kept_as_plain_column(t, frag, tmp_path):
+    """2.5.3：列公式写不通时不整件拒——这一列当普通列收下，原因（带公式原文与拒因）进未填项"""
+    r = _run("table.build", {"table": t}, tmp_path)
+    assert r["ok"], r
+    assert any("没有用上" in u and frag in u for u in r["output"]["unfilled"]), r
+
+
+@pytest.mark.parametrize("t,frag", [
     ({"title": "x", "columns": [{"title": "a", "type": "integer"}], "rows": [["abc"]]}, None),
 ])
 def test_bad_input_has_location(t, frag, tmp_path):

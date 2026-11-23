@@ -44,8 +44,9 @@ def test_blank_bad_shape(tmp_path, v):
 
 def test_blank_only_for_count_columns(tmp_path):
     cols = [{"key": "name", "title": "产品名称", "type": "text"}, {"key": "qty", "title": "数量", "type": "integer"}]
+    # 2.5.3：写进过 $count 的列按 count 列对待，所以经 $count 写的 $blank 总在 count 列上，照收
     r = call(tmp_path, [{"$id": "r2", "产品名称": "x", "$count": {"数量": {"$blank": "R2.3"}}}], cols)
-    assert r["ok"] is False and "只用于标了 count 的列" in json.dumps(r["error"], ensure_ascii=False)
+    assert r["ok"] and r["output"]["blanks"] == ["表 total 行 r2 列 qty（数量）按 R2.3 留空"], r
 
 
 def test_blank_with_direct_value_count_wins(tmp_path):

@@ -206,7 +206,7 @@ def _optional(t, expect):
     current = None
     for no, raw in enumerate((expect or "").splitlines(), start=1):
         src = raw.strip()
-        if not src or src.startswith("#"):
+        if not src or src.startswith("#") or src.startswith("cell ") or src.startswith("text "):
             continue
         toks = _tokens(src, no)
         if toks and all(not q and x.startswith("sheet=") for x, q in toks):
@@ -241,6 +241,9 @@ def run_checks(t: Table, expect):
         for no, raw in enumerate(lines, start=1):
             src = raw.strip()
             if not src or src.startswith("#"):
+                continue
+            if src.startswith("cell ") or src.startswith("text "):
+                checks.append(_cell_check(t, no, src))
                 continue
             toks = _tokens(src, no)
             if toks and all(not q and x.startswith("sheet=") for x, q in toks):
@@ -524,3 +527,190 @@ def _exact(vals, fn):
 def overall(checks):
     vs = [c["verdict"] for c in checks]
     return "fail" if "fail" in vs else "unknown" if "unknown" in vs else "pass"
+
+
+# ═══ 2.5.3：两类按格核对的核对项（mengosv2《规格改句草案-规范包核对项经核验判据循环-2026-11-23》§一“甲”）═══
+#   cell <表/行/列> = <算式> [tol=<误差>]      一格的值等于由别的格算出的值
+#   text <表/行/列> = "<模板>"                  一格的文字里含有模板；模板里的 {表/行/列} 代入那一格的值，{=算式} 代入算式的值
+# 格写成 表/行/列：表写表的 id 或表名（表名写前几个字也认）；行写行的 $id，或这一行前三列里某一格的文字（只有一行含这段文字时也认）；
+#   列写列的 key 或标题（列名里可以有 /，表、行两段之后余下的都算列名）。
+# 与稿不同的两处（DXF 本地实验读数定）：行不只认 $id（各次真跑里行 id 各不相同，项名是规范定死的）；
+#   text 判“含有”而不是逐字相等（规格串前半段的截面、厚度各有写法，要核的是其中那个数）。
+# 未过的条目由 failed_items 写成句子，回执 failed（核验接入声明的 report 指向它，17 TL-21a）。
+_CELL_ADDR = re.compile(r"[^\s=+\-*/(),{}\"]+/[^\s=+\-*/(),{}\"]+/[^\s=+\-*(),{}\"]+")
+
+
+def _squash_text(v):
+    import unicodedata
+    return "".join(unicodedata.normalize("NFKC", "" if v is None else str(v)).split())
+
+
+def _locate(t, addr):
+    """表/行/列 → (值, None) 或 (None, 说明)。"""
+    parts = addr.split("/", 2)
+    if len(parts) != 3:
+        return None, f"“{addr}”不是 表/行/列 的写法"
+    sn, rn, cn = (_squash_text(x) for x in parts)
+    sh = None
+    for x in t.sheets:
+        if _squash_text(x.id) == sn or _squash_text(x.name) == sn:
+            sh = x
+            break
+    if sh is None:
+        cands = [x for x in t.sheets if _squash_text(x.name).startswith(sn) or sn.startswith(_squash_text(x.name))]
+        if len(cands) == 1:
+            sh = cands[0]
+    if sh is None:
+        return None, f"没有“{parts[0]}”这张表"
+    col = sh.find(parts[2].strip())
+    if col is None:
+        for c in sh.columns:
+            if _squash_text(c.key) == cn or _squash_text(c.title) == cn:
+                col = c
+                break
+    if col is None:
+        return None, f"表 {parts[0]} 没有“{parts[2]}”这一列"
+    j = sh.columns.index(col)
+    hit = [ri for ri in range(len(sh.rows)) if ri < len(sh.row_ids) and sh.row_ids[ri] is not None and _squash_text(sh.row_ids[ri]) == rn]
+    if not hit:
+        hit = [ri for ri, r in enumerate(sh.rows) if any(_squash_text(v) == rn for v in r[:3])]
+    if not hit:
+        hit = [ri for ri, r in enumerate(sh.rows) if any(isinstance(v, str) and rn in _squash_text(v) for v in r[:3])]
+        if len(hit) > 1:
+            return None, f"表 {parts[0]} 里含“{parts[1]}”的行有 {len(hit)} 行"
+    if not hit:
+        return None, f"表 {parts[0]} 里没有名为“{parts[1]}”的行：新增一行、名字写“{parts[1]}”，已有这一项而名字不同的把名字改成它（行的名字写在这一行的前三列里）"
+    v = sh.rows[hit[0]][j] if j < len(sh.rows[hit[0]]) else None
+    if v is None or (isinstance(v, str) and v.strip() == ""):
+        return None, f"表 {parts[0]} 的“{parts[1]}”行“{parts[2]}”列还是空的"
+    return v, None
+
+
+def _num_text_c(v):
+    d = v if isinstance(v, Decimal) else Decimal(str(v))
+    s = format(d.normalize(), "f")
+    return s
+
+
+def _eval_expr(t, expr):
+    """算式里的格换成值，再按四则与几个函数求值。返回 (Decimal, None) 或 (None, 说明)。"""
+    import ast, math
+    env = {}
+    problems = []
+
+    def sub(m):
+        v, why = _locate(t, m.group(0))
+        if why is not None:
+            problems.append(why)
+            return "0"
+        try:
+            d = v if isinstance(v, Decimal) else Decimal(str(v).replace(",", ""))
+        except Exception:
+            problems.append(f"“{m.group(0)}”这一格不是数（现为“{v}”）")
+            return "0"
+        k = f"v{len(env)}"
+        env[k] = d
+        return k
+    py = _CELL_ADDR.sub(sub, expr)
+    if problems:
+        return None, problems[0]
+    fns = {"round": lambda x, n=0: x.quantize(Decimal(1).scaleb(-int(n)), rounding="ROUND_HALF_UP"),
+           "floor": lambda x: Decimal(math.floor(x)), "ceiling": lambda x: Decimal(math.ceil(x)),
+           "rounddown": lambda x, n=0: x.quantize(Decimal(1).scaleb(-int(n)), rounding="ROUND_DOWN"),
+           "roundup": lambda x, n=0: x.quantize(Decimal(1).scaleb(-int(n)), rounding="ROUND_UP"),
+           "min": min, "max": max, "abs": abs, "sqrt": lambda x: x.sqrt()}
+
+    def ev(n):
+        if isinstance(n, ast.Expression):
+            return ev(n.body)
+        if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)):
+            return Decimal(str(n.value))
+        if isinstance(n, ast.Name) and n.id in env:
+            return env[n.id]
+        if isinstance(n, ast.BinOp) and isinstance(n.op, (ast.Add, ast.Sub, ast.Mult, ast.Div)):
+            a, b = ev(n.left), ev(n.right)
+            return a + b if isinstance(n.op, ast.Add) else a - b if isinstance(n.op, ast.Sub) else a * b if isinstance(n.op, ast.Mult) else a / b
+        if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.USub):
+            return -ev(n.operand)
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in fns:
+            return fns[n.func.id](*[ev(a) for a in n.args])
+        raise ValueError("算式里有认不出的写法")
+    try:
+        return ev(ast.parse(py, mode="eval")), None
+    except ZeroDivisionError:
+        return None, "算式里除数为零"
+    except Exception:
+        return None, "算式写法认不出"
+
+
+def _cell_check(t, line, src):
+    kind = src[:4]
+    base = {"line": line, "src": src, "kind": kind}
+    body = src[5:].strip()
+    if "=" not in body:
+        raise ExpectError(f"{kind} 核对项写成 {kind} 表/行/列 = …", line)
+    left, right = (x.strip() for x in body.split("=", 1))
+    cur, why = _locate(t, left)
+    if kind == "cell":
+        tol = Decimal(0)
+        m = re.search(r"\s+tol=([0-9.]+)\s*$", right)
+        if m:
+            tol = Decimal(m.group(1))
+            right = right[:m.start()].strip()
+        want, why2 = _eval_expr(t, right)
+        if why2 is not None:
+            return {**base, "verdict": "fail", "message": f"{left} 核不了：{why2}"}
+        if why is not None:
+            return {**base, "verdict": "fail", "message": f"{why}；按规范它应等于 {right}，把这一格改成它"}
+        try:
+            got = cur if isinstance(cur, Decimal) else Decimal(str(cur).replace(",", ""))
+        except Exception:
+            return {**base, "verdict": "fail", "message": f"{left} 现为“{cur}”，不是数；按规范它应等于 {right}，把这一格改成它"}
+        if abs(got - want) <= tol:
+            return {**base, "verdict": "pass"}
+        return {**base, "verdict": "fail", "message": f"{left} 现为 {_num_text_c(got)}；按规范它应等于 {right}，把这一格改成它"}
+    tpl = right.strip()
+    if len(tpl) >= 2 and tpl[0] == tpl[-1] == '"':
+        tpl = tpl[1:-1]
+    problems = []
+
+    def fill(m):
+        if m.group(1).startswith("="):          # {=算式}：代入算式的值
+            v, w = _eval_expr(t, m.group(1)[1:])
+            if w is not None:
+                problems.append(w)
+                return ""
+            return _num_text_c(v)
+        v, w = _locate(t, m.group(1))
+        if w is not None:
+            problems.append(w)
+            return ""
+        try:
+            return _num_text_c(v if isinstance(v, Decimal) else Decimal(str(v)))
+        except Exception:
+            return str(v)
+    want = re.sub(r"\{([^{}]+)\}", fill, tpl)
+    if problems:
+        return {**base, "verdict": "fail", "message": f"{left} 核不了：{problems[0]}"}
+    if why is not None:
+        return {**base, "verdict": "fail", "message": f"{why}；按规范这一格里应有“{want}”，把这一格改成含它的写法"}
+    if _squash_text(want) in _squash_text(cur):
+        return {**base, "verdict": "pass"}
+    return {**base, "verdict": "fail", "message": f"{left} 现为“{cur}”；按规范这一格里应有“{want}”（按 {'、'.join(x.lstrip('=') for x in re.findall(r'[{]([^{}]+)[}]', tpl)) or '规范'}），把这一格改成含它的写法"}
+
+
+def failed_items(checks):
+    """回执 failed：未过的按格核对项（cell、text），每句写明哪一格、现值、按规范应是什么。同一行（表/行）的几条并成一句，
+    用“；”相接——下一轮只看得到前几条，一行的数量、规格、图纸号分成三条会占掉三个位置（DXF 本地实验 r17y）。
+    其余种类的核对项不进这里（它们的问题在 checks 里）。"""
+    groups, order = {}, []
+    for c in checks:
+        if c.get("kind") not in ("cell", "text") or c["verdict"] != "fail" or not c.get("message"):
+            continue
+        left = c["src"][5:].split("=", 1)[0].strip()
+        key = "/".join(left.split("/")[:2])
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(c["message"])
+    return ["；".join(groups[k]) for k in order]

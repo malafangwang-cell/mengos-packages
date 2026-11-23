@@ -298,7 +298,7 @@ class Sheet:
     __slots__ = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols", "formula_errors",
                  "header_style", "rules", "row_styles", "displays", "raw", "_styles",
                  "row_ids", "exprs", "outline_from", "levels", "group", "subtotals", "merge_rows", "derive",
-                 "layout", "merged", "derive_src", "_spec", "_where", "_index", "expr_nodes", "src", "count_miss", "count_blank")
+                 "layout", "merged", "derive_src", "_spec", "_where", "_index", "expr_nodes", "src", "count_miss", "count_blank", "dropped")
 
     def col(self, key):
         return next(c for c in self.columns if c.key == key)
@@ -640,6 +640,7 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     sh._spec, sh._where = s, where
     sh.row_ids, sh.exprs, sh.expr_nodes, sh.src = [], {}, {}, None
     sh.count_blank = {}            # 2.5.2：count 列按规范留空的格 {(入参行序号, 列序号): 条文号}
+    sh.dropped = []                # 2.5.3：收下这张表时没有用上的部分（写错列名的格、写不通的列公式），每处一句，进回执 unfilled
     sh.count_miss = set()          # 2.5.1：count 列里不是经 $count 写入的格 {(入参行序号, 列序号)}，值不进表、进未填项
     sh.outline_from = sh.levels = sh.group = sh.merge_rows = sh.derive = None
     sh.subtotals, sh.layout, sh.merged, sh.derive_src = [], [], [], {}
@@ -906,7 +907,16 @@ def _apply_count(r, where, sh, ri):
         for k, v in cnt.items():
             c = sh.find(k) if isinstance(k, str) else None
             if c is None:
-                raise BadInput(f"{COUNT_KEY} 里有表里没有的列：{k}", f"{where}.{COUNT_KEY}", "键要与列的 key 或标题相同")
+                # 2.5.3：$count 里写了表里没有的列 ⟹ 这一格不收、原因进未填项，其余照收，不整件拒
+                #   （DXF 本地实验：事实表的值列叫“值”，增量里写成“数量”，整件表因此被拒）
+                _drop_unknown_column(sh, r.get(ID_KEY) if isinstance(r, dict) else None, k)
+                cnt = {kk: vv for kk, vv in cnt.items() if kk != k}
+                continue
+            if not getattr(c, "count", False) and c.formula is None and c.numbering is None:
+                # 2.5.3：某一列的格写进过 $count ⟹ 这一列按 count 列、必填对待——
+                #   模型建表时常不写 required/count，只在行里用 $count；不这样认，被置空的格不进未填项，空表会被当成交齐。
+                c.count = True
+                c.required = True
             if id(c) in direct:
                 if getattr(c, "count", False):
                     rest.pop(direct[id(c)])
@@ -973,7 +983,10 @@ def _row_inner(r, where, sh, plain, t, from_model, ri):
         for k, v in r.items():
             c = sh.find(k) if isinstance(k, str) else None
             if c is None:
-                raise BadInput(f"这一行有表里没有的列：{k}", where, "对象写法的键要与列的 key 或标题相同")
+                # 2.5.3：对象行里写了表里没有的列 ⟹ 这一格不收、原因进未填项，其余照收，不整件拒
+                #   （DXF 本地实验：五金表一行多写了“规格”，整件五张表被拒）
+                _drop_unknown_column(sh, rid, k)
+                continue
             j = sh.columns.index(c)
             if _is_expr(v) and (c.formula is not None or c.numbering is not None):
                 raise BadInput(f"“{c.title}”是{'公式列' if c.formula else '编号列'}，格里不能写 {EXPR_KEY}", f"{where}.{k}",
@@ -2073,7 +2086,13 @@ def _formulas(sh, where, t):
             c.node = F.parse(c.formula, _resolver(sh, j), None, _qresolver(t, sh))
             k = F.kind_of(c.node, kinds)
         except F.FormulaError as e:
-            raise BadInput(f"公式“{c.formula}”：{e}", w) from None
+            # 2.5.3：列公式写不通时不整件拒——这一列先当普通列收下，原因进未填项，其余照收
+            #   （DXF 本地实验：总清单“总重”列公式写“qty * unit_weight”而各列没写 key，整本表连拒 8 次）。
+            sh.dropped.append(DROPPED_FORMULA.format(key=c.key, title=c.title, formula=c.formula, why=e))
+            c.formula = None
+            c.node = None
+            cols[c.key] = [r[j] for r in sh.rows]
+            continue
         if k == "bool":
             raise BadInput(f"公式“{c.formula}”：结果是条件（真或假），要用 if(条件, 甲, 乙) 写成数或文字", w)
         if c.type == "text" and k not in ("text", "empty"):
@@ -2321,6 +2340,18 @@ def blanks(t):
     return out
 
 
+# 2.5.3：收下时没有用上的部分进未填项（条目前接“表 <表 id> ”；逐字为 DXF 本地实验用过的写法，交调度以实验定）
+DROPPED_COLUMN = "{who}写了这张表没有的列“{key}”，没有收；这张表的列是：{columns}"
+DROPPED_FORMULA = "列 {key}（{title}）的公式“{formula}”没有用上：{why}"
+
+
+def _drop_unknown_column(sh, rid, key):
+    who = f"行 {rid} " if isinstance(rid, str) and rid else "有一行"
+    msg = DROPPED_COLUMN.format(who=who, key=key, columns="、".join(str(x.title) for x in sh.columns))
+    if msg not in sh.dropped:
+        sh.dropped.append(msg)
+
+
 # 2.5.1：count 列的格不是经 $count 写入时的未填项条目（逐字为草稿，交调度以实验定）
 UNFILLED_COUNT = "表 {label} {where}列 {key}（{title}）的值写进这一行的 $count"
 
@@ -2333,6 +2364,8 @@ def unfilled(t):
     out = []
     for sh in t.sheets:
         label = sh.id if sh.id else f"“{sh.name}”"
+        for msg in sh.dropped:
+            out.append(f"表 {label} {msg}")
         if not sh.rows:
             out.append(f"表 {label} 没有数据行")
             continue

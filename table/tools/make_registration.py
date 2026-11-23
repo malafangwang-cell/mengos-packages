@@ -414,6 +414,20 @@ CHECK_EXPECT_ADD = ("2.2.0 起：sheet=* 管整本工作簿（nonempty、range �
                     "sum_equal 列 sheet=目标表 by=键列,键列 from=表,表 [where=列:值]（按键之和相等，如标准件等于各分部五金之和）；"
                     "optional 列 …（这些列按规定可以整列为空）。每条问题写明表、行、现值、应值。要一张问题表时，把回执写成一张普通的表交 table.build。")
 
+# 2.5.3：回执 failed——未过的按格核对项（cell、text），一行（表/行）一句，写明哪一格、现值、按规范应是什么；其余种类不进这里。
+#   核验接入声明的 report 指向它（17 TL-21a 稿）。不加说明文字（不新增进模型的文字）。
+FAILED = {"type": "array", "items": {"type": "string"}}
+
+# 2.5.3：核验接入声明（17 TL-21a；mengosv2《规格改句草案-规范包核对项经核验判据循环-2026-11-23》§2.2）：
+#   input 的 expect 是占位 {"$checks": true}——由引擎换成被选中的规范包声明的核对项（17 TL-31 ⑪），只在有核对项时并入（15 MF-1k）；
+#   table 取被核验的产物（best）那次 table.build 调用的 /table 参数；report 指向回执的 failed。
+VERIFY = {
+    "for": ["table"],
+    "input": {"table": {"$best": "/table"}, "expect": {"$checks": True}},
+    "predicate": {"pointer": "/verdict", "op": "equals", "value": "pass"},
+    "report": {"pointer": "/failed"},
+}
+
 CHECK = {
     "tool_id": "table.check",
     "trust_claim": "T1",
@@ -440,19 +454,20 @@ CHECK = {
             },
         },
         "output_schema": {
-            "type": "object", "additionalProperties": False, "required": ["verdict", "covered", "checks", "table_sha256"],
+            "type": "object", "additionalProperties": False, "required": ["verdict", "covered", "checks", "table_sha256", "failed"],
             "properties": {
                 "verdict": {"enum": ["pass", "fail", "unknown"]},
                 "covered": {"type": "boolean", "description": "verdict 为 unknown 时为 false（TL-22 覆盖范围外）"},
                 "checks": {"type": "array", "items": {"type": "object", "required": ["line", "src", "kind", "verdict"], "properties": {
                     "line": {"type": "integer"}, "src": {"type": "string"}, "kind": {"type": "string"},
                     "verdict": {"enum": ["pass", "fail", "unknown"]}, "expected": {}, "actual": {},
-                    "where": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"},
+                    "where": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"}, "message": {"type": "string"},
                     "problems": {"type": "array", "items": {"type": "object", "required": ["sheet", "rule"], "properties": {
                         "sheet": {"type": "string"}, "row": {"type": "integer"}, "cell": {"type": "string"}, "rule": {"type": "string"},
                         "actual": {}, "expected": {}}}}}}},
                 "table_sha256": SHA,
                 "summary": {"type": "string", "description": "一句话：全部通过，或几条不通过"},
+                "failed": FAILED,
                 "assumptions": {"type": "array", "items": {"type": "string"}},
             },
         },
@@ -462,7 +477,7 @@ CHECK = {
         "in_types": ["table"],
         "out_types": ["verdict"],
         "constraints": {"three_valued": True, "max_expect_lines": 300,
-                        "kinds": ["columns", "order", "rows", "unique", "nonempty", "range", "total", "sorted", "match", "sum_equal", "optional"],
+                        "kinds": ["columns", "order", "rows", "unique", "nonempty", "range", "total", "sorted", "match", "sum_equal", "optional", "cell", "text"],
                         "sheet_scope": ["表名或 id", "*"],
                         "latency_note": "约 0.1 s"},
         "examples": [
@@ -474,6 +489,7 @@ CHECK = {
         "non_goals": ["不判断数据本身是否属实（例如价格对不对）", "不改表，只报告"],
     },
     "review_coverage": {"by_predicate": ["table_meets_spec"]},
+    "verify": VERIFY,
 }
 
 EXPORT = {

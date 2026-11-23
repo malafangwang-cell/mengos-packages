@@ -847,8 +847,8 @@
   }
  },
  {
-  "id": "err_formula_ref",
-  "note": "公式引用不存在的列",
+  "id": "drop_formula_ref",
+  "note": "公式引用不存在的列；2.5.3 起这一列当普通列收下，原因进未填项",
   "tool": "table.build",
   "payload": {
    "table": {
@@ -872,13 +872,12 @@
    }
   },
   "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.columns[1].formula"
+   "unfilled[0]": "表 “T” 列 c2（乙）的公式“a * k”没有用上：公式里的“k”不是这张表的列（用列的 key 或标题）"
   }
  },
  {
-  "id": "err_formula_text",
-  "note": "公式引用文字列",
+  "id": "drop_formula_text",
+  "note": "公式引用文字列；2.5.3 起这一列当普通列收下，原因进未填项",
   "tool": "table.build",
   "payload": {
    "table": {
@@ -902,8 +901,7 @@
    }
   },
   "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.columns[1].formula"
+   "unfilled[0]": "表 “T” 列 c2（乙）的公式“a * 2”没有用上：* 只能用于数（数值列、数字或算式）；文字、日期、条件不能参与计算"
   }
  },
  {
@@ -6167,8 +6165,8 @@
   }
  },
  {
-  "id": "err_if_constant",
-  "note": "if 的两支暂不收数字常数（#711 §九 第 5 步）",
+  "id": "drop_if_constant",
+  "note": "if 的两支暂不收数字常数（#711 §九 第 5 步）；2.5.3 起这一列当普通列收下，原因进未填项",
   "tool": "table.build",
   "payload": {
    "table": {
@@ -6310,8 +6308,7 @@
    }
   },
   "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.columns[9].formula"
+   "unfilled[0]": "表 “办公室装修采购清单” 列 c10（大件）的公式“if(数量 > 10, 1, 0)”没有用上：if 的两支不收数字常数（公式不把数据原样带进表）：要数就引用一列，或把数写在输入格里"
   }
  },
  {
@@ -18342,8 +18339,8 @@
   }
  },
  {
-  "id": "err_if_numeric_branches",
-  "note": "补：if 的两支不收数字常数（长期规则）：if(名称=\"立柱\", 168, 1296) 回 BAD_INPUT，提示引用一列",
+  "id": "drop_if_numeric_branches",
+  "note": "补：if 的两支不收数字常数（长期规则）：if(名称=\"立柱\", 168, 1296) 回 BAD_INPUT，提示引用一列；2.5.3 起这一列当普通列收下，原因进未填项",
   "tool": "table.build",
   "payload": {
    "table": {
@@ -18367,8 +18364,7 @@
    }
   },
   "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.columns[1].formula"
+   "unfilled[0]": "表 “T” 列 c2（数量）的公式“if(名称 = \"立柱\", 168, 1296)”没有用上：if 的两支不收数字常数（公式不把数据原样带进表）：要数就引用一列，或把数写在输入格里"
   }
  },
  {
@@ -19525,6 +19521,88 @@
   "expect": {
    "error.code": "BAD_INPUT",
    "error.where": "name"
+  }
+ },
+ {
+  "id": "chk_cell_text",
+  "note": "2.5.3：按格核对 cell、text；未过的写进 failed（一行一句）",
+  "tool": "table.check",
+  "payload": {
+   "table": {
+    "title": "T",
+    "sheets": [
+     {
+      "id": "facts",
+      "name": "事实",
+      "columns": [
+       {
+        "key": "item",
+        "title": "项名",
+        "type": "text"
+       },
+       {
+        "key": "val",
+        "title": "值",
+        "type": "number"
+       }
+      ],
+      "rows": [
+       {
+        "$id": "a",
+        "项名": "甲数",
+        "值": 12
+       },
+       {
+        "$id": "b",
+        "项名": "乙数",
+        "值": 3
+       }
+      ]
+     },
+     {
+      "id": "list",
+      "name": "清单",
+      "columns": [
+       {
+        "key": "name",
+        "title": "名称",
+        "type": "text"
+       },
+       {
+        "key": "spec",
+        "title": "规格",
+        "type": "text"
+       },
+       {
+        "key": "qty",
+        "title": "数量",
+        "type": "number"
+       }
+      ],
+      "rows": [
+       {
+        "$id": "p1",
+        "名称": "甲件",
+        "规格": "M10*12",
+        "数量": 8
+       },
+       {
+        "$id": "p2",
+        "名称": "乙件",
+        "规格": "M10*25",
+        "数量": 7
+       }
+      ]
+     }
+    ]
+   },
+   "expect": "cell 清单/p1/数量 = 事实/a/值 / 事实/b/值 * 2\ncell 清单/p2/数量 = 事实/a/值 / 事实/b/值 * 2\ntext 清单/p1/规格 = \"M10*{事实/a/值}\""
+  },
+  "expect": {
+   "verdict": "fail",
+   "failed": [
+    "清单/p2/数量 现为 7；按规范它应等于 事实/a/值 / 事实/b/值 * 2，把这一格改成它"
+   ]
   }
  }
 ]

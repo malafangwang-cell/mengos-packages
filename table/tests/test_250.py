@@ -68,14 +68,23 @@ def test_missing_count_cell_still_unfilled(tmp_path):
 def test_same_output_as_direct_cell(tmp_path):
     a, _ = call(tmp_path, [{"$id": "x", "项名": "列数", "$count": {"值": 10}}], "a")
     b, _ = call(tmp_path, [{"$id": "x", "项名": "列数", "值": 10}], "b")
-    strip = lambda o: {k: v for k, v in o["output"].items() if k not in ("files", "receipt_files")}
+    # 2.5.3：写进过 $count 的列按 count 列、必填对待，表模型多写这两个列属性（table_sha256 随之不同）；其余回执相同
+    strip = lambda o: {k: v for k, v in o["output"].items() if k not in ("files", "receipt_files", "table_sha256")}
     assert json.dumps(strip(a), sort_keys=True, ensure_ascii=False) == json.dumps(strip(b), sort_keys=True, ensure_ascii=False)
 
 
+def test_count_column_auto_and_unknown_column_kept_out(tmp_path):
+    """2.5.3：写进过 $count 的列按 count 列对待——同一列两处写时以 $count 为准（同 2.5.1）；
+    $count 里写了表里没有的列 ⟹ 这一格不收，原因进未填项，其余照收。"""
+    for i, row in enumerate(({"$id": "x", "项名": "列数", "值": 999, "$count": {"值": 10}}, {"$id": "x", "项名": "列数", "val": 999, "$count": {"值": 10}})):
+        r, _ = call(tmp_path, [row], f"c{i}")
+        assert r["ok"] and r["output"]["unfilled"] == [], r
+    r, _ = call(tmp_path, [{"$id": "x", "项名": "列数", "$count": {"不存在": 1, "值": 3}}], "c9")
+    assert r["ok"], r
+    assert r["output"]["unfilled"] == ["表 facts 行 x 写了这张表没有的列“不存在”，没有收；这张表的列是：项名、取数/算式、值"]
+
+
 @pytest.mark.parametrize("row,word", [
-    ({"$id": "x", "项名": "列数", "值": 10, "$count": {"值": 10}}, "各写了一处"),
-    ({"$id": "x", "项名": "列数", "val": 10, "$count": {"值": 10}}, "各写了一处"),
-    ({"$id": "x", "项名": "列数", "$count": {"不存在": 1}}, "表里没有的列"),
     ({"$id": "x", "项名": "列数", "$count": {"值": {"$ref": "n1#/count"}}}, "不是一个值"),
     ({"$id": "x", "项名": "列数", "$count": [10]}, "是对象"),
 ])

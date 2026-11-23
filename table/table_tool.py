@@ -235,7 +235,7 @@ def _resolve_object(payload):
 
 def table_check(payload, workdir=None):
     """表 + 期望清单 → 每条 pass / fail / unknown 与总判定。不产出文件。"""
-    from checker import ExpectError, overall, run_checks, summary
+    from checker import ExpectError, failed_items, overall, run_checks, summary
     from model import BadInput
     _allowed(payload, ["table", "object", "expect"])
     payload = _resolve_object(payload)
@@ -248,7 +248,8 @@ def table_check(payload, workdir=None):
     except ExpectError as e:
         raise BadInput("期望清单：" + e.message, "expect", e.hint, line=e.line) from None
     v = overall(checks)
-    out = {"verdict": v, "covered": v != "unknown", "checks": checks, "table_sha256": t.sha, "summary": summary(checks)}
+    # 2.5.3：failed——未过的按格核对项（核验接入声明的 report 指向它，17 TL-21a）
+    out = {"verdict": v, "covered": v != "unknown", "checks": checks, "table_sha256": t.sha, "summary": summary(checks), "failed": failed_items(checks)}
     if assumptions:
         out["assumptions"] = assumptions
     return out
