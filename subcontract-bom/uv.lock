@@ -75,7 +75,7 @@ wheels = [
 
 [[package]]
 name = "mengos-subcontract-bom"
-version = "0.5.1"
+version = "0.5.3"
 source = { virtual = "." }
 
 [package.dev-dependencies]
