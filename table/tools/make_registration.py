@@ -92,8 +92,11 @@ ROW_ID = {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$", "descrip
 EXPR_PARAMS = {"round": [2], "roundup": [2], "rounddown": [2], "ceiling": [2], "floor": [2]}
 # 2.5.0：数量容器 $count（17 TL-30c）——对象行里取自回执的格；值由引擎核证件、换成数后交工具。逐字写法为草稿（交调度，以实验定）
 COUNT_DESC = "这一行里取自回执的格：{列名: 回执引用，或量全由引用给出的算式}。"
+# 2.5.2：$count 里的格另可写 {"$blank": 条文号}（count 列按规范留空）；条文号以字母开头，不是数，证件账不审它
+BLANK = {"type": "object", "required": ["$blank"], "additionalProperties": False,
+         "properties": {"$blank": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]{0,7}(\\.[0-9]{1,4}){0,3}$"}}}
 COUNT = {"type": "object", "x-mengos-count": True, "maxProperties": 200, "description": COUNT_DESC,
-         "additionalProperties": {"type": ["number", "string", "null"]}}
+         "additionalProperties": {"anyOf": [{"type": ["number", "string", "null"]}, BLANK]}}
 # 2.5.0：行的 schema 由 oneOf 改成一个合并的 schema——数组行用 items、对象行用 properties/additionalProperties（JSON Schema 各管各的形态）。
 #   引擎的证件账与可达性只沿 properties/items 走、不进 oneOf（mengosv2 engine/projection/credentials.ts），合并后 $count 的
 #   x-mengos-count 与 $style 的 x-mengos-display 才可达；普通格仍落在未声明的键上，审法不变
@@ -244,6 +247,10 @@ assert all(x in TABLE_DESC and x in TABLE_DESC_BUILD for x in ADD_250)
 ADD_251 = ["列可写 count: true：这一列的值只认写在行的 $count 里的格；别处写的值不进表，回执的 unfilled 逐格列出，写进这一行的 $count 才算填上。"]
 TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(ADD_240[0], ADD_240[0] + ADD_251[0], 1)
 assert all(x in TABLE_DESC_BUILD for x in ADD_251)
+# 2.5.2：按规范留空的写法，接在 count 那句之后（只在 build 的说明里；逐字为草稿，交调度以实验定）
+ADD_252 = ["count 列的格按规范要留空时，在 $count 里写 {\"$blank\": \"条文号\"}（如 {\"数量\": {\"$blank\": \"T2.3\"}}）：这一格留空、不算未填，回执的 blanks 记下所依据的条文。"]
+TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(ADD_251[0], ADD_251[0] + ADD_252[0], 1)
+assert all(x in TABLE_DESC_BUILD for x in ADD_252)
 
 
 def table_def(build=False):
@@ -357,6 +364,8 @@ BUILD = {
                 "files": FILES,
                 "assumptions": {"type": "array", "items": {"type": "string"}},
                 # 2.4.0（17 TL-30e）：未填项清单——必填格没有值、表没有数据行，各一条；引擎只看空不空、原样给模型
+                # 2.5.2：按规范留空的格（$blank），每格一条，带所依据的条文号；只在有时写出
+                "blanks": {"type": "array", "items": {"type": "string"}},
                 "unfilled": {"type": "array", "items": {"type": "string"}, "x-mengos-unfilled": True,
                              "description": "未填项：必填列（required）没有值的格，以及没有数据行的表，每处一条；为空表示没有未填项"},
             },
