@@ -42,7 +42,7 @@ def test_display_key_is_declared_not_data_and_rows_stay_data():
     t = BUILD["properties"]["table"]["properties"]
     for rows in (t["rows"], t["sheets"]["items"]["properties"]["rows"]):
         assert rows["x-mengos-data"] is True and rows["x-mengos-merge"] == {"mode": "by-id", "id": "$id"}   # 2.4.0：append → by-id
-        obj = rows["items"]["oneOf"][1]
+        obj = rows["items"]   # 2.5.0：行 schema 由 oneOf 改成合并的一个 schema，对象行的保留键在 items.properties 上（引擎可达）
         assert obj["properties"][model.DISPLAY_KEY]["x-mengos-display"] is True
         assert "x-mengos-data" not in json.dumps(obj["properties"][model.DISPLAY_KEY])
     s = json.dumps(BUILD, ensure_ascii=False)

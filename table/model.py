@@ -35,6 +35,7 @@ COLOR_NAMES = tuple(PALETTE) + tuple(COLOR_ALIAS)
 DISPLAY_KEY = "$style"        # 行里的保留键：本行、本格的显示设置（17 TL-30 v0.2.98 “显示设置跟着行走”）
 ROW_KINDS = ("total", "subtotal", "group")   # row_styles 只按行种类写：合计行、小计行、包生成的组头（2.2.0 G7）
 ID_KEY = "$id"                # 行里的保留键：稳定的行 id（2.2.0 G17），格公式按它引用别的行
+COUNT_KEY = "$count"          # 行里的保留键（2.5.0）：取自回执的格 {列: 值}；schema 上标 x-mengos-count（17 TL-30c），只认回执引用或量全由引用给出的算式，由引擎核证件、换成数后交工具
 EXPR_KEY = "$expr"            # 格里的保留的式（08 PD-1e v0.2.98、17 TL-30b）
 NUMBERINGS = ("seq", "outline")
 MAX_LEVEL = 4
@@ -868,6 +869,24 @@ def _column(c, where, j) -> Column:
     return col
 
 
+def _merge_count(r, where, sh):
+    """2.5.0：把 $count 里的格并进这一行。同一列既在 $count 里又直接写在行里 ⟹ 拒；$count 里的格到这里应已由引擎换成数。"""
+    cnt = r[COUNT_KEY]
+    rest = {k: v for k, v in r.items() if k != COUNT_KEY}
+    if not isinstance(cnt, dict):
+        raise BadInput(f"{COUNT_KEY} 是对象：{{列名: 值}}", f"{where}.{COUNT_KEY}")
+    direct = {id(sh.find(k)) for k in rest if isinstance(k, str) and sh.find(k) is not None}
+    for k, v in cnt.items():
+        c = sh.find(k) if isinstance(k, str) else None
+        if c is None:
+            raise BadInput(f"{COUNT_KEY} 里有表里没有的列：{k}", f"{where}.{COUNT_KEY}", "键要与列的 key 或标题相同")
+        if id(c) in direct:
+            raise BadInput(f"“{c.title}”在 {COUNT_KEY} 里和行里各写了一处", f"{where}.{COUNT_KEY}.{k}", "同一列只写一处")
+        if isinstance(v, (dict, list)) or isinstance(v, bool):
+            raise BadInput(f"{COUNT_KEY} 里“{c.title}”这一格不是一个值", f"{where}.{COUNT_KEY}.{k}")
+    return {**rest, **cnt}
+
+
 def _row(r, where, sh, plain, t, from_model, ri):
     n = len(sh.columns)
     if isinstance(r, dict) and DISPLAY_KEY in r:
@@ -882,6 +901,8 @@ def _row(r, where, sh, plain, t, from_model, ri):
             raise BadInput(f"{ID_KEY} 是行 id：字母、数字、下划线，字母或下划线开头，最多 32 个字符", f"{where}.{ID_KEY}")
         r = {k: v for k, v in r.items() if k != ID_KEY}
     sh.row_ids.append(rid)
+    if isinstance(r, dict) and COUNT_KEY in r:
+        r = _merge_count(r, where, sh)
     if isinstance(r, dict):
         out = [None] * n
         for k, v in r.items():

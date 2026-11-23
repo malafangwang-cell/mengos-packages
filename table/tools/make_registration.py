@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from model import COLOR_NAMES, DATE_FORMATS, DISPLAY_KEY, EXPR_KEY, ID_KEY, MAX_LEVEL, MAX_RULES, NUMBERINGS, ROW_KINDS  # noqa: E402  闭集与代码同一处定义
+from model import COLOR_NAMES, COUNT_KEY, DATE_FORMATS, DISPLAY_KEY, EXPR_KEY, ID_KEY, MAX_LEVEL, MAX_RULES, NUMBERINGS, ROW_KINDS  # noqa: E402  闭集与代码同一处定义
 ID = {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$"}
 CELL_PLAIN = {"type": ["string", "number", "boolean", "null"]}
 # 2.2.0 G17：输入列的格可以是保留的式 {"$expr": 式}（08 PD-1e v0.2.98、17 TL-30b；在 rows 这一层写 "x-mengos-expr": true）
@@ -89,11 +89,16 @@ COLUMN = {
 ROW_ID = {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$", "description": "稳定的行 id：格公式用 @行id.列 引用这一行"}
 # 17 TL-30b v0.2.99：取整函数的位数、步长参数不是数据，声明在 x-mengos-expr 同一层，引擎按声明跳过（只跳过“恰是一个数”的参数）
 EXPR_PARAMS = {"round": [2], "roundup": [2], "rounddown": [2], "ceiling": [2], "floor": [2]}
+# 2.5.0：数量容器 $count（17 TL-30c）——对象行里取自回执的格；值由引擎核证件、换成数后交工具。逐字写法为草稿（交调度，以实验定）
+COUNT_DESC = "这一行里取自回执的格：{列名: 回执引用，或量全由引用给出的算式}。"
+COUNT = {"type": "object", "x-mengos-count": True, "maxProperties": 200, "description": COUNT_DESC,
+         "additionalProperties": {"type": ["number", "string", "null"]}}
+# 2.5.0：行的 schema 由 oneOf 改成一个合并的 schema——数组行用 items、对象行用 properties/additionalProperties（JSON Schema 各管各的形态）。
+#   引擎的证件账与可达性只沿 properties/items 走、不进 oneOf（mengosv2 engine/projection/credentials.ts），合并后 $count 的
+#   x-mengos-count 与 $style 的 x-mengos-display 才可达；普通格仍落在未声明的键上，审法不变
 ROWS = {"type": "array", "maxItems": 100000, "x-mengos-data": True, "x-mengos-expr": True, "x-mengos-expr-params": EXPR_PARAMS,
-        "items": {"oneOf": [
-    {"type": "array", "maxItems": 200, "items": CELL},
-    {"type": "object", "properties": {DISPLAY_KEY: DISPLAY, ID_KEY: ROW_ID}, "additionalProperties": CELL},
-]}}
+        "items": {"type": ["array", "object"], "maxItems": 200, "items": CELL,
+                  "properties": {DISPLAY_KEY: DISPLAY, ID_KEY: ROW_ID, COUNT_KEY: COUNT}, "additionalProperties": CELL}}
 ROWS_BUILD = {**ROWS, "x-mengos-merge": {"mode": "by-id", "id": ID_KEY}}   # 2.4.0：按行 $id 并入（原 append：带 base 的“填格”会变成追加重复行）
 TOTALS = {"type": "array", "maxItems": 200, "items": {"oneOf": [
     {"type": "string", "minLength": 1},
@@ -229,6 +234,11 @@ assert all(x in TABLE_DESC_BUILD for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + S
 assert all(x in TABLE_DESC for x in STRUCT_DESC + NUM22_DESC)
 assert all(x in TABLE_DESC_BUILD for x in NUM22_DESC)
 assert all(x in TABLE_DESC and x in TABLE_DESC_BUILD for x in REF_ADD)
+# 2.5.0：数量容器 $count 的说明句，接在 $ref 那句之后（逐字写法为草稿，交调度，以实验定）
+ADD_250 = ["数量格的值要来自回执时，对象行里写保留键 $count：{列名: 值}，值写 {\"$ref\": \"回执id#路径\"}，或写 {\"$calc\": \"算式\", \"refs\": {名字: \"回执id#路径\"}}，算式里的量用 refs 里的名字，常数只写所引规范里写明的数。$count 里的格并入这一行，同一列只写一处。"]
+TABLE_DESC = TABLE_DESC.replace(REF_ADD[0], REF_ADD[0] + ADD_250[0], 1)
+TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(REF_ADD[0], REF_ADD[0] + ADD_250[0], 1)
+assert all(x in TABLE_DESC and x in TABLE_DESC_BUILD for x in ADD_250)
 
 
 def table_def(build=False):
