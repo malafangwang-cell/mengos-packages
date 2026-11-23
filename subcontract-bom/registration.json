@@ -1,12 +1,12 @@
 {
   "family": "rack",
   "family_version": "0.5.3",
-  "lock_hash": "b3cd0d9c8069ed5b",
+  "lock_hash": "de0189fb9baec773",
   "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。rack.layout 是本规范包 G2、G3、G5、G6 的可执行形态（设计-域包排布计算工具 r1–r3），与条文同包同 lock；入参在数量位置（from_drawing 标 x-mengos-count，17 TL-30c），出参只有 computed 之下的整数可引用（17 TL-30d）。",
   "units": [
     {
       "tool_id": "rack.layout",
-      "version": "b3cd0d9c8069ed5b",
+      "version": "de0189fb9baec773",
       "trust_claim": "T1",
       "effect": "none",
       "executor": {
