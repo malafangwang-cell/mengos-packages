@@ -28,7 +28,7 @@ def strip_250(schema):
         out = {}
         for k, v in n.items():
             if k == "description" and isinstance(v, str):
-                for x in mr.ADD_250 + getattr(mr, "ADD_251", []):
+                for x in mr.ADD_250 + getattr(mr, "ADD_251", []) + getattr(mr, "ADD_252", []):
                     v = v.replace(x, "")
                 out[k] = v
             elif k == "properties" and isinstance(v, dict) and v.get("count") == {"type": "boolean"} and "required" in v:

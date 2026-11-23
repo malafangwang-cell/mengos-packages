@@ -198,6 +198,10 @@ def table_build(payload, workdir=None):
            "unfilled": unfilled(t)}          # 2.4.0：未填项清单（output_schema 标 x-mengos-unfilled，17 TL-30e）
     if t.assumptions:
         out["assumptions"] = list(t.assumptions)
+    from model import blanks
+    bl = blanks(t)
+    if bl:
+        out["blanks"] = bl                # 2.5.2：按规范留空的格（只在有时写出，其余回执逐字节不变）
     return out
 
 

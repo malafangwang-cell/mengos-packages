@@ -35,6 +35,8 @@ COLOR_NAMES = tuple(PALETTE) + tuple(COLOR_ALIAS)
 DISPLAY_KEY = "$style"        # 行里的保留键：本行、本格的显示设置（17 TL-30 v0.2.98 “显示设置跟着行走”）
 ROW_KINDS = ("total", "subtotal", "group")   # row_styles 只按行种类写：合计行、小计行、包生成的组头（2.2.0 G7）
 ID_KEY = "$id"                # 行里的保留键：稳定的行 id（2.2.0 G17），格公式按它引用别的行
+BLANK_KEY = "$blank"          # $count 里的保留写法（2.5.2）：{"$blank": 条文号}——count 列按规范留空，不计入未填，回执 blanks 记下依据
+BLANK_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,7}(\.[0-9]{1,4}){0,3}$")   # 条文号的写法（如 R2.3、T9、G5）；以字母开头，引擎不会把它当成数
 COUNT_KEY = "$count"          # 行里的保留键（2.5.0）：取自回执的格 {列: 值}；schema 上标 x-mengos-count（17 TL-30c），只认回执引用或量全由引用给出的算式，由引擎核证件、换成数后交工具
 EXPR_KEY = "$expr"            # 格里的保留的式（08 PD-1e v0.2.98、17 TL-30b）
 NUMBERINGS = ("seq", "outline")
@@ -296,7 +298,7 @@ class Sheet:
     __slots__ = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols", "formula_errors",
                  "header_style", "rules", "row_styles", "displays", "raw", "_styles",
                  "row_ids", "exprs", "outline_from", "levels", "group", "subtotals", "merge_rows", "derive",
-                 "layout", "merged", "derive_src", "_spec", "_where", "_index", "expr_nodes", "src", "count_miss")
+                 "layout", "merged", "derive_src", "_spec", "_where", "_index", "expr_nodes", "src", "count_miss", "count_blank")
 
     def col(self, key):
         return next(c for c in self.columns if c.key == key)
@@ -356,6 +358,12 @@ class Sheet:
                  for j, (c, v) in enumerate(zip(self.columns, r))]
         rid = self.row_ids[ri] if self.row_ids else None
         counted = {c.key: v for c, v in zip(self.columns, cells) if getattr(c, "count", False) and v is not None}
+        cb = getattr(self, "count_blank", None) or {}
+        if cb:
+            src = self.src[ri] if self.src is not None and ri < len(self.src) else ri
+            for j, c in enumerate(self.columns):
+                if (src, j) in cb and c.key not in counted:
+                    counted[c.key] = {BLANK_KEY: cb[(src, j)]}     # 2.5.2：按规范留空写回 $blank
         if not d and rid is None and not counted:
             return cells
         o = {c.key: v for c, v in zip(self.columns, cells) if c.key not in counted}
@@ -631,6 +639,7 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     sh._styles = None
     sh._spec, sh._where = s, where
     sh.row_ids, sh.exprs, sh.expr_nodes, sh.src = [], {}, {}, None
+    sh.count_blank = {}            # 2.5.2：count 列按规范留空的格 {(入参行序号, 列序号): 条文号}
     sh.count_miss = set()          # 2.5.1：count 列里不是经 $count 写入的格 {(入参行序号, 列序号)}，值不进表、进未填项
     sh.outline_from = sh.levels = sh.group = sh.merge_rows = sh.derive = None
     sh.subtotals, sh.layout, sh.merged, sh.derive_src = [], [], [], {}
@@ -903,6 +912,16 @@ def _apply_count(r, where, sh, ri):
                     rest.pop(direct[id(c)])
                 else:
                     raise BadInput(f"“{c.title}”在 {COUNT_KEY} 里和行里各写了一处", f"{where}.{COUNT_KEY}.{k}", "同一列只写一处")
+            if isinstance(v, dict) and BLANK_KEY in v:
+                clause = v.get(BLANK_KEY)
+                if set(v) != {BLANK_KEY} or not isinstance(clause, str) or not BLANK_RE.match(clause.strip()):
+                    raise BadInput(f"{BLANK_KEY} 写所依据的条文号，例如 {{\"{BLANK_KEY}\": \"R2.3\"}}", f"{where}.{COUNT_KEY}.{k}")
+                if not getattr(c, "count", False):
+                    raise BadInput(f"{BLANK_KEY} 只用于标了 count 的列，“{c.title}”没有标", f"{where}.{COUNT_KEY}.{k}")
+                sh.count_blank[(ri, sh.columns.index(c))] = clause.strip()
+                cnt = {**cnt, k: None}
+                counted.add(id(c))
+                continue
             if isinstance(v, (dict, list)) or isinstance(v, bool):
                 raise BadInput(f"{COUNT_KEY} 里“{c.title}”这一格不是一个值", f"{where}.{COUNT_KEY}.{k}")
             counted.add(id(c))
@@ -2280,6 +2299,28 @@ def _operands_text(sh, row, seen, t):
 
 # ---------------------------------------------------------------- 未填项（2.4.0；17 TL-30e）
 UNFILLED_MAX = 100
+# 2.5.2：按规范留空的格，回执 blanks 每格一条（逐字为草稿，交调度以实验定）
+BLANK_ITEM = "表 {label} {where}列 {key}（{title}）按 {clause} 留空"
+
+
+def blanks(t):
+    """按规范留空的格（$count 里写 {"$blank": 条文号}），每格一条；次序同未填项。"""
+    out = []
+    for sh in t.sheets:
+        cb = getattr(sh, "count_blank", None)
+        if not cb:
+            continue
+        label = sh.id if sh.id else f"“{sh.name}”"
+        for ri in range(len(sh.rows)):
+            rid = sh.row_ids[ri] if ri < len(sh.row_ids) else None
+            src = sh.src[ri] if sh.src is not None and ri < len(sh.src) else ri
+            where = f"行 {rid} " if rid else f"第 {src + 1} 行（没有 $id）"
+            for j, c in enumerate(sh.columns):
+                if (src, j) in cb:
+                    out.append(BLANK_ITEM.format(label=label, where=where, key=c.key, title=c.title, clause=cb[(src, j)]))
+    return out
+
+
 # 2.5.1：count 列的格不是经 $count 写入时的未填项条目（逐字为草稿，交调度以实验定）
 UNFILLED_COUNT = "表 {label} {where}列 {key}（{title}）的值写进这一行的 $count"
 
@@ -2306,6 +2347,8 @@ def unfilled(t):
             for j, c in req:
                 v = r[j] if j < len(r) else None
                 where = f"行 {rid} " if rid else f"第 {src + 1} 行（没有 $id）"
+                if (src, j) in getattr(sh, "count_blank", {}):
+                    continue                     # 2.5.2：按规范留空，不计入未填
                 if (src, j) in miss:
                     out.append(UNFILLED_COUNT.format(label=label, where=where, key=c.key, title=c.title))   # 2.5.1：count 列的值没有写在 $count 里
                 elif getattr(c, "required", False) and (v is None or (isinstance(v, str) and v.strip() == "")):
