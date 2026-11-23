@@ -1,0 +1,56 @@
+[
+  {
+    "tool_id": "rack.layout",
+    "task": "按读图回执算立库货架的层数、各托盘区排数、组数与巷道数",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "rack_layout_receipt",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "rack.layout",
+    "task": "由列数、层间距段数、横梁净长和各区托盘数推出排布事实",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "rack_layout_receipt",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "rack.layout",
+    "task": "货架托盘区的每格每层托盘数与双深位组数是多少",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "rack_layout_receipt",
+    "expect_selected": true
+  },
+  {
+    "tool_id": "rack.layout",
+    "task": "求 2^10 + 3^5 的精确值",
+    "ops": [
+      "compute"
+    ],
+    "required_type": "number",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "rack.layout",
+    "task": "读工程图里的尺寸标注",
+    "ops": [
+      "retrieve"
+    ],
+    "required_type": "pick_receipt",
+    "expect_selected": false
+  },
+  {
+    "tool_id": "rack.layout",
+    "task": "写一份项目周报",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "document",
+    "expect_selected": false
+  }
+]

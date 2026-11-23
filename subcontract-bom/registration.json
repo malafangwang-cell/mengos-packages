@@ -1,0 +1,258 @@
+{
+  "family": "rack",
+  "family_version": "0.5.0",
+  "lock_hash": "44be54977a080b42",
+  "note": "字段严格按 kernel-spec 17 章 TL-6；族名在顶层 family。cost 的 latency 与 timeout 单位为毫秒。rack.layout 是本规范包 G2、G3、G5、G6 的可执行形态（设计-域包排布计算工具 r1–r3），与条文同包同 lock；入参在数量位置（from_drawing 标 x-mengos-count，17 TL-30c），出参只有 computed 之下的整数可引用（17 TL-30d）。",
+  "units": [
+    {
+      "tool_id": "rack.layout",
+      "version": "44be54977a080b42",
+      "trust_claim": "T1",
+      "effect": "none",
+      "executor": {
+        "kind": "process",
+        "entry": "rack_tool.py",
+        "mode": "sync"
+      },
+      "cost": {
+        "latency": 100,
+        "price": 0,
+        "timeout": 10000
+      },
+      "input_example": {
+        "from_drawing": {
+          "level_segments": {
+            "$ref": "<count 回执 id>#/count"
+          },
+          "beam_clear": {
+            "$ref": "<pick 回执 id>#/values/CE/value"
+          }
+        }
+      },
+      "signature": {
+        "input_schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "from_drawing"
+          ],
+          "properties": {
+            "from_drawing": {
+              "type": "object",
+              "additionalProperties": false,
+              "x-mengos-count": true,
+              "description": "【W2 from_drawing 待定稿】",
+              "properties": {
+                "columns_read": {
+                  "description": "【W2 columns_read 待定稿】"
+                },
+                "run_length": {
+                  "description": "【W2 run_length 待定稿】"
+                },
+                "column_pitch": {
+                  "description": "【W2 column_pitch 待定稿】"
+                },
+                "level_segments": {
+                  "description": "【W2 level_segments 待定稿】"
+                },
+                "beam_clear": {
+                  "description": "【W2 beam_clear 待定稿】"
+                },
+                "zones": {
+                  "type": "object",
+                  "description": "【W2 zones 待定稿】",
+                  "maxProperties": 20,
+                  "propertyNames": {
+                    "pattern": "^[^/~#]{1,32}$"
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "pallets": {
+                        "description": "【W2 pallets 待定稿】"
+                      },
+                      "pallet_plan_a": {
+                        "description": "【W2 pallet_plan_a 待定稿】"
+                      },
+                      "pallet_plan_b": {
+                        "description": "【W2 pallet_plan_b 待定稿】"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "description": "【W1 待定稿】"
+        },
+        "output_schema": {
+          "type": "object",
+          "required": [
+            "computed",
+            "not_computed",
+            "steps",
+            "assumptions"
+          ],
+          "properties": {
+            "computed": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "columns": {
+                  "type": "integer",
+                  "x-mengos-ref": true
+                },
+                "frames_per_row": {
+                  "type": "integer",
+                  "x-mengos-ref": true
+                },
+                "levels": {
+                  "type": "integer",
+                  "x-mengos-ref": true
+                },
+                "zones": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "pallets_per_cell": {
+                        "type": "integer",
+                        "x-mengos-ref": true
+                      },
+                      "rows": {
+                        "type": "integer",
+                        "x-mengos-ref": true
+                      },
+                      "groups": {
+                        "type": "integer",
+                        "x-mengos-ref": true
+                      },
+                      "aisles": {
+                        "type": "integer",
+                        "x-mengos-ref": true
+                      }
+                    }
+                  }
+                },
+                "total": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "rows": {
+                      "type": "integer",
+                      "x-mengos-ref": true
+                    },
+                    "groups": {
+                      "type": "integer",
+                      "x-mengos-ref": true
+                    },
+                    "aisles": {
+                      "type": "integer",
+                      "x-mengos-ref": true
+                    }
+                  }
+                }
+              }
+            },
+            "not_computed": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "item",
+                  "reason",
+                  "needs"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "item": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "needs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "item",
+                  "clause",
+                  "formula",
+                  "operands",
+                  "result"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "item": {
+                    "type": "string"
+                  },
+                  "clause": {
+                    "type": "string"
+                  },
+                  "formula": {
+                    "type": "string"
+                  },
+                  "operands": {
+                    "type": "object"
+                  },
+                  "result": {},
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "capability": {
+        "ops": [
+          "compute"
+        ],
+        "in_types": [],
+        "out_types": [
+          "rack_layout_receipt"
+        ],
+        "constraints": {
+          "deterministic": true,
+          "network": "none",
+          "model_calls": 0,
+          "max_zones": 20
+        },
+        "examples": [
+          {
+            "input": "【W1b 用例 1 待定稿】",
+            "output": "【W1b 用例 1 输出 待定稿】"
+          },
+          {
+            "input": "【W1b 用例 2 待定稿】",
+            "output": "【W1b 用例 2 输出 待定稿】"
+          },
+          {
+            "input": "【W1b 用例 3 待定稿】",
+            "output": "【W1b 用例 3 输出 待定稿】"
+          }
+        ],
+        "non_goals": []
+      }
+    }
+  ]
+}
