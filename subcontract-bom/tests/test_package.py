@@ -27,7 +27,7 @@ def test_norms_0_5_0():
     assert codes.index("R7.0") + 1 == codes.index("R7.1")
     w5 = "本条算出的量由排布计算工具算出，事实表里引它的回执"
     assert [c for c, n in zip(codes, M["norms"]) if w5 in n] == ["G2", "G3", "G5", "G6"]
-    assert "由排布计算工具算出；主件数量再由这些事实按 T 开头的推算规则算出" in M["norms"][codes.index("D13")]
+    assert "由排布计算工具算出；主件数量再按 T 开头的推算规则写成量全由引用给出的算式" in M["norms"][codes.index("D13")]   # 0.5.4
     assert M["norms"][codes.index("D13")].count("写进这一行的 $count") == 3
     assert "count: true" in M["norms"][codes.index("D13")] and "count: true" in M["norms"][codes.index("R1.1")]
     assert "总清单的数量格写进这一行的 $count" in M["norms"][codes.index("R7.0")]
