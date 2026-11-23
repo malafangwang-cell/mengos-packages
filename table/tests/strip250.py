@@ -1,4 +1,4 @@
-"""2.5.0 的反向对照：把合并的行 schema 换回 2.4.0 的 oneOf 两支、去掉 $count 保留键与 $count 说明句，供各版逐键对照用。"""
+"""2.5.0、2.5.1 的反向对照（2.5.1 另去掉列属性 count 与其说明句）。2.5.0 的反向对照：把合并的行 schema 换回 2.4.0 的 oneOf 两支、去掉 $count 保留键与 $count 说明句，供各版逐键对照用。"""
 import importlib.util
 import json
 from pathlib import Path
@@ -28,9 +28,11 @@ def strip_250(schema):
         out = {}
         for k, v in n.items():
             if k == "description" and isinstance(v, str):
-                for x in mr.ADD_250:
+                for x in mr.ADD_250 + getattr(mr, "ADD_251", []):
                     v = v.replace(x, "")
                 out[k] = v
+            elif k == "properties" and isinstance(v, dict) and v.get("count") == {"type": "boolean"} and "required" in v:
+                out[k] = {pk: walk(pv) for pk, pv in v.items() if pk != "count"}   # 2.5.1：列属性 count
             else:
                 out[k] = walk(v)
         return out
