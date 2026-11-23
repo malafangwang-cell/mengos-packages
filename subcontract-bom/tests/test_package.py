@@ -21,7 +21,7 @@ def test_norms_0_5_0():
     G2、G3、G5、G6 末尾加 W5 句、D13 加 W5 插句；共 94 条。核对值钉住，改一字须改这里。"""
     import re
     h = hashlib.sha256(("\n".join(M["norms"]) + "\n").encode()).hexdigest()
-    assert h == "ffba6a1fe4d3b9dba9b383d3bfdbf20d97451ee272827cd27b8bd9f05ac9a914"   # 0.5.3 实验版：D13 取实验员 0.5.2 全文并加 $count 两处、R7.0 换成 $count 写法（逐字稿草案，未定稿）
+    assert h == "9cc6895900cf66a44458baaac295dc1e297e3c92b88eadd9734adbf510cca4c1"   # 0.5.3 实验版：D13 取实验员 0.5.2 全文并加 $count 两处、R7.0 换成 $count 写法（逐字稿草案，未定稿）
     assert len(M["norms"]) == 94 and M["for"] == ["table"]
     codes = [re.search(r"（([A-Z]\d+(?:\.\d+)?)）", n).group(1) for n in M["norms"]]
     assert codes.index("R7.0") + 1 == codes.index("R7.1")
