@@ -21,7 +21,7 @@ def test_norms_0_5_0():
     G2、G3、G5、G6 末尾加 W5 句、D13 加 W5 插句；共 94 条。核对值钉住，改一字须改这里。"""
     import re
     h = hashlib.sha256(("\n".join(M["norms"]) + "\n").encode()).hexdigest()
-    assert h == "63844caf4728d7f71eba44596a9913c1d71ea3f944d1a3bbd85c83e08d886049"   # 0.5.3 实验版：D13 取实验员 0.5.2 全文并加 $count 两处、R7.0 换成 $count 写法（逐字稿草案，未定稿）
+    assert h == "5eb4980879d91e80c860d35d8395bfc5195d4b9f48f364695eba5ceaba162b10"   # 0.5.3 实验版：D13 取实验员 0.5.2 全文并加 $count 两处、R7.0 换成 $count 写法（逐字稿草案，未定稿）
     assert len(M["norms"]) == 94 and M["for"] == ["table"]
     codes = [re.search(r"（([A-Z]\d+(?:\.\d+)?)）", n).group(1) for n in M["norms"]]
     assert codes.index("R7.0") + 1 == codes.index("R7.1")
@@ -31,6 +31,7 @@ def test_norms_0_5_0():
     assert M["norms"][codes.index("D13")].count("写进这一行的 $count") == 3
     assert "count: true" in M["norms"][codes.index("D13")] and "count: true" in M["norms"][codes.index("R1.1")]
     assert "总清单的数量格写进这一行的 $count" in M["norms"][codes.index("R7.0")]
+    assert '{"$blank": "条文号"}' in M["norms"][codes.index("R7.0")]   # 0.5.5
 
 
 def test_manifest_w6_from_text():
