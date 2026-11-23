@@ -1,6 +1,6 @@
 {
   "package": "subcontract-bom",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "publisher": "mengos",
   "scope": "public",
   "title": "分包分解单规范",
@@ -8,7 +8,7 @@
   "tool_titles": {
     "rack.layout": "排布计算"
   },
-  "content_hash": "1ad15a664659e46f5b09eedd60c26f610bd3e23310eef641ae458bb36f9f1ca8",
+  "content_hash": "074879e65acf53a6a304aff8cc33c0b2b4781a35eff4afd40fe4cc70bbb4dc2d",
   "types": [
     {
       "name": "rack_layout_receipt",

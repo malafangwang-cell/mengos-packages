@@ -1,6 +1,6 @@
 [project]
 name = "mengos-subcontract-bom"
-version = "0.5.0"
+version = "0.5.1"
 description = "subcontract-bom 自带的确定性排布计算工具 rack.layout（process 执行器，只用标准库）"
 requires-python = ">=3.10"
 dependencies = []
