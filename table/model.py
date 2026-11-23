@@ -249,7 +249,7 @@ def infer_type(values):
 # ---------------------------------------------------------------- 结构
 class Column:
     __slots__ = ("key", "title", "type", "unit", "decimals", "formula", "node", "align", "width", "inferred",
-                 "style", "date_format", "thousands", "numbering", "identifier", "required")
+                 "style", "date_format", "thousands", "numbering", "identifier", "required", "count")
 
     def to_json(self):
         o = {"key": self.key, "title": self.title, "type": self.type}
@@ -274,6 +274,8 @@ class Column:
             o["identifier"] = True
         if getattr(self, "required", False):
             o["required"] = True          # 2.4.0：必填列（只在为真时写出，旧表的表模型逐字节不变）
+        if getattr(self, "count", False):
+            o["count"] = True             # 2.5.1：只认经 $count 写入的格（只在为真时写出）
         return o
 
     @property
@@ -294,7 +296,7 @@ class Sheet:
     __slots__ = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols", "formula_errors",
                  "header_style", "rules", "row_styles", "displays", "raw", "_styles",
                  "row_ids", "exprs", "outline_from", "levels", "group", "subtotals", "merge_rows", "derive",
-                 "layout", "merged", "derive_src", "_spec", "_where", "_index", "expr_nodes", "src")
+                 "layout", "merged", "derive_src", "_spec", "_where", "_index", "expr_nodes", "src", "count_miss")
 
     def col(self, key):
         return next(c for c in self.columns if c.key == key)
@@ -353,9 +355,12 @@ class Sheet:
         cells = [({EXPR_KEY: self.exprs[(ri, j)][0]} if (ri, j) in self.exprs else _cell_json(c, v))
                  for j, (c, v) in enumerate(zip(self.columns, r))]
         rid = self.row_ids[ri] if self.row_ids else None
-        if not d and rid is None:
+        counted = {c.key: v for c, v in zip(self.columns, cells) if getattr(c, "count", False) and v is not None}
+        if not d and rid is None and not counted:
             return cells
-        o = {c.key: v for c, v in zip(self.columns, cells)}
+        o = {c.key: v for c, v in zip(self.columns, cells) if c.key not in counted}
+        if counted:
+            o[COUNT_KEY] = counted         # 2.5.1：count 列的值写回 $count（表模型读回时仍算经 $count 写入）
         if rid is not None:
             o[ID_KEY] = rid
         if d:
@@ -489,7 +494,7 @@ TABLE_KEYS = ("schema", "title", "subtitle", "meta", "sheets", "sources", "assum
               "columns", "rows", "totals", "caption", "note", "freeze_cols", "name", "lang") + SHEET_STYLE_KEYS + STRUCT_KEYS + ("sheet_order",)
 SHEET_KEYS = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols") + SHEET_STYLE_KEYS + STRUCT_KEYS + SHEET_ONLY_KEYS
 COL_KEYS = ("key", "title", "type", "unit", "decimals", "formula", "width", "align", "style", "date_format", "thousands", "numbering", "identifier",
-            "required")
+            "required", "count")
 ID_TITLE = re.compile(r"(编号|序号|代号|代码|编码|号码|图号|料号|ID)$", re.IGNORECASE)
 ID_LOOK = re.compile(r"^(0\d+(\.\d+)?|\d+\.\d*0|\d+(\.\d+){2,})$")     # 前导零、小数点后有末尾零、两个以上小数点
 
@@ -626,6 +631,7 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     sh._styles = None
     sh._spec, sh._where = s, where
     sh.row_ids, sh.exprs, sh.expr_nodes, sh.src = [], {}, {}, None
+    sh.count_miss = set()          # 2.5.1：count 列里不是经 $count 写入的格 {(入参行序号, 列序号)}，值不进表、进未填项
     sh.outline_from = sh.levels = sh.group = sh.merge_rows = sh.derive = None
     sh.subtotals, sh.layout, sh.merged, sh.derive_src = [], [], [], {}
     sid = s.get("id")
@@ -866,28 +872,70 @@ def _column(c, where, j) -> Column:
     if req is not None and not isinstance(req, bool):
         raise BadInput("required 是 true 或 false：这一列是不是必填", f"{where}.required")
     col.required = bool(req)
+    cnt = c.get("count")
+    if cnt is not None and not isinstance(cnt, bool):
+        raise BadInput("count 是 true 或 false：这一列的值是不是只认写在 $count 里的", f"{where}.count")
+    col.count = bool(cnt)
     return col
 
 
-def _merge_count(r, where, sh):
-    """2.5.0：把 $count 里的格并进这一行。同一列既在 $count 里又直接写在行里 ⟹ 拒；$count 里的格到这里应已由引擎换成数。"""
-    cnt = r[COUNT_KEY]
-    rest = {k: v for k, v in r.items() if k != COUNT_KEY}
-    if not isinstance(cnt, dict):
-        raise BadInput(f"{COUNT_KEY} 是对象：{{列名: 值}}", f"{where}.{COUNT_KEY}")
-    direct = {id(sh.find(k)) for k in rest if isinstance(k, str) and sh.find(k) is not None}
-    for k, v in cnt.items():
-        c = sh.find(k) if isinstance(k, str) else None
-        if c is None:
-            raise BadInput(f"{COUNT_KEY} 里有表里没有的列：{k}", f"{where}.{COUNT_KEY}", "键要与列的 key 或标题相同")
-        if id(c) in direct:
-            raise BadInput(f"“{c.title}”在 {COUNT_KEY} 里和行里各写了一处", f"{where}.{COUNT_KEY}.{k}", "同一列只写一处")
-        if isinstance(v, (dict, list)) or isinstance(v, bool):
-            raise BadInput(f"{COUNT_KEY} 里“{c.title}”这一格不是一个值", f"{where}.{COUNT_KEY}.{k}")
-    return {**rest, **cnt}
+def _apply_count(r, where, sh, ri):
+    """2.5.0：把 $count 里的格并进这一行。2.5.1：标 count: true 的列只认经 $count 写入的格——
+    别处写的值（对象行的普通键、数组行的格）不进表，记进 count_miss，未填项里逐格列出；不报错、不整件拒。
+    非 count 列同一列既在 $count 里又直接写在行里 ⟹ 拒；count 列两处都写时以 $count 为准（带 base 并入时上一版的普通格不作数）。"""
+    counted = set()
+    if isinstance(r, dict) and COUNT_KEY in r:
+        cnt = r[COUNT_KEY]
+        rest = {k: v for k, v in r.items() if k != COUNT_KEY}
+        if not isinstance(cnt, dict):
+            raise BadInput(f"{COUNT_KEY} 是对象：{{列名: 值}}", f"{where}.{COUNT_KEY}")
+        direct = {}
+        for k in rest:
+            c = sh.find(k) if isinstance(k, str) else None
+            if c is not None:
+                direct[id(c)] = k
+        for k, v in cnt.items():
+            c = sh.find(k) if isinstance(k, str) else None
+            if c is None:
+                raise BadInput(f"{COUNT_KEY} 里有表里没有的列：{k}", f"{where}.{COUNT_KEY}", "键要与列的 key 或标题相同")
+            if id(c) in direct:
+                if getattr(c, "count", False):
+                    rest.pop(direct[id(c)])
+                else:
+                    raise BadInput(f"“{c.title}”在 {COUNT_KEY} 里和行里各写了一处", f"{where}.{COUNT_KEY}.{k}", "同一列只写一处")
+            if isinstance(v, (dict, list)) or isinstance(v, bool):
+                raise BadInput(f"{COUNT_KEY} 里“{c.title}”这一格不是一个值", f"{where}.{COUNT_KEY}.{k}")
+            counted.add(id(c))
+        r = {**rest, **cnt}
+    countcols = [(j, c) for j, c in enumerate(sh.columns) if getattr(c, "count", False)]
+    if not countcols:
+        return r
+    if isinstance(r, dict):
+        out = dict(r)
+        for k in list(r):
+            c = sh.find(k) if isinstance(k, str) else None
+            if c is not None and getattr(c, "count", False) and id(c) not in counted:
+                if r[k] is not None and not (isinstance(r[k], str) and r[k].strip() == ""):
+                    sh.count_miss.add((ri, sh.columns.index(c)))
+                out.pop(k)
+        return out
+    return r
 
 
 def _row(r, where, sh, plain, t, from_model, ri):
+    """2.5.1：对象行先按 $count 与 count 列处理；数组行在按列对位之后清掉 count 列的格（记进 count_miss）。"""
+    out = _row_inner(_apply_count(r, where, sh, ri), where, sh, plain, t, from_model, ri)
+    if isinstance(r, list):
+        for j, c in enumerate(sh.columns):
+            if getattr(c, "count", False) and j < len(out):
+                v = out[j]
+                if v is not None and not (isinstance(v, str) and v.strip() == ""):
+                    sh.count_miss.add((ri, j))
+                out[j] = None
+    return out
+
+
+def _row_inner(r, where, sh, plain, t, from_model, ri):
     n = len(sh.columns)
     if isinstance(r, dict) and DISPLAY_KEY in r:
         sh.displays.append(_display(r[DISPLAY_KEY], sh, f"{where}.{DISPLAY_KEY}"))
@@ -901,8 +949,6 @@ def _row(r, where, sh, plain, t, from_model, ri):
             raise BadInput(f"{ID_KEY} 是行 id：字母、数字、下划线，字母或下划线开头，最多 32 个字符", f"{where}.{ID_KEY}")
         r = {k: v for k, v in r.items() if k != ID_KEY}
     sh.row_ids.append(rid)
-    if isinstance(r, dict) and COUNT_KEY in r:
-        r = _merge_count(r, where, sh)
     if isinstance(r, dict):
         out = [None] * n
         for k, v in r.items():
@@ -2234,6 +2280,8 @@ def _operands_text(sh, row, seen, t):
 
 # ---------------------------------------------------------------- 未填项（2.4.0；17 TL-30e）
 UNFILLED_MAX = 100
+# 2.5.1：count 列的格不是经 $count 写入时的未填项条目（逐字为草稿，交调度以实验定）
+UNFILLED_COUNT = "表 {label} {where}列 {key}（{title}）的值写进这一行的 $count"
 
 
 def unfilled(t):
@@ -2247,7 +2295,9 @@ def unfilled(t):
         if not sh.rows:
             out.append(f"表 {label} 没有数据行")
             continue
-        req = [(j, c) for j, c in enumerate(sh.columns) if getattr(c, "required", False) and c.formula is None and c.numbering is None]
+        req = [(j, c) for j, c in enumerate(sh.columns)
+               if (getattr(c, "required", False) or getattr(c, "count", False)) and c.formula is None and c.numbering is None]
+        miss = getattr(sh, "count_miss", set())
         if not req:
             continue
         for ri, r in enumerate(sh.rows):
@@ -2255,8 +2305,10 @@ def unfilled(t):
             src = sh.src[ri] if sh.src is not None and ri < len(sh.src) else ri
             for j, c in req:
                 v = r[j] if j < len(r) else None
-                if v is None or (isinstance(v, str) and v.strip() == ""):
-                    where = f"行 {rid} " if rid else f"第 {src + 1} 行（没有 $id）"
+                where = f"行 {rid} " if rid else f"第 {src + 1} 行（没有 $id）"
+                if (src, j) in miss:
+                    out.append(UNFILLED_COUNT.format(label=label, where=where, key=c.key, title=c.title))   # 2.5.1：count 列的值没有写在 $count 里
+                elif getattr(c, "required", False) and (v is None or (isinstance(v, str) and v.strip() == "")):
                     out.append(f"表 {label} {where}列 {c.key}（{c.title}）未填")
     if len(out) > UNFILLED_MAX:
         out = out[:UNFILLED_MAX - 1] + [f"还有 {len(out) - (UNFILLED_MAX - 1)} 处未列出"]

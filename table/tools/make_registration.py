@@ -83,6 +83,7 @@ COLUMN = {
             "numbering": {"enum": list(NUMBERINGS)},
             "identifier": {"type": "boolean"},
             "required": {"type": "boolean"},
+            "count": {"type": "boolean"},   # 2.5.1：只认经 $count 写入的格
         }},
     ]
 }
@@ -239,6 +240,10 @@ ADD_250 = ["数量格的值要来自回执时，对象行里写保留键 $count�
 TABLE_DESC = TABLE_DESC.replace(REF_ADD[0], REF_ADD[0] + ADD_250[0], 1)
 TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(REF_ADD[0], REF_ADD[0] + ADD_250[0], 1)
 assert all(x in TABLE_DESC and x in TABLE_DESC_BUILD for x in ADD_250)
+# 2.5.1：列属性 count 的说明句，接在 required 那句之后（只在 build 的说明里；逐字为草稿，交调度以实验定）
+ADD_251 = ["列可写 count: true：这一列的值只认写在行的 $count 里的格；别处写的值不进表，回执的 unfilled 逐格列出，写进这一行的 $count 才算填上。"]
+TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(ADD_240[0], ADD_240[0] + ADD_251[0], 1)
+assert all(x in TABLE_DESC_BUILD for x in ADD_251)
 
 
 def table_def(build=False):
