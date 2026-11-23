@@ -28,6 +28,16 @@
   },
   {
     "tool_id": "rack.layout",
+    "task": "照立库货架工程图出一份分包分解单（数据表），选中本包规范",
+    "ops": [
+      "generate"
+    ],
+    "required_type": "table",
+    "expect_selected": true,
+    "via": "assist"
+  },
+  {
+    "tool_id": "rack.layout",
     "task": "求 2^10 + 3^5 的精确值",
     "ops": [
       "compute"

@@ -132,7 +132,10 @@ def test_selection_cases_three_to_five_each_side():
     neg = [s for s in sel if not s["expect_selected"]]
     assert 3 <= len(pos) <= 5 and 3 <= len(neg) <= 5
     for s in pos:
-        assert set(s["ops"]) & set(UNIT["capability"]["ops"]) and s["required_type"] in UNIT["capability"]["out_types"]
+        if s.get("via") == "assist":   # 配套接入并入（MF-1j 草案）：按 assist.for 判，不按本工具的 ops/out_types
+            assert s["required_type"] in UNIT["assist"]["for"]
+        else:
+            assert set(s["ops"]) & set(UNIT["capability"]["ops"]) and s["required_type"] in UNIT["capability"]["out_types"]
 
 
 def test_model_facing_text_single_source():
@@ -161,3 +164,10 @@ def test_input_example_runs_like_certify():
     assert res["output"]["not_computed"] == []
     jsonschema.validate(res["output"], UNIT["signature"]["output_schema"])
     jsonschema.validate(UNIT["input_example"], UNIT["signature"]["input_schema"])
+
+
+def test_assist_declaration():
+    """0.5.1：配套接入声明 assist.for = ["table"]（本包规范声明的产物类型，与清单 for 相同）；不改 out_types、不挂 data_table。"""
+    assert UNIT["assist"] == {"for": ["table"]}
+    assert UNIT["assist"]["for"] == M["for"]
+    assert UNIT["capability"]["out_types"] == ["rack_layout_receipt"]

@@ -138,6 +138,8 @@ REGISTRATION = {
                           "乙": {"pallets": 400, "pallet_plan_a": 1000, "pallet_plan_b": 1000}},
             }},
             "signature": {"input_schema": INPUT_SCHEMA, "output_schema": OUTPUT_SCHEMA},
+            # 配套接入（15 MF-1j / 17 TL-21b 草案，引擎 v0.2.136 施工中）：路线产出的类型落在 for 之下、且选中本包规范时，PLAN 机械并入本工具
+            "assist": {"for": ["table"]},
             "capability": {
                 "ops": ["compute"],
                 "in_types": [],
