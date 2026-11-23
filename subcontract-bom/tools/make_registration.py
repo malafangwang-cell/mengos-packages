@@ -134,7 +134,7 @@ REGISTRATION = {
             "cost": {"latency": 100, "price": 0, "timeout": 10000},
             "input_example": {"from_drawing": {
                 "level_segments": {"$ref": "<count 回执 id>#/count"},
-                "beam_clear": {"$ref": "<pick 回执 id>#/values/CE/value"},
+                "beam_clear": {"$ref": "#/values/CE/value"},
             }},
             "signature": {"input_schema": INPUT_SCHEMA, "output_schema": OUTPUT_SCHEMA},
             "capability": {
@@ -160,4 +160,12 @@ if __name__ == "__main__":
         for u in reg["units"]:
             u["version"] = old["lock_hash"]
     path.write_text(json.dumps(reg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("registration.json written")
+    # 清单里进人或进模型的两处 W6 文字也从 text.py 取
+    mp = ROOT / "mengos-package.json"
+    m = json.loads(mp.read_text(encoding="utf-8"))
+    m["tool_titles"] = {"rack.layout": text.W6_TOOL_TITLE}
+    for t in m["types"]:
+        if t["name"] == "rack_layout_receipt":
+            t["note"] = text.W6_TYPE_NOTE
+    mp.write_text(json.dumps(m, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("registration.json and manifest W6 written")

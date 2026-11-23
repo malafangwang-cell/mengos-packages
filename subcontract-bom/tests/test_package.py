@@ -16,11 +16,33 @@ CASES = json.loads((ROOT / "golden_cases.json").read_text(encoding="utf-8"))
 UNIT = REG["units"][0]
 
 
-def test_norms_unchanged_from_0_4_3():
-    """本版不改条文（G 条改句 W5 待定稿后另行落）；条文 sha256 与 0.4.3 相同。"""
+def test_norms_0_5_0():
+    """0.5.0 条文（调度 2026-11-23 定稿）：在 0.4.3 上改 R1.1、R1.6、R2.2、R3.1、R6.1、R6.6、D13、G1、G5、T9，新增 R7.0，
+    G2、G3、G5、G6 末尾加 W5 句、D13 加 W5 插句；共 94 条。核对值钉住，改一字须改这里。"""
+    import re
     h = hashlib.sha256(("\n".join(M["norms"]) + "\n").encode()).hexdigest()
-    assert h == "0c88f5768fba916960127e9cfe96a30bade3ee811f3f2410c1756dc30cd752d0"
-    assert M["for"] == ["table"]
+    assert h == "36c9ea088cc140257fc449a781fcf56422c7ccfe7434a32bf0b48516b65aa8f5"
+    assert len(M["norms"]) == 94 and M["for"] == ["table"]
+    codes = [re.search(r"（([A-Z]\d+(?:\.\d+)?)）", n).group(1) for n in M["norms"]]
+    assert codes.index("R7.0") + 1 == codes.index("R7.1")
+    w5 = "本条算出的量由排布计算工具算出，事实表里引它的回执"
+    assert [c for c, n in zip(codes, M["norms"]) if w5 in n] == ["G2", "G3", "G5", "G6"]
+    assert "由排布计算工具算出；主件数量再由这些事实按 T 开头的推算规则算出" in M["norms"][codes.index("D13")]
+
+
+def test_manifest_w6_from_text():
+    import text
+    assert M["tool_titles"] == {"rack.layout": text.W6_TOOL_TITLE}
+    assert M["types"][0]["note"] == text.W6_TYPE_NOTE
+
+
+def test_no_placeholder_text_left():
+    import text
+    for k, v in vars(text).items():
+        if not k.startswith("W"):
+            continue
+        for s in (v if isinstance(v, (list, dict)) else [v]):
+            assert "待定稿" not in json.dumps(s, ensure_ascii=False)
 
 
 def test_only_value_types_and_declared():
