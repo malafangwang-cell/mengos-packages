@@ -36,7 +36,7 @@ DISPLAY_KEY = "$style"        # 行里的保留键：本行、本格的显示设
 ROW_KINDS = ("total", "subtotal", "group")   # row_styles 只按行种类写：合计行、小计行、包生成的组头（2.2.0 G7）
 ID_KEY = "$id"                # 行里的保留键：稳定的行 id（2.2.0 G17），格公式按它引用别的行
 BLANK_KEY = "$blank"          # $count 里的保留写法（2.5.2）：{"$blank": 条文号}——count 列按规范留空，不计入未填，回执 blanks 记下依据
-BLANK_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,7}(\.[0-9]{1,4}){0,3}$")   # 条文号的写法（如 R2.3、T9、G5）；以字母开头，引擎不会把它当成数
+BLANK_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,7}(\.[0-9]{1,4}){0,3}$")   # 条文号的写法（如 T2.3、T9、G5）；以字母开头，引擎不会把它当成数
 COUNT_KEY = "$count"          # 行里的保留键（2.5.0）：取自回执的格 {列: 值}；schema 上标 x-mengos-count（17 TL-30c），只认回执引用或量全由引用给出的算式，由引擎核证件、换成数后交工具
 EXPR_KEY = "$expr"            # 格里的保留的式（08 PD-1e v0.2.98、17 TL-30b）
 NUMBERINGS = ("seq", "outline")
@@ -915,7 +915,7 @@ def _apply_count(r, where, sh, ri):
             if isinstance(v, dict) and BLANK_KEY in v:
                 clause = v.get(BLANK_KEY)
                 if set(v) != {BLANK_KEY} or not isinstance(clause, str) or not BLANK_RE.match(clause.strip()):
-                    raise BadInput(f"{BLANK_KEY} 写所依据的条文号，例如 {{\"{BLANK_KEY}\": \"R2.3\"}}", f"{where}.{COUNT_KEY}.{k}")
+                    raise BadInput(f"{BLANK_KEY} 写所依据的条文号，例如 {{\"{BLANK_KEY}\": \"T2.3\"}}", f"{where}.{COUNT_KEY}.{k}")
                 if not getattr(c, "count", False):
                     raise BadInput(f"{BLANK_KEY} 只用于标了 count 的列，“{c.title}”没有标", f"{where}.{COUNT_KEY}.{k}")
                 sh.count_blank[(ri, sh.columns.index(c))] = clause.strip()

@@ -248,7 +248,7 @@ ADD_251 = ["列可写 count: true：这一列的值只认写在行的 $count 里
 TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(ADD_240[0], ADD_240[0] + ADD_251[0], 1)
 assert all(x in TABLE_DESC_BUILD for x in ADD_251)
 # 2.5.2：按规范留空的写法，接在 count 那句之后（只在 build 的说明里；逐字为草稿，交调度以实验定）
-ADD_252 = ["count 列的格按规范要留空时，在 $count 里写 {\"$blank\": \"条文号\"}（如 {\"数量\": {\"$blank\": \"R2.3\"}}）：这一格留空、不算未填，回执的 blanks 记下所依据的条文。"]
+ADD_252 = ["count 列的格按规范要留空时，在 $count 里写 {\"$blank\": \"条文号\"}（如 {\"数量\": {\"$blank\": \"T2.3\"}}）：这一格留空、不算未填，回执的 blanks 记下所依据的条文。"]
 TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(ADD_251[0], ADD_251[0] + ADD_252[0], 1)
 assert all(x in TABLE_DESC_BUILD for x in ADD_252)
 
