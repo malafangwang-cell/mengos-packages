@@ -8,7 +8,7 @@
   "tool_titles": {
     "rack.layout": "排布计算"
   },
-  "content_hash": "195fc02bcc9f891ad662ab7f86bef38d233ad6fabb56e117631b382fa97f0552",
+  "content_hash": "1ad15a664659e46f5b09eedd60c26f610bd3e23310eef641ae458bb36f9f1ca8",
   "types": [
     {
       "name": "rack_layout_receipt",

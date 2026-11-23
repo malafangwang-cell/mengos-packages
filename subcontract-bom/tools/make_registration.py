@@ -132,9 +132,10 @@ REGISTRATION = {
             "effect": "none",
             "executor": {"kind": "process", "entry": "rack_tool.py", "mode": "sync"},
             "cost": {"latency": 100, "price": 0, "timeout": 10000},
-            "input_example": {"from_drawing": {
-                "level_segments": {"$ref": "<count 回执 id>#/count"},
-                "beam_clear": {"$ref": "#/values/CE/value"},
+            "input_example": {"from_drawing": {   # 认证执行用（certify 取它跑一次，不做证件替换），数为编造；不进模型窗口
+                "run_length": 27600, "column_pitch": 2760, "level_segments": 4, "beam_clear": 2700,
+                "zones": {"甲": {"pallets": 800, "pallet_plan_a": 1200, "pallet_plan_b": 1000},
+                          "乙": {"pallets": 400, "pallet_plan_a": 1000, "pallet_plan_b": 1000}},
             }},
             "signature": {"input_schema": INPUT_SCHEMA, "output_schema": OUTPUT_SCHEMA},
             "capability": {

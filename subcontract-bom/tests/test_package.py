@@ -146,3 +146,18 @@ def test_model_facing_text_single_source():
         for n in ast.walk(tree):
             if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs:
                 assert not re.search(r"[一-鿿]", n.value), (f, n.value[:40])
+
+
+def test_input_example_runs_like_certify():
+    """certify（mengosv2 engine/tools/certify.ts ④）没有 determinismPayload 时取登记 input_example 原样执行、不做证件替换：
+    示例必须是具体数，经进程入口执行成功、两次逐字节相同、回执合 output_schema。"""
+    import subprocess
+    env = json.dumps({"tool": UNIT["tool_id"], "payload": UNIT["input_example"]}, ensure_ascii=False).encode()
+    outs = [subprocess.run([sys.executable, str(ROOT / M["runtime"]["process"]["entry"])], input=env, capture_output=True, cwd=str(ROOT)).stdout
+            for _ in range(2)]
+    assert outs[0] == outs[1]
+    res = json.loads(outs[0])
+    assert res["ok"] is True, res
+    assert res["output"]["not_computed"] == []
+    jsonschema.validate(res["output"], UNIT["signature"]["output_schema"])
+    jsonschema.validate(UNIT["input_example"], UNIT["signature"]["input_schema"])
