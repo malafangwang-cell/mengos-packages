@@ -1,6 +1,6 @@
 {
   "package": "table",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "title": "表格",
   "tool_titles": {
     "table.build": "生成表格",
@@ -9,7 +9,7 @@
   },
   "publisher": "mengos",
   "scope": "public",
-  "content_hash": "23085f67ba476f07ea081b37af1f39f421edf87b481eef68ad81746735f318f4",
+  "content_hash": "9ad61507ea82690a7431ccc13673220cfe56b5f0987c001fadec5e992dd4778c",
   "types": [
     {
       "name": "table",

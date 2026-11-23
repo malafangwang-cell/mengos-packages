@@ -172,7 +172,10 @@ def test_round_wrapper_matches_row_rounding(tmp_path):
 def test_formula_errors_name_the_problem(f, msg, tmp_path):
     t = {"title": "T", "columns": [{**COLS[0], "type": "text"}, *COLS[1:], {"title": "新", "type": "number", "formula": f}], "rows": [["桌", 1, 5]]}
     r, _ = run("table.build", {"table": t}, tmp_path)
-    assert not r["ok"] and r["error"]["code"] == "BAD_INPUT" and msg in r["error"]["message"], r
+    if r["ok"]:      # 2.5.3：列公式写不通时这一列当普通列收下，原因进未填项（结果是条件一类照旧拒）
+        assert any("没有用上" in u and msg in u for u in r["output"]["unfilled"]), r
+    else:
+        assert r["error"]["code"] == "BAD_INPUT" and msg in r["error"]["message"], r
 
 
 def test_empty_operands_make_empty_results_and_excel_guards_them(tmp_path):
