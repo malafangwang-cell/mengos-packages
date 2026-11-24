@@ -196,8 +196,13 @@ def table_build(payload, workdir=None):
     out = {"title": t.title, "table_sha256": t.sha, "name": name, "sheets": _sheets(t), "stats": t.stats(),
            "warnings": _warnings(t), "files": _write(t, BUILD_ALWAYS + extra, name, workdir),
            "unfilled": unfilled(t)}          # 2.4.0：未填项清单（output_schema 标 x-mengos-unfilled，17 TL-30e）
+    # r18r（立法者 2026-11-23）：未严格审计的格不进回执——这个记号只在导出的工作簿里写说明，与循环无关
     if t.assumptions:
         out["assumptions"] = list(t.assumptions)
+    from model import blanks
+    bl = blanks(t)
+    if bl:
+        out["blanks"] = bl                # 2.5.2：按规范留空的格（只在有时写出，其余回执逐字节不变）
     return out
 
 
@@ -216,11 +221,22 @@ def _from_object(obj):
     return args["table"], args.get("name")
 
 
+def _marks_expect(obj):
+    """r19（功能清单 B3）：产出记录上由引擎附的导出标记依据 {"expect": 核对项清单}（记录的顶层，不在 args 里，入参签名里没有）。
+    只在导出时读；没有时按“没有核对项”标（只标没有出处的数）。"""
+    m = obj.get("export_marks") if isinstance(obj, dict) else None
+    e = m.get("expect") if isinstance(m, dict) else None
+    if isinstance(e, list):
+        e = "\n".join(x for x in e if isinstance(x, str))
+    return e if isinstance(e, str) else None
+
+
 def _resolve_object(payload):
     from model import BadInput
     if ("table" in payload) == ("object" in payload):
         raise BadInput("table 与 object 二选一：给表的内容，或给要处理的表", "table")
     if "object" in payload:
+        payload = {**payload, "$marks_expect": _marks_expect(payload["object"])}
         table, name0 = _from_object(payload["object"])
         payload = {k: v for k, v in payload.items() if k != "object"}
         payload["table"] = table
@@ -235,6 +251,7 @@ def table_check(payload, workdir=None):
     from model import BadInput
     _allowed(payload, ["table", "object", "expect"])
     payload = _resolve_object(payload)
+    payload.pop("$marks_expect", None)
     expect = payload.get("expect")
     if expect is not None and (not isinstance(expect, str) or len(expect) > 20000):
         raise BadInput("expect 是期望清单字符串（一行一条，最多 20000 个字符）", "expect")
@@ -244,7 +261,8 @@ def table_check(payload, workdir=None):
     except ExpectError as e:
         raise BadInput("期望清单：" + e.message, "expect", e.hint, line=e.line) from None
     v = overall(checks)
-    out = {"verdict": v, "covered": v != "unknown", "checks": checks, "table_sha256": t.sha, "summary": summary(checks)}
+    from checker import failed_items
+    out = {"verdict": v, "covered": v != "unknown", "checks": checks, "table_sha256": t.sha, "summary": summary(checks), "failed": failed_items(checks)}
     if assumptions:
         out["assumptions"] = assumptions
     return out
@@ -255,6 +273,7 @@ def table_export(payload, workdir=None):
     from model import BadInput
     _allowed(payload, ["table", "object", "name", "formats", "format"])
     payload = _resolve_object(payload)
+    marks_expect = payload.pop("$marks_expect", None)
     if "format" in payload:
         if "formats" in payload:
             raise BadInput("format 与 formats 二选一", "format")
@@ -262,6 +281,8 @@ def table_export(payload, workdir=None):
         payload = {k: v for k, v in payload.items() if k != "format"}
         payload["formats"] = [f] if isinstance(f, str) else f
     t = _table(payload)
+    from model import export_marks
+    t.export_marks = export_marks(t, marks_expect)      # r19（B3）：只在导出的工作簿里标黄
     name = _name(payload, t)
     formats = _formats(payload, EXPORT_FORMATS, [])
     if not formats:

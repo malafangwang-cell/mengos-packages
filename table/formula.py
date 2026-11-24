@@ -23,12 +23,12 @@ import math
 import re
 from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_DOWN, ROUND_FLOOR, ROUND_HALF_UP, ROUND_UP, localcontext
 
-FUNCS = {"round": (1, 2), "abs": (1, 1), "min": (2, 8), "max": (2, 8),
+FUNCS = {"round": (1, 2), "abs": (1, 1), "min": (2, 8), "max": (2, 8), "sqrt": (1, 1),
          "roundup": (1, 2), "rounddown": (1, 2), "ceiling": (1, 2), "floor": (1, 2),
          "and": (2, 8), "or": (2, 8), "not": (1, 1), "if": (3, 3)}
 AGG = ("total", "cumsum")
 XFUNCS = ("sumif", "countif")
-EXCEL_FUNC = {"round": "ROUND", "abs": "ABS", "min": "MIN", "max": "MAX", "roundup": "ROUNDUP", "rounddown": "ROUNDDOWN",
+EXCEL_FUNC = {"round": "ROUND", "abs": "ABS", "sqrt": "SQRT", "min": "MIN", "max": "MAX", "roundup": "ROUNDUP", "rounddown": "ROUNDDOWN",
               "ceiling": "CEILING", "floor": "FLOOR", "and": "AND", "or": "OR", "not": "NOT", "if": "IF"}
 DISCONTINUOUS = ("roundup", "rounddown", "ceiling", "floor")
 CMP = (">=", "<=", "<>", "!=", "==", ">", "<", "=")
@@ -37,7 +37,20 @@ TOKEN = re.compile(r"\s*(?:(?P<num>\d+(?:\.\d+)?%?)|(?P<str>\"[^\"]*\"|“[^”]
                    r"|(?P<qid>[^\W\d]\w*\.\w+)|(?P<id>[^\W\d][\w]*)"
                    r"|(?P<cmp>>=|<=|<>|!=|==|>|<|=)|(?P<op>[-+*/(),]))", re.UNICODE)
 DATE_LIT = re.compile(r"^(\d{4})-(\d{1,2})-(\d{1,2})$")
-FN_LIST = "round、abs、min、max、roundup、rounddown、ceiling、floor、and、or、not、if、total、cumsum、sumif、countif"
+FN_LIST = "round、abs、min、max、sqrt、roundup、rounddown、ceiling、floor、and、or、not、if、total、cumsum、sumif、countif"
+# r19（功能清单 A1）：格公式与核对项同一种指法——“表名/行名/列名”指表里的一格（与核对器 _locate 同一认法，model.locate）。
+#   三段之间各一个斜杠、段内不含空白与运算符；三段都是数时按除法读（6/2/3）。除法两边要写空格才不会被读成指法（与核对项的写法相同）。
+PATH_RE = re.compile(r"[^\s=+\-*/(),{}\"“”<>@%]+/[^\s=+\-*/(),{}\"“”<>]+/[^\s=+\-*/(),{}\"“”<>]+")
+_NUMSEG = re.compile(r"^\d+(?:\.\d+)?%?$")
+
+
+class RefError(Exception):
+    """格的指法解析不到（kind：missing 没有这一行或这一列、dup 有几行同名、empty 所引的格是空的、notnum 不是数）。
+    不是写法错误：只让这一格算不出（A4），由调用方按 kind 写说明。"""
+
+    def __init__(self, kind, addr, detail=None, loc=None):
+        super().__init__(addr)
+        self.kind, self.addr, self.detail, self.loc = kind, addr, detail, loc
 MAX_LEN = 500
 MAX_DEPTH = 40
 SIG = 15
@@ -64,6 +77,11 @@ def tokenize(src: str):
         if s[i].isspace():
             i += 1
             continue
+        pm = PATH_RE.match(s, i)
+        if pm and not all(_NUMSEG.match(seg) for seg in pm.group(0).split("/")):
+            out.append(("path", pm.group(0)))
+            i = pm.end()
+            continue
         m = TOKEN.match(s, i)
         if not m or m.end() == i:
             raise FormulaError(f"公式里有不认识的字符：{s[i:i + 10]!r}（只能用列名、数字、+ - * / 和括号、比较 > >= < <= = <>、"
@@ -78,9 +96,9 @@ class _Parser:
     """式 := 加减 (比较符 加减)?；加减 := 项 (('+'|'-') 项)*；项 := 因子 (('*'|'/') 因子)*；
     因子 := ('-'|'+') 因子 | 数[%] | "文字" | 列 | 函数(参数…) | (式)"""
 
-    def __init__(self, toks, resolve, resolve_ref=None, resolve_q=None):
+    def __init__(self, toks, resolve, resolve_ref=None, resolve_q=None, resolve_path=None):
         self.t, self.i, self.resolve, self.depth = toks, 0, resolve, 0
-        self.resolve_ref, self.resolve_q = resolve_ref, resolve_q
+        self.resolve_ref, self.resolve_q, self.resolve_path = resolve_ref, resolve_q, resolve_path
 
     def peek(self):
         return self.t[self.i] if self.i < len(self.t) else (None, None)
@@ -143,6 +161,11 @@ class _Parser:
         if k == "str":
             self.take()
             return ("str", v[1:-1])
+        if k == "path":
+            self.take()
+            if self.resolve_path is None:
+                raise FormulaError(f"{v}：引用别的格只能写在格公式（{{\"$expr\": 式}}）里；列公式整列同算，引用同一行的列")
+            return ("pref", self.resolve_path(v), v)
         if k == "ref":
             self.take()
             if self.resolve_ref is None:
@@ -223,17 +246,18 @@ class _Parser:
         return self.resolve_q(sid, col)
 
 
-def parse(src: str, resolve, resolve_ref=None, resolve_q=None):
+def parse(src: str, resolve, resolve_ref=None, resolve_q=None, resolve_path=None):
     """resolve(名字) → 列 key；找不到时抛 FormulaError。
-    resolve_ref(表id 或 None, 行id, 列) → 一格的定位（只在格公式里给）；resolve_q(表id, 列) → (表id, 列 key)（跨表汇总用）。"""
-    return _Parser(tokenize(src), resolve, resolve_ref, resolve_q).parse()
+    resolve_ref(表id 或 None, 行id, 列) → 一格的定位（只在格公式里给）；resolve_q(表id, 列) → (表id, 列 key)（跨表汇总用）。
+    resolve_path(“表名/行名/列名”) → 一格的定位（r19：格公式与核对项共用）；解析不到抛 RefError。"""
+    return _Parser(tokenize(src), resolve, resolve_ref, resolve_q, resolve_path).parse()
 
 
 def cell_refs(node, acc=None):
     """式里引用的格（cref 的定位）。"""
     acc = [] if acc is None else acc
     tag = node[0]
-    if tag == "cref":
+    if tag in ("cref", "pref"):
         acc.append(node[1])
     for k in _kids(node):
         cell_refs(k, acc)
@@ -312,7 +336,7 @@ def live_refs(node):
         return {node[1]}
     if tag in ("agg",):
         return {node[2]}
-    if tag in ("xagg", "sumif", "countif", "cref"):
+    if tag in ("xagg", "sumif", "countif", "cref", "pref"):
         return {"<ext>"}
     if tag == "bin" and node[1] == "*" and any(x[0] == "num" and x[1] == 0 for x in (node[2], node[3])):
         return set()
@@ -348,6 +372,8 @@ def kind_of(node, kinds, where="公式"):
         return "num"
     if tag == "cref":
         return kinds[node[1]]
+    if tag == "pref":
+        return "num"                          # r19：按指法取到的格在求值时读成数（读不成数 ⟹ 这一格算不出），与核对器相同
     if tag == "xagg":
         if kinds[node[2]] != "num":
             raise FormulaError("total 只能用于数值列")
@@ -473,6 +499,8 @@ def _ev(node, row, cols, ri, ext=None):
     tag = node[0]
     if tag == "cref":
         return ext.cell(node[1])
+    if tag == "pref":
+        return ext.pcell(node[1], node[2])
     if tag == "xagg":
         return sum((v for v in ext.column(node[2]) if isinstance(v, Decimal)), Decimal(0))
     if tag in ("sumif", "countif"):
@@ -531,6 +559,10 @@ def _ev(node, row, cols, ri, ext=None):
             return min(args)
         if name == "max":
             return max(args)
+        if name == "sqrt":
+            if args[0] < 0:
+                raise FormulaError("sqrt 的参数不能是负数")
+            return args[0].sqrt()
         if name in ("ceiling", "floor"):
             m = args[1] if len(args) == 2 else Decimal(1)
             q = sig(args[0]) / m
@@ -587,7 +619,7 @@ def _flt(v):
 
 def _fv(node, row, cols, ri, hit, ext=None):
     tag = node[0]
-    if tag in ("cref", "xagg", "sumif", "countif"):
+    if tag in ("cref", "pref", "xagg", "sumif", "countif"):
         with localcontext() as c:
             c.prec = 34
             return _flt(_ev(node, {k: (Decimal(repr(v)) if isinstance(v, float) else v) for k, v in row.items()}, cols, ri, ext))
@@ -640,6 +672,8 @@ def _fv(node, row, cols, ri, hit, ext=None):
             return min(args)
         if name == "max":
             return max(args)
+        if name == "sqrt":
+            return math.sqrt(args[0]) if args[0] >= 0 else None
         x = args[0]
         if name in ("ceiling", "floor"):
             hit[0] = True
@@ -669,11 +703,12 @@ def to_excel(node, cell_of, kinds=None, agg_of=None):
         return cell_of(node[1])
     if tag == "agg":
         return agg_of(node[1], node[2])
-    if tag == "cref":
+    if tag in ("cref", "pref"):
         return cell_of(node[1])
     if tag in ("xagg", "sumif", "countif"):
         key = to_excel(node[2], cell_of, kinds, agg_of) if tag != "xagg" else None
         return agg_of(tag, node, key)
+    if tag == "neg":
         return "-" + _paren(node[1], cell_of, kinds, agg_of)
     if tag == "bin":
         return f"{_paren(node[2], cell_of, kinds, agg_of)}{node[1]}{_paren(node[3], cell_of, kinds, agg_of)}"

@@ -798,7 +798,7 @@
  },
  {
   "id": "err_cell_type",
-  "note": "整数列写了小数：拒收并指明格子",
+  "note": "整数列写了小数：拒收并指明格子（r19 起：只这一格不收/算不出，原因进未填项，整件不拒——功能清单 A1、A4、B2）",
   "tool": "table.build",
   "payload": {
    "table": {
@@ -817,8 +817,9 @@
    }
   },
   "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.rows[0][0]"
+   "unfilled": [
+    "T/第1行/数量 没有收：整数列不能有小数：2.5"
+   ]
   }
  },
  {
@@ -844,66 +845,6 @@
   "expect": {
    "error.code": "BAD_INPUT",
    "error.where": "table.rows[0]"
-  }
- },
- {
-  "id": "err_formula_ref",
-  "note": "公式引用不存在的列",
-  "tool": "table.build",
-  "payload": {
-   "table": {
-    "title": "T",
-    "columns": [
-     {
-      "key": "a",
-      "title": "甲",
-      "type": "number"
-     },
-     {
-      "title": "乙",
-      "formula": "a * k"
-     }
-    ],
-    "rows": [
-     [
-      1
-     ]
-    ]
-   }
-  },
-  "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.columns[1].formula"
-  }
- },
- {
-  "id": "err_formula_text",
-  "note": "公式引用文字列",
-  "tool": "table.build",
-  "payload": {
-   "table": {
-    "title": "T",
-    "columns": [
-     {
-      "key": "a",
-      "title": "甲",
-      "type": "text"
-     },
-     {
-      "title": "乙",
-      "formula": "a * 2"
-     }
-    ],
-    "rows": [
-     [
-      "x"
-     ]
-    ]
-   }
-  },
-  "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.columns[1].formula"
   }
  },
  {
@@ -6164,154 +6105,6 @@
   "expect": {
    "error.code": "BAD_INPUT",
    "error.where": "table.row_styles[0].rows"
-  }
- },
- {
-  "id": "err_if_constant",
-  "note": "if 的两支暂不收数字常数（#711 §九 第 5 步）",
-  "tool": "table.build",
-  "payload": {
-   "table": {
-    "title": "办公室装修采购清单",
-    "columns": [
-     {
-      "key": "no",
-      "title": "序号",
-      "type": "integer"
-     },
-     {
-      "key": "item",
-      "title": "品名"
-     },
-     {
-      "key": "spec",
-      "title": "规格"
-     },
-     {
-      "key": "unit",
-      "title": "单位"
-     },
-     {
-      "key": "qty",
-      "title": "数量",
-      "type": "integer"
-     },
-     {
-      "key": "price",
-      "title": "单价",
-      "type": "money"
-     },
-     {
-      "key": "amt",
-      "title": "金额",
-      "type": "money",
-      "formula": "数量 * 单价"
-     },
-     {
-      "key": "vendor",
-      "title": "供应商"
-     },
-     {
-      "key": "date",
-      "title": "到货日期",
-      "type": "date"
-     },
-     {
-      "title": "大件",
-      "type": "integer",
-      "formula": "if(数量 > 10, 1, 0)"
-     }
-    ],
-    "rows": [
-     [
-      1,
-      "办公桌",
-      "1400x700",
-      "张",
-      12,
-      850,
-      "宏达家具",
-      "2026-11-20"
-     ],
-     [
-      2,
-      "办公椅",
-      "网布可升降",
-      "把",
-      12,
-      320,
-      "宏达家具",
-      "2026-11-20"
-     ],
-     [
-      3,
-      "文件柜",
-      "1800*900*400",
-      "个",
-      4,
-      680,
-      "宏达家具",
-      "2026-11-25"
-     ],
-     [
-      4,
-      "投影仪",
-      "4K 激光",
-      "台",
-      1,
-      12800,
-      "讯联电子",
-      "2026-11-18"
-     ],
-     [
-      5,
-      "会议桌",
-      "3600×1400",
-      "张",
-      1,
-      4600,
-      "宏达家具",
-      "2026-11-25"
-     ],
-     [
-      6,
-      "网线",
-      "六类 305m",
-      "箱",
-      3,
-      560,
-      "讯联电子",
-      "2026-11-15"
-     ],
-     [
-      7,
-      "插线板",
-      "6 位 3m",
-      "个",
-      20,
-      45,
-      "京采办公",
-      "2026-11-15"
-     ],
-     [
-      8,
-      "白板",
-      "1200×900",
-      "块",
-      2,
-      180,
-      "京采办公",
-      "2026-11-15"
-     ]
-    ],
-    "totals": [
-     "金额"
-    ]
-   }
-  },
-  "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.columns[9].formula"
   }
  },
  {
@@ -17429,7 +17222,7 @@
  },
  {
   "id": "err_expr_in_formula_col",
-  "note": "公式列的格不收 $expr（17 TL-30b：工具算出的字段不得收式）",
+  "note": "公式列的格不收 $expr（17 TL-30b：工具算出的字段不得收式）（r19 起：只这一格不收/算不出，原因进未填项，整件不拒——功能清单 A1、A4、B2）",
   "tool": "table.build",
   "payload": {
    "table": {
@@ -17499,13 +17292,14 @@
    }
   },
   "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.rows[0].金额"
+   "unfilled": [
+    "办公室装修采购清单/办公桌/金额 没有收：“金额”是公式列，格里不能写 $expr"
+   ]
   }
  },
  {
   "id": "err_expr_missing_row",
-  "note": "格公式引用的行 id 不存在",
+  "note": "格公式引用的行 id 不存在（r19 起：只这一格不收/算不出，原因进未填项，整件不拒——功能清单 A1、A4、B2）",
   "tool": "table.build",
   "payload": {
    "table": {
@@ -17601,13 +17395,14 @@
    }
   },
   "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.sheets[0].rows[0][6]"
+   "unfilled": [
+    "01立柱/立柱/数量 算不出：格公式“@r9.数量”写法不对：@r9.数量：“01立柱”里没有 id 为 r9 的行（被引用的行要写 $id）"
+   ]
   }
  },
  {
   "id": "err_expr_cycle",
-  "note": "格公式成环",
+  "note": "格公式成环（r19 起：只这一格不收/算不出，原因进未填项，整件不拒——功能清单 A1、A4、B2）",
   "tool": "table.build",
   "payload": {
    "table": {
@@ -17714,12 +17509,15 @@
    }
   },
   "expect": {
-   "error.code": "BAD_INPUT"
+   "unfilled": [
+    "01立柱/甲/数量 算不出：这几格互相引用成了环：01立柱/甲/数量、01立柱/乙/数量",
+    "01立柱/乙/数量 算不出：这几格互相引用成了环：01立柱/甲/数量、01立柱/乙/数量"
+   ]
   }
  },
  {
   "id": "err_expr_integer",
-  "note": "整数列的格公式算出小数",
+  "note": "整数列的格公式算出小数（r19 起：只这一格不收/算不出，原因进未填项，整件不拒——功能清单 A1、A4、B2）",
   "tool": "table.build",
   "payload": {
    "table": {
@@ -17815,8 +17613,9 @@
    }
   },
   "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.sheets[0].rows[0][6]"
+   "unfilled": [
+    "01立柱/立柱/数量 算不出：格公式“672*1.005”算出 675.36，“数量”是整数列；要取整就在式里写 roundup、rounddown、ceiling、floor 或 round"
+   ]
   }
  },
  {
@@ -18339,36 +18138,6 @@
   },
   "expect": {
    "error.code": "BAD_INPUT"
-  }
- },
- {
-  "id": "err_if_numeric_branches",
-  "note": "补：if 的两支不收数字常数（长期规则）：if(名称=\"立柱\", 168, 1296) 回 BAD_INPUT，提示引用一列",
-  "tool": "table.build",
-  "payload": {
-   "table": {
-    "title": "T",
-    "columns": [
-     {
-      "title": "名称",
-      "type": "text"
-     },
-     {
-      "title": "数量",
-      "type": "integer",
-      "formula": "if(名称 = \"立柱\", 168, 1296)"
-     }
-    ],
-    "rows": [
-     [
-      "立柱"
-     ]
-    ]
-   }
-  },
-  "expect": {
-   "error.code": "BAD_INPUT",
-   "error.where": "table.columns[1].formula"
   }
  },
  {

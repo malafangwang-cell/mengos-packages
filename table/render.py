@@ -119,7 +119,11 @@ def formula_text(sh, col) -> str:
 def expr_text(sh, src, col=None) -> str:
     import formula as F
     s = ""
-    for kind, val in F.tokenize(src):
+    try:
+        toks = F.tokenize(src)
+    except F.FormulaError:
+        return src                           # r19：写不通的格公式只让那一格算不出，原式照样显示
+    for kind, val in toks:
         if kind == "id":
             c = sh.find(val)
             s += c.title if c is not None and c is not col else val
