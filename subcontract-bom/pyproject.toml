@@ -1,0 +1,9 @@
+[project]
+name = "mengos-subcontract-bom"
+version = "0.5.5"
+description = "subcontract-bom 规范包：包内规范（norms）与核对项（checks），不带工具"
+requires-python = ">=3.10"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8", "jsonschema>=4"]
