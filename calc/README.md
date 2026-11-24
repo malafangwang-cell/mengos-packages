@@ -1,5 +1,7 @@
 # calc v2（计算工具族的替换包）
 
+> 2.2.5（mengosv2 DXF 实验定版，2026-11；工具卡措辞按实验定的规矩（立法者 2026-11-22）定）：只改 calc.evaluate 的 expr 与 calc.assert_equal 的 left/right 两处参数说明，各在“支持 2x、2(x+1) 这类隐式乘法和全角符号。”之后加一句：“可用函数：sqrt、abs、floor、ceil（这四个各一个参数）、max、min、mod(a, b)、log(x, 底)；没有 round，四舍五入写 floor(x + 1/2)，向上取整写 ceil(x)。”（实验里模型写 round、ceiling 被拒）。执行体不改；registration 改了，lock 变（1d3867dbcbe48459 → f6af0e256092e9c9），须重新认证与人签。
+
 > 2.2.4（mengosv2 工单 P4，kernel-spec 17 TL-30d、08 PD-1e v0.2.121）：calc.evaluate 回执的精确值 `value` 与近似值 `approx` 在 output_schema 上标 `"x-mengos-ref": true`（可引用位置声明；两处都是本工具算出的值，不是入参回显）；calc.evaluate 根说明末尾加一句，照立法者 2026-11-21 批定原文（P5 C2）：“拿回的精确值与近似值可以在产物里引用。”algebra、check_equal 不标、说明不动；其余给模型看的文字一字未改；工具代码未改，回执不变。registration 改了（`family_version` 写 2.2.4），lock 变（9d44a4cafdfa8176 → 1d3867dbcbe48459），须重新认证。无指针简写 `{"$ref": 回执节点id}` 照旧由引擎认，说明里不另提。
 
 > 2.2.3（DXF 端到端归因 F5，立法者 2026-11-20 批定文字）：只改 digits 参数给模型看的说明。calc.evaluate 的 digits 原文“digits：近似值的有效位数，缺省 30。”整句换成批定文字；calc.algebra 的 digits 原先没有说明，补上同一句。批定文字：“近似值写几位有效数字（从第一个非零数字数起，不是小数位数），1–1000，缺省 30。只影响近似值的写法，精确值不变。”文中 1–1000 与两件工具 input_schema 的 minimum/maximum 一致（已核）。其余给模型看的文字一字未改；工具代码未改。registration 改了（`family_version` 随之写 2.2.3），lock 变（ecbbbd50de6a4d29 → 9d44a4cafdfa8176），须重新认证。
