@@ -15,7 +15,7 @@ import xlsxwriter
 from xlsxwriter.utility import xl_col_to_name, xl_rowcol_to_cell
 
 import formula as F
-from model import DATE_FORMATS, NUMERIC, SUBTOTAL_CODE, Table, aggregate_decimals, dec_str, hex_of, static_style
+from model import DATE_FORMATS, MARK_LEGEND, NUMERIC, SUBTOTAL_CODE, Table, aggregate_decimals, dec_str, hex_of, static_style
 from render import display, formula_text, header, rule_text, totals_row
 
 EPOCH = _dt.datetime(2000, 1, 1)
@@ -115,6 +115,21 @@ def _formula_excel(sh, c, cell_of, agg_of, guard_needed):
     return expr
 
 
+def _marked_style(t, sh, ri, j, st):
+    """r19（B3）：导出时标黄的格——在这一格原有样式上把底色换成黄。"""
+    mk = getattr(t, "export_marks", None)
+    if not mk or (sh._index, ri, j) not in mk:
+        return st
+    return {**(st or {}), "fill": "黄"}
+
+
+def _legend(ws, t, sh, row, fmt):
+    """r19（B3）：这张表有标黄的格时，表的最后一行写“标黄数字：未严格审计”（不进合计、不算数据行）。"""
+    mk = getattr(t, "export_marks", None)
+    if mk and any(m[0] == sh._index for m in mk):
+        ws.write_string(row, 0, MARK_LEGEND, fmt("cell", None, "left"))
+
+
 def _cache(v):
     if v is None:
         return ""
@@ -188,12 +203,12 @@ def to_xlsx(t: Table) -> bytes:
                 guards[j] = any(r[k] is None for r in sh.rows for k in ks)
         for i, r in enumerate(sh.rows, start=1):
             for j, (c, v) in enumerate(zip(sh.columns, r)):
-                f = fmt("cell", nums[j], c.align, static_style(sh, i - 1, j) if styled else None)
+                f = fmt("cell", nums[j], c.align, _marked_style(t, sh, i - 1, j, static_style(sh, i - 1, j) if styled else None))
                 if c.formula is not None:
                     expr = _formula_excel(sh, c, lambda k, _i=i: xl_rowcol_to_cell(_i, col_of[k]),
                                           lambda name, k, key=None, _i=i: agg_of(name, k, _i, key), guards[j])
                     ws.write_formula(i, j, "=" + expr, f, _cache(v))
-                elif (i - 1, j) in sh.exprs:
+                elif (i - 1, j) in sh.exprs and sh.exprs[(i - 1, j)][1] is not None:
                     ws.write_formula(i, j, "=" + _expr_excel(t, sh, plans, i - 1, j), f, _cache(v))
                 elif (i - 1) in sh.derive_src and c.key in sh.derive_src[i - 1]:
                     _write_derived(ws, t, plans, sh, i - 1, j, i, f, v)
@@ -237,6 +252,7 @@ def to_xlsx(t: Table) -> bytes:
                     ws.write_string(row, j, tr[j], fmt("total", None, "left", tst))
                 else:
                     ws.write_blank(row, j, None, fmt("total", None, None, tst))
+        _legend(ws, t, sh, nrow + 1 + (1 if tr is not None else 0), fmt)
         if nrow and sh.rules:
             _rules(wb, ws, sh, col_of, nrow)
         for j, c in enumerate(sh.columns):
@@ -379,7 +395,7 @@ def _write_layout_sheet(wb, ws, t, sh, plans, fmt, f_head, lang):
             ws.set_row(r, None, None, {"level": level, "hidden": "detail" in e})
             for j, c in enumerate(sh.columns):
                 v = sh.rows[ri][j]
-                f = fmt("cell", nums[j], c.align, static_style(sh, ri, j) if styled else None)
+                f = fmt("cell", nums[j], c.align, _marked_style(t, sh, ri, j, static_style(sh, ri, j) if styled else None))
 
                 def agg_of(name, k, key=None, _r=r):
                     if name in ("xagg", "sumif", "countif"):
@@ -389,7 +405,7 @@ def _write_layout_sheet(wb, ws, t, sh, plans, fmt, f_head, lang):
                 if c.formula is not None:
                     expr = _formula_excel(sh, c, lambda k, _r=r: xl_rowcol_to_cell(_r, col_of[k]), agg_of, guards[j])
                     ws.write_formula(r, j, "=" + expr, f, _cache(v))
-                elif (ri, j) in sh.exprs:
+                elif (ri, j) in sh.exprs and sh.exprs[(ri, j)][1] is not None:
                     ws.write_formula(r, j, "=" + _expr_excel(t, sh, plans, ri, j), f, _cache(v))
                 elif ri in sh.derive_src and c.key in sh.derive_src[ri]:
                     _write_derived(ws, t, plans, sh, ri, j, r, f, v)
@@ -472,6 +488,7 @@ def _write_layout_sheet(wb, ws, t, sh, plans, fmt, f_head, lang):
                 ws.write_string(row, j, tr[j], fmt("total", None, "left", tst))
             else:
                 ws.write_blank(row, j, None, fmt("total", None, None, tst))
+    _legend(ws, t, sh, last + 1 + (1 if tr is not None else 0), fmt)
     if sh.rows and sh.rules:
         _rules(wb, ws, sh, col_of, len(sh.rows), _segments(pos.values()))
     for j, c in enumerate(sh.columns):

@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from model import COLOR_NAMES, DATE_FORMATS, DISPLAY_KEY, EXPR_KEY, ID_KEY, MAX_LEVEL, MAX_RULES, NUMBERINGS, ROW_KINDS  # noqa: E402  闭集与代码同一处定义
+from model import COLOR_NAMES, COUNT_KEY, DATE_FORMATS, DISPLAY_KEY, EXPR_KEY, ID_KEY, MAX_LEVEL, MAX_RULES, NUMBERINGS, ROW_KINDS  # noqa: E402  闭集与代码同一处定义
 ID = {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$"}
 CELL_PLAIN = {"type": ["string", "number", "boolean", "null"]}
 # 2.2.0 G17：输入列的格可以是保留的式 {"$expr": 式}（08 PD-1e v0.2.98、17 TL-30b；在 rows 这一层写 "x-mengos-expr": true）
@@ -83,17 +83,27 @@ COLUMN = {
             "numbering": {"enum": list(NUMBERINGS)},
             "identifier": {"type": "boolean"},
             "required": {"type": "boolean"},
+            "count": {"type": "boolean"},   # 2.5.1：只认经 $count 写入的格
         }},
     ]
 }
-ROW_ID = {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$", "description": "稳定的行 id：格公式用 @行id.列 引用这一行"}
+ROW_ID = {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,31}$", "description": "稳定的行 id：带 base 改这一行时用它指明是哪一行"}   # r19：原“格公式用 @行id.列 引用这一行”
 # 17 TL-30b v0.2.99：取整函数的位数、步长参数不是数据，声明在 x-mengos-expr 同一层，引擎按声明跳过（只跳过“恰是一个数”的参数）
 EXPR_PARAMS = {"round": [2], "roundup": [2], "rounddown": [2], "ceiling": [2], "floor": [2]}
+# 2.5.0：数量容器 $count（17 TL-30c）——对象行里取自回执的格；值由引擎核证件、换成数后交工具。逐字写法为草稿（交调度，以实验定）
+# r21（立法者 2026-11-24 批，逐字；各处同一句）：原“这一行里取自回执的格：{列名: 回执引用，或量全由引用给出的算式}。”
+COUNT_DESC = "这一行的数量格：{列名: 值}。值写格公式 {\"$expr\": \"表名/行名/列名 的算式\"}、回执引用 {\"$ref\": \"<回执id>#<指针>\"}，或图上照写的数。"
+# 2.5.2：$count 里的格另可写 {"$blank": 条文号}（count 列按规范留空）；条文号以字母开头，不是数，证件账不审它
+BLANK = {"type": "object", "required": ["$blank"], "additionalProperties": False,
+         "properties": {"$blank": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]{0,7}(\\.[0-9]{1,4}){0,3}$"}}}
+COUNT = {"type": "object", "x-mengos-count": True, "maxProperties": 200, "description": COUNT_DESC,
+         "additionalProperties": {"anyOf": [{"type": ["number", "string", "null"]}, BLANK]}}
+# 2.5.0：行的 schema 由 oneOf 改成一个合并的 schema——数组行用 items、对象行用 properties/additionalProperties（JSON Schema 各管各的形态）。
+#   引擎的证件账与可达性只沿 properties/items 走、不进 oneOf（mengosv2 engine/projection/credentials.ts），合并后 $count 的
+#   x-mengos-count 与 $style 的 x-mengos-display 才可达；普通格仍落在未声明的键上，审法不变
 ROWS = {"type": "array", "maxItems": 100000, "x-mengos-data": True, "x-mengos-expr": True, "x-mengos-expr-params": EXPR_PARAMS,
-        "items": {"oneOf": [
-    {"type": "array", "maxItems": 200, "items": CELL},
-    {"type": "object", "properties": {DISPLAY_KEY: DISPLAY, ID_KEY: ROW_ID}, "additionalProperties": CELL},
-]}}
+        "items": {"type": ["array", "object"], "maxItems": 200, "items": CELL,
+                  "properties": {DISPLAY_KEY: DISPLAY, ID_KEY: ROW_ID, COUNT_KEY: COUNT}, "additionalProperties": CELL}}
 ROWS_BUILD = {**ROWS, "x-mengos-merge": {"mode": "by-id", "id": ID_KEY}}   # 2.4.0：按行 $id 并入（原 append：带 base 的“填格”会变成追加重复行）
 TOTALS = {"type": "array", "maxItems": 200, "items": {"oneOf": [
     {"type": "string", "minLength": 1},
@@ -229,6 +239,37 @@ assert all(x in TABLE_DESC_BUILD for x in FORMULA_ADD + TOT_ADD + STYLE_DESC + S
 assert all(x in TABLE_DESC for x in STRUCT_DESC + NUM22_DESC)
 assert all(x in TABLE_DESC_BUILD for x in NUM22_DESC)
 assert all(x in TABLE_DESC and x in TABLE_DESC_BUILD for x in REF_ADD)
+# 2.5.0：数量容器 $count 的说明句，接在 $ref 那句之后（逐字写法为草稿，交调度，以实验定）
+ADD_250 = ["数量格的值要来自回执时，对象行里写保留键 $count：{列名: 值}，值写 {\"$ref\": \"回执id#路径\"}，或写 {\"$calc\": \"算式\", \"refs\": {名字: \"回执id#路径\"}}，算式里的量用 refs 里的名字，常数只写所引规范里写明的数。$count 里的格并入这一行，同一列只写一处。"]
+TABLE_DESC = TABLE_DESC.replace(REF_ADD[0], REF_ADD[0] + ADD_250[0], 1)
+TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(REF_ADD[0], REF_ADD[0] + ADD_250[0], 1)
+assert all(x in TABLE_DESC and x in TABLE_DESC_BUILD for x in ADD_250)
+# 2.5.1：列属性 count 的说明句，接在 required 那句之后（只在 build 的说明里；逐字为草稿，交调度以实验定）
+ADD_251 = ["列可写 count: true：这一列的值只认写在行的 $count 里的格；别处写的值不进表，回执的 unfilled 逐格列出，写进这一行的 $count 才算填上。"]
+TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(ADD_240[0], ADD_240[0] + ADD_251[0], 1)
+assert all(x in TABLE_DESC_BUILD for x in ADD_251)
+# 2.5.2：按规范留空的写法，接在 count 那句之后（只在 build 的说明里；逐字为草稿，交调度以实验定）
+ADD_252 = ["count 列的格按规范要留空时，在 $count 里写 {\"$blank\": \"条文号\"}（如 {\"数量\": {\"$blank\": \"T2.3\"}}）：这一格留空、不算未填，回执的 blanks 记下所依据的条文。"]
+TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(ADD_251[0], ADD_251[0] + ADD_252[0], 1)
+assert all(x in TABLE_DESC_BUILD for x in ADD_252)
+# r19（功能清单 A1、A2、A6、B1；逐字为草稿，待立法者定）：格公式改用“表名/行名/列名”指别的格（旧的 @行id.列 照收、说明里不再出现），
+#   $calc 的举例去掉（功能保留），$ref 不再只说数量格，count 列直接写的格也收，未填项按“表名/行名/列名”指格。说明里各处一起改（核对、导出两份与 build 一份）。
+R19 = [
+    ("本行的列，引用别的行写 @行id.列、别的表写 @表id/行id.列，被引用的行写 \"$id\"（如 \"r1\"）；式里每个数都要有出处。整列算法相同的一律用列公式。",
+     "本行的列。一格的值由别的格算出时写成格公式：{\"$expr\": \"物料/钢板/数量 * 单价/钢板/值\"}——用 表名/行名/列名 指别的格，行名写那一行前三列里的名字；"
+     "核对项里‘应等于’后面的算式可以原样写进来。数量格也可以这样写。整列算法相同的一律用列公式。"),
+    (ADD_250[0],
+     "数量格的值也可以写在行的保留键 $count 里：{列名: 值}，值的写法与普通格相同（数、{\"$ref\": \"回执id#路径\"} 或格公式）。$count 里的格并入这一行，同一列只写一处。"),
+    (ADD_251[0], "列可写 count: true：这一列按必填对待，值写在格里或写在这一行的 $count 里都可以。"),
+    (ADD_240[2], "回执的 unfilled 列出还没填、算不出或没有收的格（写成 表名/行名/列名）和还没有数据行的表，照着补。"),
+]
+for _old, _new in R19:
+    assert _old in TABLE_DESC_BUILD, _old
+    TABLE_DESC_BUILD = TABLE_DESC_BUILD.replace(_old, _new)
+    TABLE_DESC = TABLE_DESC.replace(_old, _new)
+    for _lst in (STRUCT_DESC, ADD_240, ADD_250, ADD_251):
+        _lst[:] = [_new if x == _old else x for x in _lst]
+assert "@行id" not in TABLE_DESC + TABLE_DESC_BUILD and "$calc" not in TABLE_DESC + TABLE_DESC_BUILD
 
 
 def table_def(build=False):
@@ -342,6 +383,8 @@ BUILD = {
                 "files": FILES,
                 "assumptions": {"type": "array", "items": {"type": "string"}},
                 # 2.4.0（17 TL-30e）：未填项清单——必填格没有值、表没有数据行，各一条；引擎只看空不空、原样给模型
+                # 2.5.2：按规范留空的格（$blank），每格一条，带所依据的条文号；只在有时写出
+                "blanks": {"type": "array", "items": {"type": "string"}},
                 "unfilled": {"type": "array", "items": {"type": "string"}, "x-mengos-unfilled": True,
                              "description": "未填项：必填列（required）没有值的格，以及没有数据行的表，每处一条；为空表示没有未填项"},
             },
@@ -353,9 +396,9 @@ BUILD = {
         "out_types": ["table"],
         "constraints": {"max_sheets": 20, "max_columns": 200, "max_rows": 100000, "max_cells": 1000000,
                         "column_types": ["text", "integer", "number", "money", "percent", "date", "bool"],
-                        "formula_functions": ["round", "abs", "min", "max", "roundup", "rounddown", "ceiling", "floor",
+                        "formula_functions": ["round", "abs", "min", "max", "sqrt", "roundup", "rounddown", "ceiling", "floor",
                                               "and", "or", "not", "if", "total", "cumsum", "sumif", "countif"],
-                        "cell_expr": "输入列的格可写 {\"$expr\": 式}：数、函数、本行的列、@行id.列、@表id/行id.列；公式列与编号列不收",
+                        "cell_expr": "输入列的格可写 {\"$expr\": 式}：数、函数、本行的列、表名/行名/列名；公式列与编号列不收",
                         "expr_params_not_data": EXPR_PARAMS,
                         "numbering": list(NUMBERINGS), "max_outline_level": MAX_LEVEL,
                         "merge_agg": ["sum", "formula"], "derive_agg": ["sum"],
@@ -389,6 +432,10 @@ CHECK_EXPECT_ADD = ("2.2.0 起：sheet=* 管整本工作簿（nonempty、range �
                     "match 列 sheet=目标表 key=键列 against=表,表 [where=列:值]（按键比一列，如各分部的主件与总清单一致）；"
                     "sum_equal 列 sheet=目标表 by=键列,键列 from=表,表 [where=列:值]（按键之和相等，如标准件等于各分部五金之和）；"
                     "optional 列 …（这些列按规定可以整列为空）。每条问题写明表、行、现值、应值。要一张问题表时，把回执写成一张普通的表交 table.build。")
+
+# 核验结果里格的位置（2.6.0；条目 cells / inputs 用）
+POS = {"type": "object", "properties": {"sheet": {"type": "integer"}, "sheet_id": {"type": ["string", "null"]}, "row": {"type": "integer"},
+       "rid": {"type": ["string", "null"]}, "col": {"type": ["string", "null"]}, "title": {"type": "string"}, "label": {"type": "string"}}}
 
 CHECK = {
     "tool_id": "table.check",
@@ -426,10 +473,16 @@ CHECK = {
                     "where": {"type": "array", "items": {"type": "string"}}, "reason": {"type": "string"},
                     "problems": {"type": "array", "items": {"type": "object", "required": ["sheet", "rule"], "properties": {
                         "sheet": {"type": "string"}, "row": {"type": "integer"}, "cell": {"type": "string"}, "rule": {"type": "string"},
-                        "actual": {}, "expected": {}}}}}}},
+                        "actual": {}, "expected": {}}}},
+                    # 2.6.0：按格核对（cell、text）的条目另带（mengosv2 17 TL-21a report.checks 契约）——牵涉的格、恒真、读出量、作者提示、自检
+                    "message": {"type": "string"}, "hint": {"type": "string"}, "restates": {"type": "boolean"}, "self": {"type": "boolean"},
+                    "cells": {"type": "object", "properties": {"target": POS, "reads": {"type": "array", "items": POS}}},
+                    "inputs": {"type": "array", "items": POS}}}},
                 "table_sha256": SHA,
                 "summary": {"type": "string", "description": "一句话：全部通过，或几条不通过"},
                 "assumptions": {"type": "array", "items": {"type": "string"}},
+                # 2.5.3 起：逐条未过项（一句一条，进引擎的残差；mengosv2 17 TL-21a report.pointer）
+                "failed": {"type": "array", "items": {"type": "string"}},
             },
         },
     },
@@ -438,7 +491,7 @@ CHECK = {
         "in_types": ["table"],
         "out_types": ["verdict"],
         "constraints": {"three_valued": True, "max_expect_lines": 300,
-                        "kinds": ["columns", "order", "rows", "unique", "nonempty", "range", "total", "sorted", "match", "sum_equal", "optional"],
+                        "kinds": ["columns", "order", "rows", "unique", "nonempty", "range", "total", "sorted", "match", "sum_equal", "optional", "cell", "text"],
                         "sheet_scope": ["表名或 id", "*"],
                         "latency_note": "约 0.1 s"},
         "examples": [
@@ -450,6 +503,11 @@ CHECK = {
         "non_goals": ["不判断数据本身是否属实（例如价格对不对）", "不改表，只报告"],
     },
     "review_coverage": {"by_predicate": ["table_meets_spec"]},
+    # 2.5.3 起：核验接入声明（mengosv2 17 TL-21a、15 MF-1k）——核对项占位 {"$checks": true} 由 PLAN 换成选中规范包的核对项；
+    # 2.6.0：report 指明逐条未过项（/failed）与逐条核验结果（/checks）的位置，引擎只按这两个位置取
+    "verify": {"for": ["table"], "input": {"table": {"$best": "/table"}, "expect": {"$checks": True}},
+               "predicate": {"pointer": "/verdict", "op": "equals", "value": "pass"},
+               "report": {"pointer": "/failed", "checks": "/checks"}},
 }
 
 EXPORT = {

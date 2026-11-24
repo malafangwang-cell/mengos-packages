@@ -35,6 +35,10 @@ COLOR_NAMES = tuple(PALETTE) + tuple(COLOR_ALIAS)
 DISPLAY_KEY = "$style"        # 行里的保留键：本行、本格的显示设置（17 TL-30 v0.2.98 “显示设置跟着行走”）
 ROW_KINDS = ("total", "subtotal", "group")   # row_styles 只按行种类写：合计行、小计行、包生成的组头（2.2.0 G7）
 ID_KEY = "$id"                # 行里的保留键：稳定的行 id（2.2.0 G17），格公式按它引用别的行
+BLANK_KEY = "$blank"          # $count 里的保留写法（2.5.2）：{"$blank": 条文号}——count 列按规范留空，不计入未填，回执 blanks 记下依据
+BLANK_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,7}(\.[0-9]{1,4}){0,3}$")   # 条文号的写法（如 T2.3、T9、G5）；以字母开头，引擎不会把它当成数
+UNAUD_KEY = "$unaudited"      # r18l（）：$count 里的保留写法 {"$unaudited": 数}——这个数没有出处，照收进表，标“未严格审计”（引擎写入，不由模型写）
+COUNT_KEY = "$count"          # 行里的保留键（2.5.0）：取自回执的格 {列: 值}；schema 上标 x-mengos-count（17 TL-30c），只认回执引用或量全由引用给出的算式，由引擎核证件、换成数后交工具
 EXPR_KEY = "$expr"            # 格里的保留的式（08 PD-1e v0.2.98、17 TL-30b）
 NUMBERINGS = ("seq", "outline")
 MAX_LEVEL = 4
@@ -248,7 +252,7 @@ def infer_type(values):
 # ---------------------------------------------------------------- 结构
 class Column:
     __slots__ = ("key", "title", "type", "unit", "decimals", "formula", "node", "align", "width", "inferred",
-                 "style", "date_format", "thousands", "numbering", "identifier", "required")
+                 "style", "date_format", "thousands", "numbering", "identifier", "required", "count")
 
     def to_json(self):
         o = {"key": self.key, "title": self.title, "type": self.type}
@@ -273,6 +277,8 @@ class Column:
             o["identifier"] = True
         if getattr(self, "required", False):
             o["required"] = True          # 2.4.0：必填列（只在为真时写出，旧表的表模型逐字节不变）
+        if getattr(self, "count", False):
+            o["count"] = True             # 2.5.1：只认经 $count 写入的格（只在为真时写出）
         return o
 
     @property
@@ -293,7 +299,7 @@ class Sheet:
     __slots__ = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols", "formula_errors",
                  "header_style", "rules", "row_styles", "displays", "raw", "_styles",
                  "row_ids", "exprs", "outline_from", "levels", "group", "subtotals", "merge_rows", "derive",
-                 "layout", "merged", "derive_src", "_spec", "_where", "_index", "expr_nodes", "src")
+                 "layout", "merged", "derive_src", "_spec", "_where", "_index", "expr_nodes", "src", "count_miss", "count_blank", "count_unaud", "formula_dropped", "cell_notes")
 
     def col(self, key):
         return next(c for c in self.columns if c.key == key)
@@ -352,9 +358,19 @@ class Sheet:
         cells = [({EXPR_KEY: self.exprs[(ri, j)][0]} if (ri, j) in self.exprs else _cell_json(c, v))
                  for j, (c, v) in enumerate(zip(self.columns, r))]
         rid = self.row_ids[ri] if self.row_ids else None
-        if not d and rid is None:
+        counted = {c.key: v for c, v in zip(self.columns, cells) if getattr(c, "count", False) and v is not None}
+        cb = getattr(self, "count_blank", None) or {}
+        if cb:
+            src = self.src[ri] if self.src is not None and ri < len(self.src) else ri
+            for j, c in enumerate(self.columns):
+                if (src, j) in cb and c.key not in counted:
+                    counted[c.key] = {BLANK_KEY: cb[(src, j)]}     # 2.5.2：按规范留空写回 $blank
+        # r19（B3）：“没有出处”的记号不写进表模型（只在导出的工作簿里标黄）
+        if not d and rid is None and not counted:
             return cells
-        o = {c.key: v for c, v in zip(self.columns, cells)}
+        o = {c.key: v for c, v in zip(self.columns, cells) if c.key not in counted}
+        if counted:
+            o[COUNT_KEY] = counted         # 2.5.1：count 列的值写回 $count（表模型读回时仍算经 $count 写入）
         if rid is not None:
             o[ID_KEY] = rid
         if d:
@@ -412,7 +428,8 @@ def _cell_json(col, v):
 
 
 class Table:
-    __slots__ = ("title", "subtitle", "meta", "sheets", "sources", "assumptions", "warnings", "_json", "_sha", "book")
+    __slots__ = ("title", "subtitle", "meta", "sheets", "sources", "assumptions", "warnings", "_json", "_sha", "book", "single_dropped",
+                 "expr_fail", "export_marks")
 
     def to_json(self):
         if self._json is None:
@@ -488,7 +505,7 @@ TABLE_KEYS = ("schema", "title", "subtitle", "meta", "sheets", "sources", "assum
               "columns", "rows", "totals", "caption", "note", "freeze_cols", "name", "lang") + SHEET_STYLE_KEYS + STRUCT_KEYS + ("sheet_order",)
 SHEET_KEYS = ("id", "name", "caption", "note", "columns", "rows", "totals", "freeze_cols") + SHEET_STYLE_KEYS + STRUCT_KEYS + SHEET_ONLY_KEYS
 COL_KEYS = ("key", "title", "type", "unit", "decimals", "formula", "width", "align", "style", "date_format", "thousands", "numbering", "identifier",
-            "required")
+            "required", "count")
 ID_TITLE = re.compile(r"(编号|序号|代号|代码|编码|号码|图号|料号|ID)$", re.IGNORECASE)
 ID_LOOK = re.compile(r"^(0\d+(\.\d+)?|\d+\.\d*0|\d+(\.\d+){2,})$")     # 前导零、小数点后有末尾零、两个以上小数点
 
@@ -503,6 +520,8 @@ def normalize(raw, build=False) -> Table:
     t = Table()
     t._json = t._sha = None
     t.warnings = []
+    t.expr_fail = {}                          # r19：算不出的格公式 {("cell", 表序号, 行, 列): (原因, …)}，未填项里逐格说明（A4）
+    t.export_marks = None                     # r19：导出时标黄的格（B3），只在 table.export 里算
     t.title = _str(raw.get("title"), "table.title", MAX_TITLE, True)
     t.subtitle = _str(raw.get("subtitle"), "table.subtitle", MAX_TITLE)
     t.meta = _meta(raw.get("meta"))
@@ -514,7 +533,9 @@ def normalize(raw, build=False) -> Table:
             t.meta["lang"] = lang
     single = [k for k in ("columns", "rows", "totals", "caption", "note", "freeze_cols", "name") + SHEET_STYLE_KEYS + STRUCT_KEYS if k in raw]
     if "sheets" in raw and single:
-        raise BadInput(f"sheets 与单张表的写法二选一：有 sheets 时 {single[0]} 写进各张表里", f"table.{single[0]}")
+        # r18z（）：有 sheets 又在最上一层写了单张表的键时不整件拒——最上一层的这些键不收，原因进未填项（r18y：首件表因此连拒两轮）
+        raw = {k: v for k, v in raw.items() if k not in single}
+        t.single_dropped = list(single)
     if "sheets" in raw:
         sheets = raw["sheets"]
         if not isinstance(sheets, list) or not sheets:
@@ -625,6 +646,10 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
     sh._styles = None
     sh._spec, sh._where = s, where
     sh.row_ids, sh.exprs, sh.expr_nodes, sh.src = [], {}, {}, None
+    sh.count_blank = {}            # 2.5.2：count 列按规范留空的格 {(入参行序号, 列序号): 条文号}
+    sh.count_unaud = set()         # r18l：数量格里没有出处的数 {(入参行序号, 列序号)}，值照进表，标“未严格审计”
+    sh.count_miss = set()          # 2.5.1：count 列里不是经 $count 写入的格 {(入参行序号, 列序号)}，值不进表、进未填项（r19 起不再记：直接写的格照收）
+    sh.cell_notes = []             # r19（B2）：写法不对、没有收的格 [(入参行序号, 列序号, 原因)]——只这一格不收，其余照收
     sh.outline_from = sh.levels = sh.group = sh.merge_rows = sh.derive = None
     sh.subtotals, sh.layout, sh.merged, sh.derive_src = [], [], [], {}
     sid = s.get("id")
@@ -691,7 +716,8 @@ def _sheet(s, where, i, t, used, from_model, build=False) -> Sheet:
             try:
                 row.append(_cell_or_expr(sh, ri, j, v, f"{where}.rows[{ri}][{j}]", t.lang, from_model))
             except BadInput as e:
-                errs.append(e)
+                # r19（功能清单 B2）：一格写法不对只这一格不收，原因进未填项；整件照收
+                sh.cell_notes.append((ri, j, str(e)))
                 row.append(None)
         sh.rows.append(row)
     if errs:
@@ -707,7 +733,8 @@ def _column_types(s, sh, where, raw_rows):
             c.type = "text" if c.numbering == "outline" else "integer"
             c.inferred = True
         if c.type is None and any(_is_expr(r[j]) for r in raw_rows):
-            raise BadInput(f"“{c.title}”有格公式（{EXPR_KEY}），这一列要写 type（integer、number 或 money）", f"{where}.columns[{j}].type")
+            c.type = "number"                 # r19：有格公式而没写 type 的列按数（原先整件拒）
+            c.inferred = True
         if c.type is None and s.get("derive") is not None and c.formula is None:
             c.type = None                     # 留到生成行以后再定（_derive_rows）
             continue
@@ -865,10 +892,84 @@ def _column(c, where, j) -> Column:
     if req is not None and not isinstance(req, bool):
         raise BadInput("required 是 true 或 false：这一列是不是必填", f"{where}.required")
     col.required = bool(req)
+    cnt = c.get("count")
+    if cnt is not None and not isinstance(cnt, bool):
+        raise BadInput("count 是 true 或 false：这一列的值是不是只认写在 $count 里的", f"{where}.count")
+    col.count = bool(cnt)
     return col
 
 
+def _apply_count(r, where, sh, ri):
+    """2.5.0：把 $count 里的格并进这一行。
+    2.6.0（功能清单 A1、A2、B2；立法者 2026-11-23“数有没有出处不影响循环”）：
+      · $count 里与直接写在格里同等收：格公式 {"$expr": 式}、数、文字都收；count 列直接写的格也照收（原 2.5.1 不收、进未填项）；
+      · 同一列两处都写时以 $count 为准（原：非 count 列整件拒）；
+      · $count 里某一格写法不对（多套一层、键名不认识）只这一格不收，原因进未填项，整件照收。"""
+    counted = set()
+    if isinstance(r, dict) and COUNT_KEY in r:
+        cnt = r[COUNT_KEY]
+        rest = {k: v for k, v in r.items() if k != COUNT_KEY}
+        if not isinstance(cnt, dict):
+            sh.cell_notes.append((ri, None, f"{COUNT_KEY} 应当是对象：{{列名: 值}}，这一行的 {COUNT_KEY} 没有收"))
+            cnt = {}
+        direct = {}
+        for k in rest:
+            c = sh.find(k) if isinstance(k, str) else None
+            if c is not None:
+                direct[id(c)] = k
+        keep = {}
+        for k, v in cnt.items():
+            c = sh.find(k) if isinstance(k, str) else None
+            if c is None:
+                # r18g（）：写了表里没有的列时不整件拒——这一格不收，原因列进未填项，其余照收
+                notes = getattr(sh, "formula_dropped", None)
+                if notes is None:
+                    notes = []
+                    sh.formula_dropped = notes
+                rid = r.get("$id") if isinstance(r, dict) else None
+                msg = (f"行 {rid} " if isinstance(rid, str) and rid else "有一行") + f"写了这张表没有的列“{k}”，没有收；这张表的列是：" + "、".join(str(x.title) for x in sh.columns)
+                if msg not in notes:
+                    notes.append(msg)
+                continue
+            j = sh.columns.index(c)
+            if not getattr(c, "count", False) and c.formula is None and c.numbering is None:
+                # r17m（架构线 2026-11-23，）：某一列的格写进过 $count ⟹ 这一列按 count 列、必填对待
+                try:
+                    c.count = True
+                    c.required = True
+                except Exception:
+                    object.__setattr__(c, "count", True)
+                    object.__setattr__(c, "required", True)
+            if id(c) in direct:
+                rest.pop(direct[id(c)])          # 两处都写：以 $count 为准
+            if isinstance(v, dict) and BLANK_KEY in v:
+                clause = v.get(BLANK_KEY)
+                if set(v) != {BLANK_KEY} or not isinstance(clause, str) or not BLANK_RE.match(clause.strip()):
+                    sh.cell_notes.append((ri, j, f"{BLANK_KEY} 写所依据的条文号，例如 {{\"{BLANK_KEY}\": \"T2.3\"}}"))
+                    continue
+                sh.count_blank[(ri, j)] = clause.strip()
+                keep[k] = None
+                counted.add(id(c))
+                continue
+            if isinstance(v, dict) and (set(v) == {UNAUD_KEY} or EXPR_KEY in v):
+                keep[k] = v                      # 格公式与“没有出处”的记号照普通格处理（_cell_or_expr）
+                counted.add(id(c))
+                continue
+            if isinstance(v, (dict, list)) or isinstance(v, bool):
+                sh.cell_notes.append((ri, j, f"{COUNT_KEY} 里“{c.title}”这一格不是一个值"))
+                continue
+            keep[k] = v
+            counted.add(id(c))
+        r = {**rest, **keep}
+    return r
+
+
 def _row(r, where, sh, plain, t, from_model, ri):
+    """2.5.1：对象行先按 $count 与 count 列处理（r19：数组行的 count 列照收）。"""
+    return _row_inner(_apply_count(r, where, sh, ri), where, sh, plain, t, from_model, ri)
+
+
+def _row_inner(r, where, sh, plain, t, from_model, ri):
     n = len(sh.columns)
     if isinstance(r, dict) and DISPLAY_KEY in r:
         sh.displays.append(_display(r[DISPLAY_KEY], sh, f"{where}.{DISPLAY_KEY}"))
@@ -887,11 +988,19 @@ def _row(r, where, sh, plain, t, from_model, ri):
         for k, v in r.items():
             c = sh.find(k) if isinstance(k, str) else None
             if c is None:
-                raise BadInput(f"这一行有表里没有的列：{k}", where, "对象写法的键要与列的 key 或标题相同")
+                # r18n（）：行里写了表里没有的列时不整件拒——这一格不收，原因列进未填项，其余照收（r18m 末轮：五金表一行多写了“规格”，整件五张表被拒）
+                notes = getattr(sh, "formula_dropped", None)
+                if notes is None:
+                    notes = []
+                    sh.formula_dropped = notes
+                msg = (f"行 {rid} " if isinstance(rid, str) and rid else "有一行") + f"写了这张表没有的列“{k}”，没有收；这张表的列是：" + "、".join(str(x.title) for x in sh.columns)
+                if msg not in notes:
+                    notes.append(msg)
+                continue
             j = sh.columns.index(c)
             if _is_expr(v) and (c.formula is not None or c.numbering is not None):
-                raise BadInput(f"“{c.title}”是{'公式列' if c.formula else '编号列'}，格里不能写 {EXPR_KEY}", f"{where}.{k}",
-                               "列公式整列同算；只有个别格算法不同时，把这一列当输入列（不写 formula），在格里写式")
+                sh.cell_notes.append((ri, j, f"“{c.title}”是{'公式列' if c.formula else '编号列'}，格里不能写 {EXPR_KEY}"))   # r19 B2
+                continue
             if c.formula is not None or c.numbering is not None:
                 if v is not None and not from_model:
                     _formula_given(t, where, c)
@@ -958,15 +1067,19 @@ def _is_expr(v):
 
 def _cell_or_expr(sh, ri, j, v, where, lang, stored=False):
     col = sh.columns[j]
+    if isinstance(v, dict) and set(v) == {UNAUD_KEY}:
+        # r19（B3）：引擎交来的“这个数没有标明出处”的记号——值照收，记下这一格（只在导出时标黄）；普通格与数量格同一做法
+        sh.count_unaud.add((ri, j))
+        v = v[UNAUD_KEY]
     if isinstance(v, dict):
         if EXPR_KEY not in v:
             raise BadInput(f"单元格只能是字符串、数字、true/false、null，或格公式 {{\"{EXPR_KEY}\": 式}}", where)
         _allowed(v, (EXPR_KEY,), where)
         src = v[EXPR_KEY]
         if not isinstance(src, str) or not src.strip() or len(src) > F.MAX_LEN:
-            raise BadInput(f"{EXPR_KEY} 是式的字符串（1–{F.MAX_LEN} 个字符），例如 \"6*28\"、\"@r1.数量*2\"", where)
-        if col.type not in ("integer", "number", "money"):
-            raise BadInput(f"“{col.title}”是{col.type}列，格公式只用于 integer、number、money 列", where)
+            raise BadInput(f"{EXPR_KEY} 是式的字符串（1–{F.MAX_LEN} 个字符），例如 \"6*28\"、\"物料/钢板/数量 * 2\"", where)
+        if col.type not in ("integer", "number", "money", "text"):
+            raise BadInput(f"“{col.title}”是{col.type}列，格公式只用于数值列与文字列", where)
         sh.exprs[(ri, j)] = (src.strip(), None)
         return _Expr(src.strip(), where)
     return _cell(col, v, where, lang, stored)
@@ -1001,85 +1114,292 @@ def _cell_resolver(t, sh):
     return resolve_ref
 
 
+# ---------------------------------------------------------------- r19：按“表名/行名/列名”找格（格公式与核对项同一段代码，功能清单 A1、A6）
+def squash(v):
+    """比名字时的规范形：NFKC、去掉全部空白。"""
+    return "".join(unicodedata.normalize("NFKC", "" if v is None else str(v)).split())
+
+
+class LocateFail(Exception):
+    """kind：form 不是三段、sheet 没有这张表、col 没有这一列、row 没有这一行、dup 有几行同名（n 行；exact 是否逐字同名）。"""
+
+    def __init__(self, kind, addr, n=0, exact=False):
+        super().__init__(addr)
+        self.kind, self.addr, self.n, self.exact = kind, addr, n, exact
+
+
+def locate(t, addr):
+    """表名/行名/列名 → (表, 行序号, 列序号)。表认 id 或表名（表名前几个字唯一时也认）；列认 key 或标题；
+    行认行 $id，否则认这一行前三列里逐字相同的文字（比时去空白、NFKC）。逐字同名的有几行 ⟹ dup；没有 ⟹ row（没有这一行）。
+    r21：去掉“再否则认前三列里含这段文字的”——前三列里常有取数/算式的文字（如“托盘区二托盘数 / (列数 * 横梁层数 * 托盘区二每格每层托盘数)”），
+    含这段文字的是别的行；r20a 里“托盘区二每格每层托盘数”这样对到了“托盘区二排数”那一行。没有这一行就说没有。"""
+    parts = addr.split("/")
+    if len(parts) != 3:
+        raise LocateFail("form", addr)
+    sn, rn, cn = (squash(x) for x in parts)
+    sheets = getattr(t, "book", None) or t.sheets
+    sh = next((x for x in sheets if squash(x.id) == sn or squash(x.name) == sn), None)
+    if sh is None:
+        cands = [x for x in sheets if squash(x.name).startswith(sn) or sn.startswith(squash(x.name))]
+        if len(cands) == 1:
+            sh = cands[0]
+    if sh is None:
+        raise LocateFail("sheet", addr)
+    col = sh.find(parts[2].strip())
+    if col is None:
+        col = next((c for c in sh.columns if squash(c.key) == cn or squash(c.title) == cn), None)
+    if col is None:
+        raise LocateFail("col", addr)
+    j = sh.columns.index(col)
+    rows = sh.rows
+    hit = [ri for ri in range(len(rows)) if ri < len(sh.row_ids) and sh.row_ids[ri] is not None and squash(sh.row_ids[ri]) == rn]
+    exact = False
+    if not hit:
+        hit = [ri for ri, r in enumerate(rows) if r is not None and any(isinstance(v, str) and squash(v) == rn for v in r[:3])]
+        exact = True
+        if len(hit) > 1:
+            raise LocateFail("dup", addr, len(hit), True)
+    if not hit:
+        raise LocateFail("row", addr)
+    return sh, hit[0], j
+
+
+def row_name(t, sh, ri):
+    """这一行的名字：前三列里的文字（有汉字的优先），要能按 locate 的认法唯一找回这一行；都不行时用行 $id，再不行写“第 N 行”。"""
+    r = sh.rows[ri] if ri < len(sh.rows) else None
+    texts = [str(v).strip() for v in (list(r)[:3] if r else []) if isinstance(v, str) and v.strip()]
+    han = [x for x in texts if any("\u4e00" <= ch <= "\u9fff" for ch in x)]
+    for c in han + [x for x in texts if x not in han]:
+        if "/" in c:
+            continue
+        sc = squash(c)
+        if any(x is not None and squash(x) == sc for x in sh.row_ids):
+            continue
+        hits = [k for k, rr in enumerate(sh.rows) if rr is not None and any(isinstance(v, str) and squash(v) == sc for v in rr[:3])]
+        if hits == [ri]:
+            return c
+    rid = sh.row_ids[ri] if ri < len(sh.row_ids) else None
+    if rid:
+        return rid
+    src = sh.src[ri] if sh.src is not None and ri < len(sh.src) else ri
+    return f"第{src + 1}行"
+
+
+def cell_label(t, sh, ri, j):
+    """一格在进模型的话里的唯一说法：表名/行名/列名（核对未过、未填项、没有收的格，三处同一个函数，A6）。"""
+    return f"{sh.name}/{row_name(t, sh, ri)}/{sh.columns[j].title}"
+
+
+class _CellFail(Exception):
+    def __init__(self, loc):
+        super().__init__(str(loc))
+        self.loc = loc
+
+
+class _Cycle(Exception):
+    def __init__(self, loc):
+        super().__init__(str(loc))
+        self.loc = loc
+
+
 def _exprs(t):
-    """整本表的格公式一起算：引用别的格时先算那一格；成环回 BAD_INPUT。照 G4 再用双精度算一遍，不同就告警。"""
+    """整本表的格公式一起算：引用别的格时先算那一格。
+    r19（功能清单 A1、A4）：式里可用“表名/行名/列名”指别的格（与核对项同一认法、同一求值器）；
+    写不通、指不到、所引的格是空的、成环、整数列算出小数：只这一格算不出（留空），原因记进 t.expr_fail，未填项里逐格说明；整件不拒。"""
     pending = [(sh, ri, j) for sh in t.sheets for (ri, j) in sh.exprs]
     if not pending:
         return
     K = _expr_kinds(t)
-    nodes = {}
+    nodes, fail = {}, t.expr_fail
     for sh, ri, j in pending:
         e = sh.rows[ri][j]
+        loc = ("cell", sh._index, ri, j)
 
         def resolve(name, _sh=sh):
             c = _sh.find(name)
             if c is None:
-                raise F.FormulaError(f"式里的“{name}”不是这张表的列；引用别的行写 @行id.列，别的表写 @表id/行id.列")
+                raise F.FormulaError(f"式里的“{name}”不是这张表的列；引用别的格写 表名/行名/列名")
             if c.formula is not None or c.numbering is not None:
                 raise F.FormulaError(f"“{c.title}”是{'公式列' if c.formula else '编号列'}；格公式只引用输入列")
             return c.key
+
+        def resolve_path(addr):
+            try:
+                tsh, tri, tj = locate(t, addr)
+            except LocateFail as lf:
+                raise F.RefError(lf.kind, addr, lf) from None
+            return ("cell", tsh._index, tri, tj)
         try:
-            node = F.parse(e.src, resolve, _cell_resolver(t, sh))
+            node = F.parse(e.src, resolve, _cell_resolver(t, sh), None, resolve_path)
             k = F.kind_of(node, K({c.key: c.kind for c in sh.columns}))
+        except F.RefError as err:
+            fail[loc] = ("ref", err.kind, err.addr, err.detail.n if err.detail is not None else 0)
+            continue
         except F.FormulaError as err:
-            raise BadInput(f"格公式“{e.src}”：{err}", e.where) from None
+            fail[loc] = ("syntax", e.src, str(err))
+            continue
         if k != "num":
-            raise BadInput(f"格公式“{e.src}”的结果要是数（{'条件' if k == 'bool' else '文字'}不行）", e.where)
-        nodes[("cell", sh._index, ri, j)] = (node, e)
+            fail[loc] = ("syntax", e.src, f"结果要是数（{'条件' if k == 'bool' else '文字'}不行）")
+            continue
+        nodes[loc] = (node, e)
         sh.expr_nodes[(ri, j)] = node         # 2.3.0：视图发布每格依赖（随动闭包）
-    state, val = {}, {}
+    state, val, stack = {}, {}, []
 
     class Ext:
         def cell(self, loc):
-            return get(loc)
+            try:
+                return get(loc)
+            except _CellFail:
+                return None
+
+        def pcell(self, loc, addr):
+            try:
+                v = get(loc)
+            except _CellFail as cf:
+                raise F.RefError("empty", addr, None, cf.loc) from None
+            if v is None or (isinstance(v, str) and not v.strip()):
+                raise F.RefError("empty", addr, None, loc)
+            if isinstance(v, bool):
+                raise F.RefError("notnum", addr, v, loc)
+            if isinstance(v, Decimal):
+                return v
+            try:
+                return Decimal(str(v).replace(",", "").strip())
+            except InvalidOperation:
+                raise F.RefError("notnum", addr, v, loc) from None
+
+        def matched(self, n):
+            pass
+
+        def column(self, ref):
+            sh2 = next(x for x in t.sheets if x.id == ref[0])
+            return sh2.values(ref[1])
+
+    def root_of(loc):
+        """一路追到最底下还空着的那一格。"""
+        seen = set()
+        while loc in fail and fail[loc][0] == "empty" and loc not in seen:
+            seen.add(loc)
+            loc = fail[loc][2]
+        return loc
 
     def get(loc):
+        if loc in fail:
+            raise _CellFail(loc)
         if loc not in nodes:
             return t.book[loc[1]].rows[loc[2]][loc[3]]
         if loc in val:
             return val[loc]
-        node, e = nodes[loc]
         if state.get(loc) == 1:
-            raise BadInput(f"格公式成环：“{e.src}”引用回到了自己", e.where)
+            raise _Cycle(loc)
+        node, e = nodes[loc]
         state[loc] = 1
+        stack.append(loc)
         sh = t.book[loc[1]]
-        used = F.row_refs(node)               # 只取式里用到的本行的列（不碰自己这一格）
-        row = {c.key: get(("cell", loc[1], loc[2], jj)) for jj, c in enumerate(sh.columns) if c.key in used}
-        seen = []                             # 2.4.0：本格式里取到的别格的值（整数列出小数时随拒因列出）
-
-        class _Rec(Ext):
-            def cell(self, l):
-                got = get(l)
-                seen.append((l, got))
-                return got
         try:
-            v = F.evaluate(node, row, None, loc[2], _Rec())
-        except F.DivZero:
-            v = None
-            t.warnings.append({"where": e.where, "code": "div_zero", "message": f"格公式“{e.src}”除以零，这一格留空"})
-        except F.FormulaError as err:
-            raise BadInput(f"格公式“{e.src}”：{err}", e.where) from None
-        col = sh.columns[loc[3]]
-        if v is not None:
-            v = quantize(v, None)
-            if col.type == "integer" and v != v.to_integral_value():
-                raise BadInput(f"格公式“{e.src}”算出 {dec_str(v)}，“{col.title}”是整数列" + _operands_text(sh, row, seen, t), e.where,
-                               "要取整就在式里写 roundup、rounddown、ceiling、floor 或 round；要小数就把这一列的 type 改成 number")
-            v = Decimal(dec_str(v))
-        val[loc] = v
-        state[loc] = 2
-        fv, hit = F.float_eval(node, row, None, loc[2], Ext())
-        if hit and v is not None and isinstance(fv, float) and Decimal(dec_str(quantize(Decimal(repr(fv)), None))) != v:
-            t.warnings.append({"where": e.where, "code": "excel_float",
-                               "message": f"格公式“{e.src}”（{sh.name}!{col_name(loc[3])}{loc[2] + 2}）在 Excel 里重算可能得 {dec_str(Decimal(repr(fv)))}；"
-                                          f"产出台按十进制算得 {dec_str(v)}。导出的公式已先归整到 15 位有效数字，仍请在 Excel 里核对这一格"})
-        return v
+            used = F.row_refs(node)               # 只取式里用到的本行的列（不碰自己这一格）
+            row = {c.key: Ext().cell(("cell", loc[1], loc[2], jj)) for jj, c in enumerate(sh.columns) if c.key in used}
+            seen = []
+
+            class _Rec(Ext):
+                def cell(self, l):
+                    got = Ext.cell(self, l)
+                    seen.append((l, got))
+                    return got
+            try:
+                v = F.evaluate(node, row, None, loc[2], _Rec())
+            except F.DivZero:
+                v = None
+                fail.setdefault(loc, ("divzero",))
+                t.warnings.append({"where": e.where, "code": "div_zero", "message": f"格公式“{e.src}”除以零，这一格留空"})
+            except F.RefError as err:
+                v = None
+                fail.setdefault(loc, ("empty", err.addr, err.loc) if err.kind == "empty" else ("notnum", err.addr, err.detail))
+            except F.FormulaError as err:
+                v = None
+                fail.setdefault(loc, ("syntax", e.src, str(err)))
+            col = sh.columns[loc[3]]
+            if v is not None:
+                v = quantize(v, None)
+                if col.type == "integer" and v != v.to_integral_value():
+                    fail[loc] = ("integer", e.src, dec_str(v), col.title)
+                    v = None
+                else:
+                    v = Decimal(dec_str(v))
+            if v is not None and col.type == "text":
+                v = dec_str(v)
+            if loc in fail:
+                raise _CellFail(loc)
+            val[loc] = v
+            if v is not None and col.type != "text":
+                fv, hit = F.float_eval(node, row, None, loc[2], Ext())
+                if hit and isinstance(fv, float) and Decimal(dec_str(quantize(Decimal(repr(fv)), None))) != v:
+                    t.warnings.append({"where": e.where, "code": "excel_float",
+                                       "message": f"格公式“{e.src}”（{sh.name}!{col_name(loc[3])}{loc[2] + 2}）在 Excel 里重算可能得 {dec_str(Decimal(repr(fv)))}；"
+                                                  f"产出台按十进制算得 {dec_str(v)}。导出的公式已先归整到 15 位有效数字，仍请在 Excel 里核对这一格"})
+            return v
+        except _Cycle as cy:
+            if cy.loc in stack:
+                ring = stack[stack.index(cy.loc):]
+                for x in ring:
+                    fail[x] = ("cycle", list(ring))
+            if loc in fail:
+                raise _CellFail(loc) from None
+            raise
+        finally:
+            stack.pop()
+            state[loc] = 2
     for loc in nodes:
-        get(loc)
-    for loc, (node, e) in nodes.items():       # 先全部算完再写回：算的时候别的格读的是 val
+        try:
+            get(loc)
+        except (_CellFail, _Cycle):
+            pass
+    for loc in list(fail):
+        if fail[loc][0] == "empty":
+            fail[loc] = ("empty", fail[loc][1], fail[loc][2], root_of(fail[loc][2]))
+    for loc, (src, _n) in [(("cell", sh._index, ri, j), sh.exprs[(ri, j)]) for sh in t.sheets for (ri, j) in sh.exprs]:
         sh = t.book[loc[1]]
-        sh.rows[loc[2]][loc[3]] = val[loc]
-        sh.exprs[(loc[2], loc[3])] = (e.src, node)
+        node = nodes.get(loc, (None,))[0]
+        sh.rows[loc[2]][loc[3]] = None if loc in fail else val.get(loc)
+        sh.exprs[(loc[2], loc[3])] = (src, None if loc in fail else node)
+        if loc in fail:
+            sh.expr_nodes.pop((loc[2], loc[3]), None)
+
+
+def expr_fail_notes(t):
+    """算不出的格公式，每格一句（进模型的话；功能清单 A4 草案，指格的说法按 A6 统一成 表名/行名/列名）。"""
+    out = []
+    for loc, why in t.expr_fail.items():
+        sh = t.book[loc[1]]
+        me = cell_label(t, sh, loc[2], loc[3])
+
+        def lab(l):
+            return cell_label(t, t.book[l[1]], l[2], l[3])
+        k = why[0]
+        if k == "empty":
+            ref, root = lab(why[2]), lab(why[3])
+            out.append(f"{me} 算不出：它要用的 {ref} 还是空的" + (f"（一路追到：{root}）" if root != ref else ""))
+        elif k == "ref":
+            kind, addr, n = why[1], why[2], why[3]
+            if kind == "dup":
+                out.append(f"{me} 算不出：{addr} 在表里有 {n} 行同名")
+            elif kind == "col":
+                out.append(f"{me} 算不出：算式里的 {addr} 在表里没有这一列")
+            elif kind == "sheet":
+                out.append(f"{me} 算不出：算式里的 {addr} 在表里没有这张表")
+            else:
+                out.append(f"{me} 算不出：算式里的 {addr} 在表里没有这一行")
+        elif k == "cycle":
+            out.append(f"{me} 算不出：这几格互相引用成了环：{'、'.join(lab(x) for x in why[1])}")
+        elif k == "notnum":
+            out.append(f"{me} 算不出：它要用的 {why[1]} 不是数（现为“{why[2]}”）")
+        elif k == "integer":
+            out.append(f"{me} 算不出：格公式“{why[1]}”算出 {why[2]}，“{why[3]}”是整数列；要取整就在式里写 roundup、rounddown、ceiling、floor 或 round")
+        elif k == "divzero":
+            out.append(f"{me} 算不出：算式里除数为零")
+        else:
+            out.append(f"{me} 算不出：格公式“{why[1]}”写法不对：{why[2]}")
+    return out
 
 
 # ---------------------------------------------------------------- 跨表：次序、派生表、表序（G10）
@@ -1987,7 +2307,20 @@ def _formulas(sh, where, t):
             c.node = F.parse(c.formula, _resolver(sh, j), None, _qresolver(t, sh))
             k = F.kind_of(c.node, kinds)
         except F.FormulaError as e:
-            raise BadInput(f"公式“{c.formula}”：{e}", w) from None
+            # r17m→r17n（架构线 2026-11-23，）：列公式写不通时不整件拒——这一列先当普通列收下，原因列进未填项，其余照收。
+            #   r17m：总清单“总重”列公式写“qty * unit_weight”而各列没写 key，整本表连拒 8 次。
+            dropped = getattr(sh, "formula_dropped", None)
+            if dropped is None:
+                dropped = []
+                try:
+                    sh.formula_dropped = dropped
+                except AttributeError:
+                    raise BadInput(f"公式“{c.formula}”：{e}", w) from None
+            dropped.append(f"列 {c.key}（{c.title}）的公式“{c.formula}”没有用上：{e}")
+            c.formula = None
+            c.node = None
+            cols[c.key] = [r[j] for r in sh.rows]
+            continue
         if k == "bool":
             raise BadInput(f"公式“{c.formula}”：结果是条件（真或假），要用 if(条件, 甲, 乙) 写成数或文字", w)
         if c.type == "text" and k not in ("text", "empty"):
@@ -2213,30 +2546,182 @@ def _operands_text(sh, row, seen, t):
 
 # ---------------------------------------------------------------- 未填项（2.4.0；17 TL-30e）
 UNFILLED_MAX = 100
+# 2.5.2：按规范留空的格，回执 blanks 每格一条（逐字为草稿，交调度以实验定）
+BLANK_ITEM = "表 {label} {where}列 {key}（{title}）按 {clause} 留空"
+
+
+def blanks(t):
+    """按规范留空的格（$count 里写 {"$blank": 条文号}），每格一条；次序同未填项。"""
+    out = []
+    for sh in t.sheets:
+        cb = getattr(sh, "count_blank", None)
+        if not cb:
+            continue
+        label = sh.id if sh.id else f"“{sh.name}”"
+        for ri in range(len(sh.rows)):
+            rid = sh.row_ids[ri] if ri < len(sh.row_ids) else None
+            src = sh.src[ri] if sh.src is not None and ri < len(sh.src) else ri
+            where = f"行 {rid} " if rid else f"第 {src + 1} 行（没有 $id）"
+            for j, c in enumerate(sh.columns):
+                if (src, j) in cb:
+                    out.append(BLANK_ITEM.format(label=label, where=where, key=c.key, title=c.title, clause=cb[(src, j)]))
+    return out
+
+
+# ---------------------------------------------------------------- r19（功能清单 B3）：导出时标黄的格
+# 立法者 2026-11-23 终定：只是底色。带标签的格填黄色；表的最后一行写这一句；不列位置，说明页不加行。不进任何模型上下文。
+MARK_LEGEND = "标黄数字：未严格审计"
+
+
+def _check_cover(t, expect):
+    """核对项清单里 cell、text 两类的左边（被核的那一格）——核到的格 {(表序号, 行序号, 列序号)}。核到而没过的格同样算核到。"""
+    covered = set()
+    for raw in (expect or "").splitlines():
+        line = raw.strip()
+        if not (line.startswith("cell ") or line.startswith("text ")) or "=" not in line:
+            continue
+        left = line[5:].split("=", 1)[0].strip()
+        try:
+            sh, ri, j = locate(t, left)
+        except LocateFail:
+            continue
+        covered.add((sh._index, ri, j))
+    return covered
+
+
+def _is_number_cell(v):
+    return isinstance(v, (int, float, Decimal)) and not isinstance(v, bool)
+
+
+def export_marks(t, expect=None):
+    """标黄的格 {(表序号, 行序号, 列序号)}（行序号指 sh.rows 的下标）。
+    r20（功能清单补一 D1，立法者 2026-11-24 定）：只标数字格（文字格、空格、编号列一律不标）。一个数字格不标，当且仅当下面任一条成立：
+      1. 有核对项核到它（它是某条 cell/text 核对项左边那一格）——通过的不标；核到而没过的也不标（它在核对结果里另有交代，B3 定义 2）；
+      2. 它有出处（不是引擎记的“没有出处”），并且被某条通过的核对项当作算式里的量读到（含经格公式一路读到）；
+      3. 它是格公式（或列公式算出的格），且它用到的格都不带标记。
+    其余数字格标黄：没有出处的数、由带标记的格算出的数、没有任何核对项碰到的数。
+    没有核对项（expect 里没有 cell/text 行）时只按“没有出处”标：没有出处的数与由它算出的格（B3 验收 4）。"""
+    unsourced = set()
+    for sh in t.sheets:
+        src_to_ri = {sv: ri for ri, sv in enumerate(sh.src or [])}
+        for (sri, j) in getattr(sh, "count_unaud", None) or set():
+            ri = src_to_ri.get(sri)
+            if ri is not None and ri < len(sh.rows) and sh.rows[ri] is not None:
+                unsourced.add((sh._index, ri, j))
+    has_checks = any(l.strip().startswith(("cell ", "text ")) for l in (expect or "").splitlines())
+    covered, read_ok = set(), set()
+    if has_checks:
+        from checker import run_checks, split_hint, ExpectError
+        lines = "\n".join(split_hint(l.strip())[0] for l in (expect or "").splitlines())
+        covered = _check_cover(t, lines)
+        try:
+            checks, _ = run_checks(t, lines)
+        except ExpectError:
+            checks = []
+        for c in checks:
+            if c.get("kind") not in ("cell", "text") or c.get("verdict") != "pass" or c.get("restates"):
+                continue                 # 恒真的那种（核对项就是这一格的格公式）不算“读到”——它验不出读数
+            for p in (c.get("cells") or {}).get("reads") or []:
+                read_ok.add((p["sheet"], _ri_of_src(t.book[p["sheet"]], p["row"]), t.book[p["sheet"]].columns.index(t.book[p["sheet"]].col(p["col"]))))
+
+    def deps(sh, ri, j):
+        """这一格是算出来的格时它用到的格（格公式、列公式）；不是 ⟹ None。"""
+        node = sh.expr_nodes.get((ri, j))
+        if node is not None:
+            return [(l[1], l[2], l[3]) for l in F.cell_refs(node)] + [(sh._index, ri, sh.columns.index(sh.col(k))) for k in F.row_refs(node)]
+        c = sh.columns[j]
+        if c.formula is not None and c.node is not None:
+            return [(sh._index, ri, sh.columns.index(sh.col(k))) for k in F.row_refs(c.node)]
+        return None
+
+    memo = {}
+
+    def marked(k, stack=()):
+        if k in memo:
+            return memo[k]
+        si, ri, j = k
+        sh = t.book[si]
+        r = sh.rows[ri] if ri < len(sh.rows) else None
+        v = r[j] if r is not None and j < len(r) else None
+        if r is None or not _is_number_cell(v) or sh.columns[j].numbering is not None:
+            memo[k] = False              # 文字格、空格、编号列不标；作为被引用的格也不传标记
+            return False
+        if k in stack:
+            return False                 # 成环（算不出的格本来就是空的；防御）
+        d = deps(sh, ri, j)
+        if has_checks and k in covered:
+            res = False                  # 规则 1
+        elif d is not None:
+            res = any(marked(x, stack + (k,)) for x in d)          # 规则 3
+        elif not has_checks:
+            res = k in unsourced
+        else:
+            res = not (k not in unsourced and k in read_ok)        # 规则 2
+        memo[k] = res
+        return res
+
+    out = set()
+    for sh in t.sheets:
+        for ri, r in enumerate(sh.rows):
+            if r is None:
+                continue
+            for j in range(len(sh.columns)):
+                if marked((sh._index, ri, j)):
+                    out.add((sh._index, ri, j))
+    return out
+
+
+def _ri_of_src(sh, src_row):
+    """核对回执里的行（入参里的行序号）→ sh.rows 的下标。"""
+    if sh.src is None:
+        return src_row
+    for ri, sv in enumerate(sh.src):
+        if sv == src_row:
+            return ri
+    return src_row
 
 
 def unfilled(t):
     """未填项清单：每个必填列（required: true，输入列）没有值的格一条（缺席、null、空串）；某张表没有任何数据行也报一条。
-    逐字写法给模型照着在增量里指回去（表 id、行 $id、列 key）；条数超过 UNFILLED_MAX 时末条说明还有多少未列出。
-    次序稳定：按表的次序（写了 sheet_order 按它，否则按 sheets 里的次序）、表内按成表后的行序、行内按列序——引擎只取前 batch_max 条，
-    要先补的表用 sheet_order 排在前面。"""
+    r19（功能清单 A4、A6、B2）：指格一律写“表名/行名/列名”（cell_label，与核对未过的话同一个函数）；算不出的格公式说出缺哪一格；
+    写法不对、没有收的格说出原因。次序：表的最上一层的说明、各表（按表的次序）没有收的格、算不出的格、未填的格。"""
     out = []
+    sd = getattr(t, "single_dropped", None)
+    if sd:
+        out.append("表的最上一层写了 " + "、".join(sd) + "，没有收：有 sheets 时这些写进各张表里")
+    failed = {(loc[1], loc[2], loc[3]) for loc in getattr(t, "expr_fail", {})}
+    fail_notes = expr_fail_notes(t) if getattr(t, "expr_fail", None) else []
+    for sh in t.sheets:
+        label = sh.id if sh.id else f"“{sh.name}”"
+        for msg in getattr(sh, "formula_dropped", None) or []:
+            out.append(f"表 {label} {msg}")
+        src_to_ri = {sv: ri for ri, sv in enumerate(sh.src or [])}
+        for (sri, j, why) in getattr(sh, "cell_notes", None) or []:
+            ri = src_to_ri.get(sri)
+            if ri is None or ri >= len(sh.rows) or j is None:
+                out.append(f"表 {sh.name} 第 {sri + 1} 行：{why}")
+            else:
+                out.append(f"{cell_label(t, sh, ri, j)} 没有收：{why}")
+    out.extend(fail_notes)
     for sh in t.sheets:
         label = sh.id if sh.id else f"“{sh.name}”"
         if not sh.rows:
             out.append(f"表 {label} 没有数据行")
             continue
-        req = [(j, c) for j, c in enumerate(sh.columns) if getattr(c, "required", False) and c.formula is None and c.numbering is None]
+        req = [(j, c) for j, c in enumerate(sh.columns)
+               if (getattr(c, "required", False) or getattr(c, "count", False)) and c.formula is None and c.numbering is None]
         if not req:
             continue
         for ri, r in enumerate(sh.rows):
-            rid = sh.row_ids[ri] if ri < len(sh.row_ids) else None
             src = sh.src[ri] if sh.src is not None and ri < len(sh.src) else ri
             for j, c in req:
                 v = r[j] if j < len(r) else None
+                if (src, j) in getattr(sh, "count_blank", {}):
+                    continue                     # 2.5.2：按规范留空，不计入未填
+                if (sh._index, ri, j) in failed:
+                    continue                     # 已在“算不出”里说过
                 if v is None or (isinstance(v, str) and v.strip() == ""):
-                    where = f"行 {rid} " if rid else f"第 {src + 1} 行（没有 $id）"
-                    out.append(f"表 {label} {where}列 {c.key}（{c.title}）未填")
+                    out.append(f"{cell_label(t, sh, ri, j)} 未填")
     if len(out) > UNFILLED_MAX:
         out = out[:UNFILLED_MAX - 1] + [f"还有 {len(out) - (UNFILLED_MAX - 1)} 处未列出"]
     return out

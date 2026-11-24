@@ -353,7 +353,9 @@ ADDED_FN_210 = ["formula", "none"]
 
 
 def _strip_210(node):
-    """去掉 2.1.0 新增的可选字段、枚举值、行里的 $style 保留键，与新增的说明句。"""
+    """去掉 2.1.0 新增的可选字段、枚举值、行里的 $style 保留键，与新增的说明句。2.5.0 起先换回 oneOf 两支、去 $count（strip250）。"""
+    from strip250 import strip_250
+    node = strip_250(node)
     import importlib.util
     spec = importlib.util.spec_from_file_location("mr", ROOT / "tools" / "make_registration.py")
     mr = importlib.util.module_from_spec(spec)

@@ -39,6 +39,9 @@ ROWS_235 = [
 ]
 
 
+from strip250 import strip_250  # noqa: E402  2.5.0 反向对照
+
+
 def _strip_240(schema):
     """2.4.0（mengosv2 规格改句草案-未填项位置声明 §六 A）：build 说明新增三句、改一句（换回 main 的 2.3.5 原文）；列加可选 required；
     rows 合并标注 by-id（$id）换回 append。去掉这些后与 main 逐键相同。"""
@@ -89,7 +92,7 @@ def test_input_schemas_equal_2_2_0_key_by_key():
     old = json.loads(subprocess.run(["git", "show", "main:table/registration.json"], cwd=ROOT, capture_output=True, text=True, check=True).stdout)
     new = json.loads((ROOT / "registration.json").read_text(encoding="utf-8"))
     o = {u["tool_id"]: _strip_232(u["signature"]["input_schema"]) for u in old["units"]}
-    n = {u["tool_id"]: _strip_232(_strip_240(u["signature"]["input_schema"])) for u in new["units"]}
+    n = {u["tool_id"]: _strip_232(strip_250(u["signature"]["input_schema"])) for u in new["units"]}   # main 已是 2.4.0：只去 2.5.0 的改动（换回 oneOf、去 $count）
     assert n == o
     assert "local_patch" not in new
 
